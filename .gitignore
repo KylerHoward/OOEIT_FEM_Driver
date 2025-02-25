@@ -1,0 +1,13 @@
+# Ignore all files in results.
+/Results/
+
+# Ignore all files in Meshes
+/Meshes/
+
+# Ignore all files in OOEIT
+/OOEIT/
+
+# Add an exception to prevent ignoring a file with the specified name.
+!/OOEIT/ForwardProblemSolvers/MF_EITFEM
+!/OOEIT/ForwardProblemSolvers/ParForwardMesh1st
+!/OOEIT/MiscClasses/MF_Simulation
