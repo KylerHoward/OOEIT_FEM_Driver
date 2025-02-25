@@ -15,8 +15,7 @@ clc
 pause('on')
 start_time = tic;
 
-addpath OOEIT Utility_Functions
-InitializeOOEIT
+addpath Modified_OOEIT Utility_Functions
 
 % mesh_name = "R1053_Mesh_NoBones.mat"; % 4 months
 % mesh_name = "R1035_Mesh_Cylinder.mat"; % Adjust labels lines 103-112

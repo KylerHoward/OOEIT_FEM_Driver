@@ -20,7 +20,7 @@ show_means     = 0;
 clinical_frame = [194,224]; % 207 (Kyler)
 
 % Load files
-subj_path = "C:\Users\kyler\OneDrive\School\Colorado State\Research\Dr. Mueller\FEM\OOEIT_testing";
+subj_path = "C:\Users\kyler\OneDrive\School\Colorado State\Research\Dr. Mueller\FEM\OOEIT_testing\Clinical_Data";
 subj_file = "Sbj42_4x8_patch_circle_2025_02_14_15_10_34_0001";
 % subj_file = "Subj011_2019_09_06_15_29_05_0002";
 subj_data = load(fullfile(subj_path, subj_file));

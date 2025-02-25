@@ -3,11 +3,3 @@
 
 # Ignore all files in Meshes
 /Meshes/
-
-# Add an exception to prevent ignoring a file with the specified name.
-!/OOEIT/ForwardProblemSolvers/MF_EITFEM.m
-!/OOEIT/ForwardProblemSolvers/ParForwardMesh1st.m
-!/OOEIT/MiscClasses/MF_Simulation.m
-
-# Ignore all files in other OOEIT folders
-/OOEIT/
