@@ -173,6 +173,7 @@ classdef ParForwardMesh1st < handle
             
         end
 
+        
         function [Ai, Av] = GradientMatrix(self)
             %Computes all the basis function gradients of the
             %mesh. These are used in calculating the Jacobian.

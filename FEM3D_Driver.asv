@@ -382,7 +382,7 @@ end
         % Create a mesh-object from nodes, connections, and electrode connections (NODES IN METERS)
         fprintf("Making Forward Mesh\n")
         fmesh = ParForwardMesh1st(nodes*1e-3, connectivity, E_connect);
-        
+        keyboard
         % Initialize the forward problem solver (FPS). This is the object, that
         % (utilizing the mesh-object given to it) computes forward problem solutions
         % using the FEM approximation of the complete electrode model (CEM).
