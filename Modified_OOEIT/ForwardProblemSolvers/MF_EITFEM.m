@@ -73,6 +73,7 @@ Editted: 10/10/24 - Kyler Howard
             obj.fmesh                      = fmesh;
             [obj.Ai,   obj.Av]             = fmesh.GradientMatrix();    % These are used in the compution of the Jacobian
             [obj.intS, obj.intM, obj.intB] = fmesh.EITElectrodeTerms(); % These integral values are used in computing the FEM matrix
+            
 
             % populate necessary properties with default values
             % See the properties section for basic description of the
