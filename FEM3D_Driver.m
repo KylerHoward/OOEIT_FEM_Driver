@@ -377,7 +377,7 @@ end
 %         flags.left_only       = 0; % Decide if you want only ventilation on the left side (1) or not (0)
 %         flags.right_only      = 1; % Decide if you want only ventilation on the right side (1) or not (0)
 %     end
-
+return
     if flags.solve_problem == 1
         % Create a mesh-object from nodes, connections, and electrode connections (NODES IN METERS)
         fprintf("Making Forward Mesh\n")
