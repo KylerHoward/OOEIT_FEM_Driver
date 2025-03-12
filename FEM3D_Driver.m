@@ -17,31 +17,34 @@ start_time = tic;
 
 addpath Modified_OOEIT\ForwardProblemSolvers\ Modified_OOEIT\MiscClasses\ Utility_Functions\
 
-% mesh_name = "R1053_Mesh_NoBones.mat"; % 4 months
-% mesh_name = "R1035_Mesh_Cylinder.mat"; % Adjust labels lines 103-112
-mesh_name = "R1035_Mesh_NoBones.mat"; % 13 months
-% mesh_name = "R1035_Mesh_NoBones_Fine.mat"; % 13 months
-% mesh_name = "R1035_Mesh.mat"; % 13 months
-% mesh_name = "R1133_Mesh_NoBones.mat"; % 16 years, KYLER SIZED
-% mesh_name = "R1002_Mesh_NoBones.mat";
-% mesh_name = "R1043_Mesh_NoBones.mat";
-% mesh_name = "case101819_Mesh_Trimmed.mat";
-% mesh_name = "case101819_Mesh_Trimmed_NoBones.mat";
+msh_path = "Meshes";
+% msh_name = "R1053_Mesh_NoBones.mat"; % 4 months
+% msh_name = "R1035_Mesh_Cylinder.mat"; % Adjust labels lines 103-112
+% msh_name = "R1035_Mesh_NoBones.mat"; % 13 months
+% msh_name = "R1035_Mesh_NoBones_Fine.mat"; % 13 months
+% msh_name = "R1035_Mesh.mat"; % 13 months
+% msh_name = "R1133_Mesh_NoBones.mat"; % 16 years, KYLER SIZED
+% msh_name = "R1002_Mesh_NoBones.mat";
+% msh_name = "R1043_Mesh_NoBones.mat";
+% msh_name = "case101819_Mesh_Trimmed.mat";
+% msh_name = "case101819_Mesh_Trimmed_NoBones.mat";
+
+[msh_name, msh_path] = uigetfile("Select Mesh File"); 
 
 % Load the mesh
-tetmesh     = load(fullfile("Meshes",mesh_name), "tetmesh").tetmesh;
+tetmesh     = load(fullfile(msh_path,msh_name), "tetmesh").tetmesh;
 
-if isempty(gcp('nocreate'))
-    % Open a parallel pool
-    parpool
-end
+% if isempty(gcp('nocreate'))
+%     % Open a parallel pool
+%     parpool
+% end
 
 % ----------------------------------------------------------------------- %
 %%                                Settings                                %
 % ----------------------------------------------------------------------- %
 % User settings
 flags.do_pauses       = 0; % Decide to include pauses to check things or not
-flags.solve_problem   = 1; % Decide if you want to setup (0), or fully solve (1)
+flags.solve_problem   = 0; % Decide if you want to setup (0), or fully solve (1)
 flags.use_GE          = 1; % Decide if you want to use GE (1) or ACT5 (0) current patterns/conductivities
 
 % Conductivity Settings
@@ -56,9 +59,9 @@ flags.permute_conds   = 0; % Decide if you want random conds (1) or not (0)
 
 % Plot settings
 flags.plot_slices     = 0; % Plot individual slices when going slice by slice
-flags.plot_trachea    = 0; % Plotting of carina height
+flags.plot_trachea    = 1; % Plotting of carina height
 flags.plot_electrodes = 1; % Plotting of electrode consturction
-flags.plot_conds      = 0; % Plotting of conductivities
+flags.plot_conds      = 1; % Plotting of conductivities
 flags.plot_internal   = 0; % Plotting of internal nodes
 flags.plot_volts      = 1; % Plotting of nodal voltages
 
@@ -88,7 +91,7 @@ err = [0, 0, 0, 0];       % Noise and error parameters
     % e_systematic_rel = err(3);
     % e_systematic_abs = err(4);
 
-if contains(mesh_name, 'NoBones')
+if contains(msh_name, 'NoBones')
     flags.are_bones = 0; % There are no bones
 else
     flags.are_bones = 1; % There are bones
@@ -131,7 +134,7 @@ elseif flags.E_type == "belt"
 end
 
 % Extracting the subject name
-parts    = split(mesh_name, '_');
+parts    = split(msh_name, '_');
 sbj_name = parts(1);
 clear tetmesh parts
 
@@ -255,14 +258,19 @@ ind(inside_indices,:)            = [];
 % carina_height = Find_Carina(trachea_nodes, flags);
 if flags.plot_trachea == 1
     figure()
-    pdeplot3D(nodes', organ_connects{trachea}')
+    subplot(1,2,1)
+        pdeplot3D(nodes', organ_connects{trachea}')
+        hold on
+        scatter3(mean(trachea_nodes(:,1)), mean(trachea_nodes(:,2)), carina_height, 'r', 'filled')
+    subplot(1,2,2)
+        pdeplot3D(nodes', organ_connects{lung}')
 end
 % carina_manual = 124; % 1043
 % carina_manual = 156; % 1206
 % carina_manual = 152; % 1247
 % carina_manual = 92;  % 101819
 
-
+return
 % ----------------------------------------------------------------------- %
 %%                             Make Electrodes                            %
 % ----------------------------------------------------------------------- %
@@ -377,7 +385,7 @@ end
 %         flags.left_only       = 0; % Decide if you want only ventilation on the left side (1) or not (0)
 %         flags.right_only      = 1; % Decide if you want only ventilation on the right side (1) or not (0)
 %     end
-return
+
     if flags.solve_problem == 1
         % Create a mesh-object from nodes, connections, and electrode connections (NODES IN METERS)
         fprintf("Making Forward Mesh\n")
