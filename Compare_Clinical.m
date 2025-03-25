@@ -11,10 +11,10 @@ clear
 clc
 close all
 
-num_sims       = 2;
+num_sims       = 3;
 do_pauses      = 0;
 mean_shift     = 1;
-show_clinical  = 1;
+show_clinical  = 0;
 show_means     = 0;
 % clinical_frame = 71;%[37,44]; % 71 (Subj011)
 clinical_frame = [194,224]; % 207 (Kyler)

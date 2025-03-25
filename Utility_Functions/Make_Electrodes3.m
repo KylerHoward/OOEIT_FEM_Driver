@@ -184,7 +184,7 @@ function [E_nodes, perim_mm_high] = Make_Electrodes3(boundary_nodes, all_nodes, 
 
     % Reorder electrode placement if using the 4x8 pattern
     if flags.CP_choice == 2
-        fprintf("   Switching stuff up\n")
+        fprintf("   Placing 4x8 Electrode Arrays\n")
         all_ind = [13,14,15,16,32,31,30,29,9,10,11,12,28,27,26,25,5,6,7,8,24,23,22,21,1,2,3,4,20,19,18,17];
         E_nodes = E_nodes(all_ind);
     end

@@ -3,3 +3,6 @@
 
 # Ignore all files in Meshes
 /Meshes/
+
+# Ignore all .asv files
+*.asv

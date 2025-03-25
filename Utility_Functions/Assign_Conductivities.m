@@ -212,7 +212,10 @@ end
 
     % Initialize the conductivity matrix to be NaNs and be large enough for
     % multiple elements to use the same node
-    sigma = nan([size(nodes,1), max(counts)], 'like', cond_vals{3});
+    sigma = cell(size(nodes,1), 1);
+    for node = 1:size(nodes,1)
+        sigma{node} = nan([1, counts(node)], 'like', cond_vals{3});
+    end
 
     % Cycle through elements
     for element = 1:size(connectivity,1)
@@ -224,27 +227,28 @@ end
             
             % Find the first column that is not a NaN
             col = 1;
-            while ~isnan(sigma(node, col))
+            % while ~isnan(sigma(node, col))
+            while ~isnan(sigma{node}(col))
                 col = col + 1;
             end
             
             % Assign the conductivity value for constant tissues
             if label  ~= 1
-                sigma(node, col) = cond_vals{label + 1};
+                sigma{node}(col) = cond_vals{label + 1};
 
             % Assign the conductivity to each lung
             else
                 % Find which cluster the node is in (1 = left, 2 = right)
                 dist       = sum(abs(nodes(node,[1,2]) - centroids(:,:)), 2);
                 [~, index] = min(dist);
-                sigma(node, col) = cond_vals{label + 1}{index};
+                sigma{node}(col) = cond_vals{label + 1}{index};
             end
 
         end        
     end
 
     % Take a row wise average of the conductivities
-    sigma = mode(sigma, 2);
+    sigma = cellfun(@(x) mode(x, 2), sigma);
 
     % Check for weird gaps from Cleaver
     % zero_nodes   = nodes(real(sigma) == 0,:);
@@ -256,7 +260,6 @@ end
     if flags.const_body == 1
         % Find all nodes that are not background
         sigma(~(real(sigma) == 0 & imag(sigma) == 0)) = cond_vals{4};
-        % sigma(~((real(sigma) == 0 & imag(sigma) == 0) | (real(sigma) == 0.66 & imag(sigma) == 0.4))) = cond_vals(4); % DELETE ME!!!
     end
 
     cond_time = toc;

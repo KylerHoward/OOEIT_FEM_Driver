@@ -1,4 +1,4 @@
-function [Umeas, Imeas, Uall, Iall, Umeas_i, Imeas_i, e] = MF_Simulation(fm, sigma_i, sigma, z, fsolver, mode, err)
+function [Umeas, Imeas, Uall, Iall, Umeas_i, Imeas_i, e] = MF_Simulation2(fm, sigma_i, sigma, z, fsolver, mode, err)
 %{
 A simple simulation that will return synthetic data. meas_i refer to
 initial reference measurements, whereas Umeas and Imeas are the situation
@@ -83,6 +83,7 @@ Edited: Kyler Howard  1.22.2025
         end
 
     end %end reference measurements
+        
         
     %The actual measurements:
     if strcmp(mode, 'potential')

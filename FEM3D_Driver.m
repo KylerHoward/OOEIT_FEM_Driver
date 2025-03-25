@@ -18,7 +18,7 @@ start_time = tic;
 addpath Modified_OOEIT\ForwardProblemSolvers\ Modified_OOEIT\MiscClasses\ Utility_Functions\
 
 msh_path = "Meshes";
-% msh_name = "R1053_Mesh_NoBones.mat"; % 4 months
+msh_name = "R1053_Mesh_NoBones.mat"; % 4 months
 % msh_name = "R1035_Mesh_Cylinder.mat"; % Adjust labels lines 103-112
 % msh_name = "R1035_Mesh_NoBones.mat"; % 13 months
 % msh_name = "R1035_Mesh_NoBones_Fine.mat"; % 13 months
@@ -29,29 +29,25 @@ msh_path = "Meshes";
 % msh_name = "case101819_Mesh_Trimmed.mat";
 % msh_name = "case101819_Mesh_Trimmed_NoBones.mat";
 
-[msh_name, msh_path] = uigetfile("Select Mesh File"); 
+% [msh_name, msh_path] = uigetfile("Select Mesh File"); 
 
 % Load the mesh
 tetmesh     = load(fullfile(msh_path,msh_name), "tetmesh").tetmesh;
-
-% if isempty(gcp('nocreate'))
-%     % Open a parallel pool
-%     parpool
-% end
 
 % ----------------------------------------------------------------------- %
 %%                                Settings                                %
 % ----------------------------------------------------------------------- %
 % User settings
 flags.do_pauses       = 0; % Decide to include pauses to check things or not
-flags.solve_problem   = 0; % Decide if you want to setup (0), or fully solve (1)
+flags.solve_problem   = 1; % Decide if you want to setup (0), or fully solve (1)
 flags.use_GE          = 1; % Decide if you want to use GE (1) or ACT5 (0) current patterns/conductivities
+flags.do_parfor       = 0; % Decide if you want to paralize (1) or not (0)
 
 % Conductivity Settings
 flags.set_complex     = 0; % Choice of complex (1) or real (0) conductivities
 flags.const_body      = 0; % Decide if you want a solid/constant body (1) or not (0)
 flags.esoph_intubate  = 0; % Decide if the esophagus is intubated (1) or not (0)
-flags.max_inspiration = 0.5; % Decide if the lungs should be at inspiration (1), expiration (0), or somewhere in-between
+flags.max_inspiration = 1; % Decide if the lungs should be at inspiration (1), expiration (0), or somewhere in-between
 flags.equal_vent      = 1; % Decide if you want equal ventilation (1) or split (0)
 flags.left_only       = 0; % Decide if you want only ventilation on the left side (1) or not (0)
 flags.right_only      = 0; % Decide if you want only ventilation on the right side (1) or not (0)
@@ -67,8 +63,8 @@ flags.plot_volts      = 1; % Plotting of nodal voltages
 
 flags.CP_choice       = 1; % Choice of current pattern
     % 1: Standard pattern
-    % 2: 4x8 pattern (if patch)
-flags.E_choice        = 2; % Choice of Electrode configuration
+    % 2: 4x8 pattern
+flags.E_choice        = 4; % Choice of Electrode configuration
     % 1: Large patch front back  (GE Patch)
     % 2: Small patch front back  (GE Patch)
     % 3: Two rows of large belts (GE Belt)
@@ -82,7 +78,7 @@ flags.E_dia           = 20;  % Diameter of electrode in mm (for circle)
 flags.E_width         = 22;  % Width  of electrode in mm (for rectangle)
 flags.E_height        = 29;  % Height of electrode in mm (for rectangle)
 flags.gap_width       = 46.675; % Gap between electrodes vertically in mm (edge-edge) (for patch) %2.5 / 46.675
-flags.gap_height      = 32.3875; % Gap between electrodes vertically in mm (edge-edge) (for patch) %2.5 / 32.3875
+flags.gap_height      = 32.875; % Gap between electrodes vertically in mm (edge-edge) (for patch) %2.5 / 32.3875
 flags.E_count         = [4,4];  % Number of electrodes per row (for belt), or matrix of how many rows and columns (for patch)
 
 err = [0, 0, 0, 0];       % Noise and error parameters
@@ -97,6 +93,10 @@ else
     flags.are_bones = 1; % There are bones
 end
 
+if isempty(gcp('nocreate')) && flags.solve_problem == 1 && flags.do_parfor == 1
+    % Open a parallel pool
+    parpool
+end
 % ----------------------------------------------------------------------- %
 %%                                 Setup                                  %
 % ----------------------------------------------------------------------- %
@@ -106,7 +106,7 @@ connectivity = double(tetmesh.cell'); % indices of nodes making up an element
 nodes        = double(tetmesh.node'); % xyz coordinates in mm
 labels       = tetmesh.field';        % material id for each element
 
-if flags.E_type == "patch"
+if (flags.E_choice == 5 && flags.E_type == "patch") || flags.E_choice <= 2
     if flags.CP_choice == 1
         current_pattern = load(fullfile("Current_Patterns", "Box4by4aMxStrength8.mat"), "Box4by4aMxStrength8").Box4by4aMxStrength8;
     elseif flags.CP_choice == 2
@@ -114,7 +114,7 @@ if flags.E_type == "patch"
     end
     L               = size(current_pattern, 1); % Number of electrodes
     num_CP          = size(current_pattern, 2); % Number of current patterns
-elseif flags.E_type == "belt"
+elseif (flags.E_choice == 5 && flags.E_type == "belt") || flags.E_choice > 2
     % current_pat = load(fullfile("Current_Patterns", "CP32_16x2_M1.mat"), "Cur_pat3D").Cur_pat3D; % Normalized CP
     if flags.use_GE == 1
         % Current pattern from GE is in µA
@@ -128,7 +128,7 @@ elseif flags.E_type == "belt"
     num_CP = size(current_pattern, 2); % Number of current patterns
 
     % Scale the current pattern
-    CP_scale        = load("clinical_belt_CP.mat", "CPscale_belt_16x2").CPscale_belt_16x2;
+    CP_scale        = load(fullfile("Current_Patterns", "clinical_belt_CP.mat"), "CPscale_belt_16x2").CPscale_belt_16x2;
     CP_scale        = repmat(CP_scale', 1, num_CP);
     current_pattern = CP_scale .* current_pattern;
 end
@@ -163,7 +163,9 @@ T5_height     = sbj_sheet.T5FromBottom_mm(row_num);
 T8_height     = sbj_sheet.T8FromBottom_mm(row_num);
 
 % %KH DELETE ME TESTING FOR R1133
-% carina_height = carina_height - 50;
+if contains(msh_name, "R1133")
+    carina_height = carina_height - 50;
+end
 
 sbj_info.carina = carina_height;
 sbj_info.T5     = T5_height;
@@ -262,6 +264,7 @@ if flags.plot_trachea == 1
         pdeplot3D(nodes', organ_connects{trachea}')
         hold on
         scatter3(mean(trachea_nodes(:,1)), mean(trachea_nodes(:,2)), carina_height, 'r', 'filled')
+        title(sprintf("Carina: %.2f mm", carina_height))
     subplot(1,2,2)
         pdeplot3D(nodes', organ_connects{lung}')
 end
@@ -270,7 +273,6 @@ end
 % carina_manual = 152; % 1247
 % carina_manual = 92;  % 101819
 
-return
 % ----------------------------------------------------------------------- %
 %%                             Make Electrodes                            %
 % ----------------------------------------------------------------------- %
@@ -389,15 +391,22 @@ end
     if flags.solve_problem == 1
         % Create a mesh-object from nodes, connections, and electrode connections (NODES IN METERS)
         fprintf("Making Forward Mesh\n")
-        fmesh = ParForwardMesh1st(nodes*1e-3, connectivity, E_connect);
+        if flags.do_parfor == 1
+            fmesh = ParForwardMesh1st(nodes*1e-3, connectivity, E_connect);
+        else
+            fmesh = ForwardMesh1st(nodes*1e-3, connectivity, E_connect);
+        end
         
         % Initialize the forward problem solver (FPS). This is the object, that
         % (utilizing the mesh-object given to it) computes forward problem solutions
         % using the FEM approximation of the complete electrode model (CEM).
         fprintf("Initializing FEM Solver\n")
         init_start = tic;
-        solver     = MF_EITFEM(fmesh);
-        % solver     = EITFEMComplex(mesh);
+        if flags.do_parfor == 1
+            solver = MF_EITFEM(fmesh);
+        else
+            solver = EITFEM(fmesh);
+        end
         init_time  = toc(init_start);
         fprintf("   It took %.2f minutes to initialize solver\n", init_time/60)
                 
@@ -431,13 +440,17 @@ end
         solver.Iel = current_pattern * 1e-6;
     
         % Solve the voltage
-        solve_start = tic;
-        [Umeas, Imeas, Uall] = MF_Simulation(fmesh, [], sigma, solver.zeta, solver, 'current', err);
+        solve_start          = tic;
+        if flags.do_parfor == 1
+            [Umeas, Imeas, Uall] = MF_Simulation(fmesh, [], sigma, solver.zeta, solver, 'current', err);
+        else
+            [Umeas, Imeas, Uall] = MF_Simulation2(fmesh, [], sigma, solver.zeta, solver, 'current', err);
+        end
+        solve_time           = toc(solve_start);
+        fprintf("   It took %.2f minutes to solve for voltages\n", solve_time/60)
+    
         Umeas = Umeas * 1e3; % Convert V to mV
         Uall  = Uall  * 1e3; % Convert V to mV
-        solve_time = toc(solve_start);
-        fprintf("   It took %.2f minutes per current pattern to solve for voltages\n", mean(solve_time)/num_CP/60)
-    
         Umeas = reshape(Umeas, L, num_CP);
     
         % Create the suffix for saving the file based on the settings chosen
@@ -448,9 +461,6 @@ end
         cond_name = sprintf("Cond_%s%s.mat", sbj_name, save_suffix);
         save(fullfile("Results",volt_name), "Umeas", "Uall", "current_pattern", "perim_mm", "-v7.3")
         save(fullfile("Results",cond_name), "sigma", "nodes", "-v7.3")
-
-        % Shut down parallel pool
-        delete(gcp('nocreate'))
     
     % ----------------------------------------------------------------------- %
     %%                                Plotting                                %
