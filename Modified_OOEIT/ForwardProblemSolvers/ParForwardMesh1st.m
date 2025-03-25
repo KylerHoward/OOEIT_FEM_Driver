@@ -73,40 +73,50 @@ classdef ParForwardMesh1st < handle
             % Transform to forward mesh basis
             sigma = self.ItoF(sigma);
 
-            % Initialize variables where to collect the integral values. 
-            % The values are stored in row/column/value format and stored in a sparse matrix in the end
-            k    = 1;  
-            Arow = zeros((self.gDim+1)*self.nH,(self.gDim+1));
-            Acol = zeros((self.gDim+1)*self.nH,(self.gDim+1));
-            Aval = zeros((self.gDim+1)*self.nH,(self.gDim+1));
-
             % Gauss quadrature points for integration
             if self.gDim == 3
-                a   = 0.58541020;
+                a  = 0.58541020;
                 b  = 0.13819660;
                 ip = [b b b; a b b; b a b; b b a];
             elseif self.gDim == 2
                 ip = [0.5 0; 0.5 0.5; 0 0.5];
             end
 
+            % Create needed variables to limit communication overhead in parfor loop
+            sH    = self.H;
+            sg    = self.g;
+            sgDim = self.gDim;
+
+            % Preallocate cell arrays for parfor
+            % The values are stored in row/column/value format and stored in a sparse matrix in the end
+            ArowCell = cell(self.nH, 1);
+            AcolCell = cell(self.nH, 1);
+            AvalCell = cell(self.nH, 1);
+
             % Difference matrix of the (linear) basis functions
             L = [-ones(self.gDim,1) eye(self.gDim)];
-            for ii=1:self.nH
-              % Go through all triangles/tetrahedra
-              ind = self.H(ii,:);  % The indices of the nodes in element ii
-              gg  = self.g(ind,:); % The coordinates of the nodes in ind
-              ss  = sigma(ind);    % The conductivities at the nodes in ind
+            
+            parfor ii=1:self.nH
+                % Go through all triangles/tetrahedra
+                ind = sH(ii,:);   % The indices of the nodes in element ii
+                gg  = sg(ind,:);  % The coordinates of the nodes in ind
+                ss  = sigma(ind); % The conductivities at the nodes in ind
+                
+                % Integral of sigma*grad(phi_i) dot grad(phi_j) inside element ii:
+                int = self.IntLinSigma(gg,ss,ip,L); 
+                % int is now a 3-by-3 or 4-by-4 matrix, with element i,j containing the said integral with the basis 
+                % functions phi_i and phi_j being the basis functions of nodes ind(i) and ind(j).
 
-              % Integral of sigma*grad(phi_i) dot grad(phi_j) inside element ii:
-              int = self.IntLinSigma(gg,ss,ip,L); 
-              % int is now a 3-by-3 or 4-by-4 matrix, with element i,j containing the said integral with the basis 
-              % functions phi_i and phi_j being the basis functions of nodes ind(i) and ind(j).
-              Arow(k:k+self.gDim,:) = repmat(ind', 1, self.gDim+1); % The row indices of the int-values in the final sparse matrix to be constructed
-              Acol(k:k+self.gDim,:) = repmat(ind, self.gDim+1, 1);  % The column indices of the int-values in the final sparse matrix to be constructed
-              Aval(k:k+self.gDim,:) = int;                          % The integral values
-
-              k = k + self.gDim + 1;
+                % Collect the results in local variables
+                ArowCell{ii} = repmat(ind', 1,       sgDim+1); % The row indices of the int-values in the final sparse matrix to be constructed
+                AcolCell{ii} = repmat(ind,  sgDim+1, 1);       % The column indices of the int-values in the final sparse matrix to be constructed
+                AvalCell{ii} = int;                            % The integral values
             end  
+
+            % Combine cell arrays into full matrices
+            Arow = cell2mat(ArowCell);
+            Acol = cell2mat(AcolCell);
+            Aval = cell2mat(AvalCell);
             
             % The output:
             A = sparse(Arow,Acol,Aval,self.ng+self.nEl-1,self.ng+self.nEl-1);
@@ -152,7 +162,7 @@ classdef ParForwardMesh1st < handle
                     intS(spos:spos+self.gDim-1,:) = bb2;
                     rowS(spos:spos+self.gDim-1,:) = rcidx.'; 
                     colS(spos:spos+self.gDim-1,:) = rcidx;
-                    M(ind,:) = M(ind,:) +  bb1;
+                    M(ind,ii) = M(ind,ii) +  bb1;
                     
                     %compute the element area
                     if self.gDim == 3
