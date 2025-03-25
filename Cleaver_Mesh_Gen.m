@@ -19,7 +19,8 @@ atlas_path = uigetdir("Open location of main atlas");
 atlas_cont = dir(atlas_path);
 run_times  = nan(length(atlas_cont));
 
-parfor fold_i = 3:length(atlas_cont)
+% parfor fold_i = 3:length(atlas_cont)
+for fold_i = 3:length(atlas_cont)
     % Skip non-folder contents
     if atlas_cont(fold_i).isdir ~= 1
         continue
@@ -45,8 +46,9 @@ parfor fold_i = 3:length(atlas_cont)
     end
 
     % Create the mesh_name
-    msh_name = replace(string(seg_name), "Segmentation", "Mesh");
-    msh_name = replace(string(msh_name), "nrrd", "mat");
+    msh_name = char(replace(string(seg_name), "Segmentation", "Mesh"));
+    % msh_name = replace(string(msh_name), "nrrd", "mat");
+    msh_name = msh_name(1:end-5);
 
     % Create the two full file paths
     seg_path = fullfile(sbj_path, seg_name);
@@ -64,7 +66,7 @@ parfor fold_i = 3:length(atlas_cont)
     % Run the Cleaver command line for Windows PC
     if ispc
         tic
-        [status, cmdout] = system(sprintf("cleaver-cli -i ""%s"" -n ""%s"" -f matlab -o ""%s"" -e -S", seg_path, msh_name, msh_path));
+        [status, cmdout] = system(sprintf("cleaver-cli -i %s -n %s -f matlab -o %s -e -S", seg_path, msh_name, msh_path));
         if status ~= 0
             error(cmdout)
         end
