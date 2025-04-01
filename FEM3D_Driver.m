@@ -9,7 +9,7 @@ load: sbj_info - Structure containing heights and other info for each subject
 save: Umeas - Measured voltages on each electrode for each current pattern
 %}
 
-close all
+% close all
 clear
 clc
 pause('on')
@@ -18,7 +18,7 @@ start_time = tic;
 addpath Modified_OOEIT\ForwardProblemSolvers\ Modified_OOEIT\MiscClasses\ Utility_Functions\
 
 msh_path = "Meshes";
-msh_name = "R1053_Mesh_NoBones.mat"; % 4 months
+% msh_name = "R1053_Mesh_NoBones.mat"; % 4 months
 % msh_name = "R1035_Mesh_Cylinder.mat"; % Adjust labels lines 103-112
 % msh_name = "R1035_Mesh_NoBones.mat"; % 13 months
 % msh_name = "R1035_Mesh_NoBones_Fine.mat"; % 13 months
@@ -29,7 +29,7 @@ msh_name = "R1053_Mesh_NoBones.mat"; % 4 months
 % msh_name = "case101819_Mesh_Trimmed.mat";
 % msh_name = "case101819_Mesh_Trimmed_NoBones.mat";
 
-% [msh_name, msh_path] = uigetfile("Select Mesh File"); 
+[msh_name, msh_path] = uigetfile("H:\BabyCTImages","Select Mesh File"); 
 
 % Load the mesh
 tetmesh     = load(fullfile(msh_path,msh_name), "tetmesh").tetmesh;
@@ -39,7 +39,7 @@ tetmesh     = load(fullfile(msh_path,msh_name), "tetmesh").tetmesh;
 % ----------------------------------------------------------------------- %
 % User settings
 flags.do_pauses       = 0; % Decide to include pauses to check things or not
-flags.solve_problem   = 1; % Decide if you want to setup (0), or fully solve (1)
+flags.solve_problem   = 0; % Decide if you want to setup (0), or fully solve (1)
 flags.use_GE          = 1; % Decide if you want to use GE (1) or ACT5 (0) current patterns/conductivities
 flags.do_parfor       = 0; % Decide if you want to paralize (1) or not (0)
 
@@ -158,6 +158,7 @@ end
 % Extract wanted info from the table
 row_num       = find(strcmp(sbj_sheet.Subject, sbj_name));
 upside_down   = sbj_sheet.UpsideDown(row_num);
+facing_dir    = sbj_sheet.PositiveYIs(row_num);
 carina_height = sbj_sheet.CarinaFromBottom_mm(row_num);
 T5_height     = sbj_sheet.T5FromBottom_mm(row_num);
 T8_height     = sbj_sheet.T8FromBottom_mm(row_num);
@@ -166,10 +167,6 @@ T8_height     = sbj_sheet.T8FromBottom_mm(row_num);
 if contains(msh_name, "R1133")
     carina_height = carina_height - 50;
 end
-
-sbj_info.carina = carina_height;
-sbj_info.T5     = T5_height;
-sbj_info.T8     = T8_height;
 
 if flags.are_bones == 1
     background  = 1;
@@ -207,15 +204,13 @@ for label = unique(labels)'
     organ_connects{i} = connectivity(labels==label, :);
     i = i + 1;
 end
-[body_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
-
 
 % ----------------------------------------------------------------------- %
-%%                                Rotation                                %
+%%                        Rotation and Translation                        %
 % ----------------------------------------------------------------------- %
 % Check the excel doc
 if upside_down == 0
-    fprintf("Rotating Body\n")
+    fprintf("Rotating Body Upright\n")
     theta = pi;
     rotationMatrix = [cos(theta), 0, -sin(theta);...
                       0,          1,  0;...
@@ -233,6 +228,27 @@ if upside_down == 0
     %     scatter(nodes(:,1), nodes(:,3)); xlabel("x"); ylabel("z");
     %     title("Rotated")
 end
+
+if facing_dir == "Posterior"
+    fprintf("Rotating the Chest Forward\n")
+    theta = pi;
+    rotationMatrix = [cos(theta), -sin(theta), 0;...
+                      sin(theta),  cos(theta), 0;...
+                      0,           0,          1];
+
+    nodes      = nodes*rotationMatrix;
+    nodes(:,1) = nodes(:,1) + abs(min(nodes(:,1)));
+    nodes(:,2) = nodes(:,2) + abs(min(nodes(:,2)));
+
+end
+
+fprintf("Translating to the Origin\n")
+[body_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
+nodes           = nodes         - min(body_nodes);
+sbj_info.carina = carina_height - min(body_nodes(:,3));
+sbj_info.T5     = T5_height     - min(body_nodes(:,3));
+sbj_info.T8     = T8_height     - min(body_nodes(:,3));
+[body_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
 
 
 % ----------------------------------------------------------------------- %
@@ -255,24 +271,19 @@ old_boundary_nodes               = boundary_nodes;
 boundary_nodes(inside_indices,:) = [];
 ind(inside_indices,:)            = [];
 
-% fprintf("Finding Carina Height\n")
-% Calculate the height of the carina
-% carina_height = Find_Carina(trachea_nodes, flags);
 if flags.plot_trachea == 1
     figure()
     subplot(1,2,1)
-        pdeplot3D(nodes', organ_connects{trachea}')
+        scatter3(trachea_nodes(:,1), trachea_nodes(:,2), trachea_nodes(:,3), "MarkerEdgeAlpha", 0.2)
         hold on
-        scatter3(mean(trachea_nodes(:,1)), mean(trachea_nodes(:,2)), carina_height, 'r', 'filled')
-        title(sprintf("Carina: %.2f mm", carina_height))
+        % scatter3(mean(trachea_nodes(:,1)), mean(trachea_nodes(:,2)), carina_height, 'r', 'filled')
+        scatter3(trachea_nodes(startsWith(string(trachea_nodes(:,3)), sprintf("%.1f", sbj_info.carina)), 1), trachea_nodes(startsWith(string(trachea_nodes(:,3)), sprintf("%.1f", sbj_info.carina)), 2), sbj_info.carina, 'r', 'filled')
+        % constantplane('z', carina_height) R2024b
+        title(sprintf("Carina: %.2f mm", sbj_info.carina))
     subplot(1,2,2)
         pdeplot3D(nodes', organ_connects{lung}')
 end
-% carina_manual = 124; % 1043
-% carina_manual = 156; % 1206
-% carina_manual = 152; % 1247
-% carina_manual = 92;  % 101819
-
+return
 % ----------------------------------------------------------------------- %
 %%                             Make Electrodes                            %
 % ----------------------------------------------------------------------- %
@@ -329,7 +340,7 @@ if flags.plot_electrodes == 1
             bar(back,E_areas(back),  'EdgeColor',"#4DBEEE",'FaceColor',"#4DBEEE")
             plot(1:L, mean(E_areas)*ones(1,L),'r')
             xlabel("Electrode")
-            title("Electrode Area (mm²)")
+            title(sprintf("Electrode Area (mm²), STD: %.2f mm²", std(E_areas)))
             legend("Front", "Back")
 end
 
