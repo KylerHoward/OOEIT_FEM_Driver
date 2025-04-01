@@ -272,10 +272,15 @@ function E_nodes = create_electrode(local_nodes, coord, E, all_nodes, body_faces
             ind = rangesearch(local_nodes, coord, E.E_rad + search_dist);
             ind = ind{1}';
         elseif E.shape == "rectangle"
-            % Until I can make the electrode touching, go double up and half left/right
+            % Until I can make the electrode touching, go half left/right/up
             xcheck = (local_nodes(:,1) >= coord(1) - (E.E_width + search_dist/2)/2)  & (local_nodes(:,1) <= coord(1) + (E.E_width + search_dist/2)/2);
+            if E.type == "belt"
             ycheck = (local_nodes(:,2) >= coord(2) - (E.E_width + search_dist/2)/2)  & (local_nodes(:,2) <= coord(2) + (E.E_width + search_dist/2)/2);
-            zcheck = (local_nodes(:,3) >= coord(3) - (E.E_height + 2*search_dist)/2) & (local_nodes(:,3) <= coord(3) + (E.E_height + 2*search_dist)/2);
+            elseif E.type == "patch"
+                ycheck = (local_nodes(:,2) >= coord(2) - (E.E_width + search_dist/2))  & (local_nodes(:,2) <= coord(2) + (E.E_width + search_dist/2));
+            end
+            % zcheck = (local_nodes(:,3) >= coord(3) - (E.E_height + 2*search_dist)/2) & (local_nodes(:,3) <= coord(3) + (E.E_height + 2*search_dist)/2);
+            zcheck = (local_nodes(:,3) >= coord(3) - (E.E_height + search_dist)/2) & (local_nodes(:,3) <= coord(3) + (E.E_height + search_dist)/2);
             binary_check = xcheck & ycheck & zcheck;
 
             ind = zeros(sum(binary_check), 1);
@@ -305,7 +310,7 @@ function E_nodes = create_electrode(local_nodes, coord, E, all_nodes, body_faces
             E_area = E_area + norm(cross(point3-point1, point3-point2))/2;
         end
 
-        if E_area <= E.E_area
+        if E_area < E.E_area
             good_electrode = 0;
             search_dist = search_dist + 0.5;
         else
@@ -489,7 +494,15 @@ function E_nodes = create_belt(local_nodes, E_plane, E, all_nodes, body_faces, f
         end
 
         % Check if we have moved around enough
-        if arc_length >= perim_mm / (E.E_count + 1)
+        % if arc_length >= perim_mm / (E.E_count + 1)
+        % try
+        %     goal_arc_length = (perim_mm - 2*E.E_width) / E.E_count;
+        % catch
+            % goal_arc_length = (perim_mm - 2*E.E_rad) / E.E_count;
+            goal_arc_length = perim_mm / (E.E_count + 0.7);
+        % end
+
+        if arc_length >= goal_arc_length
             % Reset arc length
             arc_length = 0;
 
