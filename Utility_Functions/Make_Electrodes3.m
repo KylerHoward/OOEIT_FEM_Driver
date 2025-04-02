@@ -98,8 +98,8 @@ function [E_nodes, perim_mm_high] = Make_Electrodes3(boundary_nodes, all_nodes, 
         x_mid = (min(plane_high(:,1)) + max(plane_high(:,1))) / 2;
         y_min = min(plane_high(:,2));
         y_max = max(plane_high(:,2));
-        front = plane_high(dsearchn(plane_high, [x_mid, y_min, sbj_info.carina]),:);
-        back  = plane_high(dsearchn(plane_high, [x_mid, y_max, sbj_info.carina]),:);
+        front = plane_high(dsearchn(plane_high, [x_mid, y_max, sbj_info.carina]),:);
+        back  = plane_high(dsearchn(plane_high, [x_mid, y_min, sbj_info.carina]),:);
         % front = find_node(plane, x_mid, y_min, sbj_info.carina);
         % back  = find_node(plane, x_mid, y_max, sbj_info.carina);
 
@@ -211,7 +211,8 @@ function [E_nodes, perim_mm_high] = Make_Electrodes3(boundary_nodes, all_nodes, 
     elseif flags.plot_electrodes == 1 && E.type == "belt"
         figure(); 
             hold on
-            for node_i = 1:length(E_nodes)
+                scatter3(E_nodes{1}(:,1), E_nodes{1}(:,2), E_nodes{1}(:,3), 'filled', 'square')
+            for node_i = 2:length(E_nodes)
                 scatter3(E_nodes{node_i}(:,1), E_nodes{node_i}(:,2), E_nodes{node_i}(:,3), 'filled')
             end
             legend('Location','eastoutside')
@@ -475,12 +476,12 @@ function E_nodes = create_belt(local_nodes, E_plane, E, all_nodes, body_faces, f
     j = 1;
     arc_length = 0;
     point = zeros(200, 3);
-    for theta = pi/2 : -(2*pi)/200 : -(3*pi)/2 + (2*pi)/200
+    for theta = 3*pi/2 : -(2*pi)/200 : -pi/2 + (2*pi)/200
         radius =  Parameratize_Bdry(E_plane, 15, theta);
         point(j,:) = [center(1) + radius*cos(theta), center(2) + radius*sin(theta), center(3)];
         
         % Always make electrode on the back
-        if theta == pi/2
+        if theta == 3*pi/2
             c_point    = point(j,:);
             E_center   = E_plane(dsearchn(E_plane,c_point),:);
             E_nodes{i} = create_electrode(local_nodes, E_center, E, all_nodes, body_faces, flags);
