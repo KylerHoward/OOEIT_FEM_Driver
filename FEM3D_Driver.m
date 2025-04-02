@@ -1,5 +1,7 @@
 %{
-Run a 3D FEM simulation on a single subject
+Run a 3D FEM simulation on a single subject.
+The driver expects the subject to have the origin at the bottom, posterior,
+left corner of the torso. Positive y is towards the anterior side.
 10/7/24 - Kyler Howard
 
 load: tetmesh - Mesh structure containing the nodes, connectivity, and labels
@@ -9,7 +11,7 @@ load: sbj_info - Structure containing heights and other info for each subject
 save: Umeas - Measured voltages on each electrode for each current pattern
 %}
 
-% close all
+close all
 clear
 clc
 pause('on')
@@ -159,9 +161,9 @@ end
 row_num       = find(strcmp(sbj_sheet.Subject, sbj_name));
 upside_down   = sbj_sheet.UpsideDown(row_num);
 facing_dir    = sbj_sheet.PositiveYIs(row_num);
-carina_height = sbj_sheet.CarinaFromBottom_mm(row_num);
-T5_height     = sbj_sheet.T5FromBottom_mm(row_num);
-T8_height     = sbj_sheet.T8FromBottom_mm(row_num);
+carina_height = sbj_sheet.CarinaActual_mm(row_num);
+T5_height     = sbj_sheet.T5Actual_mm(row_num);
+T8_height     = sbj_sheet.T8Actual_mm(row_num);
 
 % %KH DELETE ME TESTING FOR R1133
 if contains(msh_name, "R1133")
@@ -229,7 +231,12 @@ if upside_down == 0
     %     title("Rotated")
 end
 
-if facing_dir == "Posterior"
+[heart_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects{heart});
+[body_nodes, ~]  = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
+heart_center     = range(heart_nodes(:,2))/2 + min(heart_nodes(:,2));
+body_center      = range(body_nodes(:,2))/2 + min(body_nodes(:,2));
+% if facing_dir == "Posterior"
+if heart_center < body_center
     fprintf("Rotating the Chest Forward\n")
     theta = pi;
     rotationMatrix = [cos(theta), -sin(theta), 0;...
@@ -276,7 +283,7 @@ if flags.plot_trachea == 1
     subplot(1,2,1)
         scatter3(trachea_nodes(:,1), trachea_nodes(:,2), trachea_nodes(:,3), "MarkerEdgeAlpha", 0.2)
         hold on
-        % scatter3(mean(trachea_nodes(:,1)), mean(trachea_nodes(:,2)), carina_height, 'r', 'filled')
+        scatter3(mean(trachea_nodes(:,1)), mean(trachea_nodes(:,2)), sbj_info.carina, 'r', 'filled')
         scatter3(trachea_nodes(startsWith(string(trachea_nodes(:,3)), sprintf("%.1f", sbj_info.carina)), 1), trachea_nodes(startsWith(string(trachea_nodes(:,3)), sprintf("%.1f", sbj_info.carina)), 2), sbj_info.carina, 'r', 'filled')
         % constantplane('z', carina_height) R2024b
         title(sprintf("Carina: %.2f mm", sbj_info.carina))
