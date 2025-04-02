@@ -210,25 +210,23 @@ end
 % ----------------------------------------------------------------------- %
 %%                        Rotation and Translation                        %
 % ----------------------------------------------------------------------- %
+% Determine if the body is upside down
+[body_nodes, ~]     = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
+[trachea_nodes, ~]  = Get_Tet_Nodes(nodes, organ_connects{trachea});
+body_center         = range(body_nodes(:,3))/2 + min(body_nodes(:,3));
 % Check the excel doc
-if upside_down == 0
+% if upside_down == 0
+if max(trachea_nodes(:,3)) < body_center
     fprintf("Rotating Body Upright\n")
     theta = pi;
     rotationMatrix = [cos(theta), 0, -sin(theta);...
                       0,          1,  0;...
                       sin(theta), 0,  cos(theta)];
-    % figure; 
-    % subplot(1,2,1)
-    %     scatter(nodes(:,1), nodes(:,3)); xlabel("x"); ylabel("z");
-    %     title("Original")
 
+    % Rotate and shift the body
     nodes      = nodes*rotationMatrix;
     nodes(:,1) = nodes(:,1) * -1;
     nodes(:,3) = nodes(:,3) + abs(min(nodes(:,3)));
-
-    % subplot(1,2,2)
-    %     scatter(nodes(:,1), nodes(:,3)); xlabel("x"); ylabel("z");
-    %     title("Rotated")
 end
 
 [heart_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects{heart});
@@ -243,6 +241,7 @@ if heart_center < body_center
                       sin(theta),  cos(theta), 0;...
                       0,           0,          1];
 
+    % Rotate and shift the body
     nodes      = nodes*rotationMatrix;
     nodes(:,1) = nodes(:,1) + abs(min(nodes(:,1)));
     nodes(:,2) = nodes(:,2) + abs(min(nodes(:,2)));
