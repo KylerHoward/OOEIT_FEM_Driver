@@ -31,7 +31,7 @@ msh_path = "Meshes";
 % msh_name = "case101819_Mesh_Trimmed.mat";
 % msh_name = "case101819_Mesh_Trimmed_NoBones.mat";
 
-[msh_name, msh_path] = uigetfile("H:\BabyCTImages","Select Mesh File"); 
+[msh_name, msh_path] = uigetfile("G:\Lungmap_EIT\Radiology_Images","Select Mesh File"); 
 
 % Load the mesh
 tetmesh     = load(fullfile(msh_path,msh_name), "tetmesh").tetmesh;
@@ -213,10 +213,10 @@ end
 % Determine if the body is upside down
 [body_nodes, ~]     = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
 [trachea_nodes, ~]  = Get_Tet_Nodes(nodes, organ_connects{trachea});
-body_center         = range(body_nodes(:,3))/2 + min(body_nodes(:,3));
 % Check the excel doc
 % if upside_down == 0
-if max(trachea_nodes(:,3)) < body_center
+% Check if the difference between the trachea and the top of the body is less than 5% of the total height
+if abs(min(trachea_nodes(:,3)) - min(body_nodes(:,3))) < 0.05*max(nodes(:,3))
     fprintf("Rotating Body Upright\n")
     theta = pi;
     rotationMatrix = [cos(theta), 0, -sin(theta);...
@@ -229,12 +229,14 @@ if max(trachea_nodes(:,3)) < body_center
     nodes(:,3) = nodes(:,3) + abs(min(nodes(:,3)));
 end
 
-[heart_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects{heart});
-[body_nodes, ~]  = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
-heart_center     = range(heart_nodes(:,2))/2 + min(heart_nodes(:,2));
-body_center      = range(body_nodes(:,2))/2 + min(body_nodes(:,2));
+[heart_nodes, ~]   = Get_Tet_Nodes(nodes, organ_connects{heart});
+[body_nodes, ~]    = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
+[trachea_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects{trachea});
+heart_center       = range(heart_nodes(:,2))/2 + min(heart_nodes(:,2));
+body_center        = range(body_nodes(:,2))/2 + min(body_nodes(:,2));
+trachea_center     = range(trachea_nodes(:,2))/2 + min(trachea_nodes(:,2));
 % if facing_dir == "Posterior"
-if heart_center < body_center
+if (heart_center < body_center) || (trachea_center > body_center) % Check if the heart/trachea is on the wrong side
     fprintf("Rotating the Chest Forward\n")
     theta = pi;
     rotationMatrix = [cos(theta), -sin(theta), 0;...
@@ -245,7 +247,6 @@ if heart_center < body_center
     nodes      = nodes*rotationMatrix;
     nodes(:,1) = nodes(:,1) + abs(min(nodes(:,1)));
     nodes(:,2) = nodes(:,2) + abs(min(nodes(:,2)));
-
 end
 
 fprintf("Translating to the Origin\n")
@@ -284,7 +285,7 @@ if flags.plot_trachea == 1
         hold on
         scatter3(mean(trachea_nodes(:,1)), mean(trachea_nodes(:,2)), sbj_info.carina, 'r', 'filled')
         scatter3(trachea_nodes(startsWith(string(trachea_nodes(:,3)), sprintf("%.1f", sbj_info.carina)), 1), trachea_nodes(startsWith(string(trachea_nodes(:,3)), sprintf("%.1f", sbj_info.carina)), 2), sbj_info.carina, 'r', 'filled')
-        % constantplane('z', carina_height) R2024b
+        % constantplane('z', sbj_info.carina) R2024b
         title(sprintf("Carina: %.2f mm", sbj_info.carina))
     subplot(1,2,2)
         pdeplot3D(nodes', organ_connects{lung}')
