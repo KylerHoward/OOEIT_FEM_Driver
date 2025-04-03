@@ -41,6 +41,10 @@ function E_connect = Align_Electrode_Faces(G_nodes, surface_faces, E_nodes, flag
         if flags.plot_electrodes == 1
             scatter3(E_nodes{l}(:,1), E_nodes{l}(:,2), E_nodes{l}(:,3),'r', 'filled')
             trimesh(filteredRows, G_nodes(:,1),G_nodes(:,2),G_nodes(:,3), 'FaceColor', [0.6,0,0], 'EdgeColor', [0.6,0,0])
+            xlabel("X (mm)");
+            ylabel("Y (mm)");
+            zlabel("Z (mm)");
+            axis equal
         end
     end
 end

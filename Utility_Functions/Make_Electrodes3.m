@@ -98,8 +98,8 @@ function [E_nodes, perim_mm_high] = Make_Electrodes3(boundary_nodes, all_nodes, 
         x_mid = (min(plane_high(:,1)) + max(plane_high(:,1))) / 2;
         y_min = min(plane_high(:,2));
         y_max = max(plane_high(:,2));
-        front = plane_high(dsearchn(plane_high, [x_mid, y_min, sbj_info.carina]),:);
-        back  = plane_high(dsearchn(plane_high, [x_mid, y_max, sbj_info.carina]),:);
+        front = plane_high(dsearchn(plane_high, [x_mid, y_max, sbj_info.carina]),:);
+        back  = plane_high(dsearchn(plane_high, [x_mid, y_min, sbj_info.carina]),:);
         % front = find_node(plane, x_mid, y_min, sbj_info.carina);
         % back  = find_node(plane, x_mid, y_max, sbj_info.carina);
 
@@ -211,7 +211,8 @@ function [E_nodes, perim_mm_high] = Make_Electrodes3(boundary_nodes, all_nodes, 
     elseif flags.plot_electrodes == 1 && E.type == "belt"
         figure(); 
             hold on
-            for node_i = 1:length(E_nodes)
+                scatter3(E_nodes{1}(:,1), E_nodes{1}(:,2), E_nodes{1}(:,3), 'filled', 'square')
+            for node_i = 2:length(E_nodes)
                 scatter3(E_nodes{node_i}(:,1), E_nodes{node_i}(:,2), E_nodes{node_i}(:,3), 'filled')
             end
             legend('Location','eastoutside')
@@ -272,10 +273,15 @@ function E_nodes = create_electrode(local_nodes, coord, E, all_nodes, body_faces
             ind = rangesearch(local_nodes, coord, E.E_rad + search_dist);
             ind = ind{1}';
         elseif E.shape == "rectangle"
-            % Until I can make the electrode touching, go double up and half left/right
+            % Until I can make the electrode touching, go half left/right/up
             xcheck = (local_nodes(:,1) >= coord(1) - (E.E_width + search_dist/2)/2)  & (local_nodes(:,1) <= coord(1) + (E.E_width + search_dist/2)/2);
+            if E.type == "belt"
             ycheck = (local_nodes(:,2) >= coord(2) - (E.E_width + search_dist/2)/2)  & (local_nodes(:,2) <= coord(2) + (E.E_width + search_dist/2)/2);
-            zcheck = (local_nodes(:,3) >= coord(3) - (E.E_height + 2*search_dist)/2) & (local_nodes(:,3) <= coord(3) + (E.E_height + 2*search_dist)/2);
+            elseif E.type == "patch"
+                ycheck = (local_nodes(:,2) >= coord(2) - (E.E_width + search_dist/2))  & (local_nodes(:,2) <= coord(2) + (E.E_width + search_dist/2));
+            end
+            % zcheck = (local_nodes(:,3) >= coord(3) - (E.E_height + 2*search_dist)/2) & (local_nodes(:,3) <= coord(3) + (E.E_height + 2*search_dist)/2);
+            zcheck = (local_nodes(:,3) >= coord(3) - (E.E_height + search_dist)/2) & (local_nodes(:,3) <= coord(3) + (E.E_height + search_dist)/2);
             binary_check = xcheck & ycheck & zcheck;
 
             ind = zeros(sum(binary_check), 1);
@@ -305,7 +311,7 @@ function E_nodes = create_electrode(local_nodes, coord, E, all_nodes, body_faces
             E_area = E_area + norm(cross(point3-point1, point3-point2))/2;
         end
 
-        if E_area <= E.E_area
+        if E_area < E.E_area
             good_electrode = 0;
             search_dist = search_dist + 0.5;
         else
@@ -470,12 +476,12 @@ function E_nodes = create_belt(local_nodes, E_plane, E, all_nodes, body_faces, f
     j = 1;
     arc_length = 0;
     point = zeros(200, 3);
-    for theta = pi/2 : -(2*pi)/200 : -(3*pi)/2 + (2*pi)/200
+    for theta = 3*pi/2 : -(2*pi)/200 : -pi/2 + (2*pi)/200
         radius =  Parameratize_Bdry(E_plane, 15, theta);
         point(j,:) = [center(1) + radius*cos(theta), center(2) + radius*sin(theta), center(3)];
         
         % Always make electrode on the back
-        if theta == pi/2
+        if theta == 3*pi/2
             c_point    = point(j,:);
             E_center   = E_plane(dsearchn(E_plane,c_point),:);
             E_nodes{i} = create_electrode(local_nodes, E_center, E, all_nodes, body_faces, flags);
@@ -489,7 +495,15 @@ function E_nodes = create_belt(local_nodes, E_plane, E, all_nodes, body_faces, f
         end
 
         % Check if we have moved around enough
-        if arc_length >= perim_mm / (E.E_count + 1)
+        % if arc_length >= perim_mm / (E.E_count + 1)
+        % try
+        %     goal_arc_length = (perim_mm - 2*E.E_width) / E.E_count;
+        % catch
+            % goal_arc_length = (perim_mm - 2*E.E_rad) / E.E_count;
+            goal_arc_length = perim_mm / (E.E_count + 0.7);
+        % end
+
+        if arc_length >= goal_arc_length
             % Reset arc length
             arc_length = 0;
 

@@ -1,7 +1,5 @@
 %{
-Run a 3D FEM simulation on a single subject.
-The driver expects the subject to have the origin at the bottom, posterior,
-left corner of the torso. Positive y is towards the anterior side.
+Run a 3D FEM simulation on a single subject
 10/7/24 - Kyler Howard
 
 load: tetmesh - Mesh structure containing the nodes, connectivity, and labels
@@ -21,6 +19,7 @@ addpath Modified_OOEIT\ForwardProblemSolvers\ Modified_OOEIT\MiscClasses\ Utilit
 
 msh_path = "Meshes";
 % msh_name = "R1053_Mesh_NoBones.mat"; % 4 months
+msh_name = "R1053_Mesh_NoBones_GMSH.mat"; % 4 months
 % msh_name = "R1035_Mesh_Cylinder.mat"; % Adjust labels lines 103-112
 % msh_name = "R1035_Mesh_NoBones.mat"; % 13 months
 % msh_name = "R1035_Mesh_NoBones_Fine.mat"; % 13 months
@@ -31,7 +30,7 @@ msh_path = "Meshes";
 % msh_name = "case101819_Mesh_Trimmed.mat";
 % msh_name = "case101819_Mesh_Trimmed_NoBones.mat";
 
-[msh_name, msh_path] = uigetfile("G:\Lungmap_EIT\Radiology_Images","Select Mesh File"); 
+% [msh_name, msh_path] = uigetfile("Select Mesh File"); 
 
 % Load the mesh
 tetmesh     = load(fullfile(msh_path,msh_name), "tetmesh").tetmesh;
@@ -161,14 +160,18 @@ end
 row_num       = find(strcmp(sbj_sheet.Subject, sbj_name));
 upside_down   = sbj_sheet.UpsideDown(row_num);
 facing_dir    = sbj_sheet.PositiveYIs(row_num);
-carina_height = sbj_sheet.CarinaActual_mm(row_num);
-T5_height     = sbj_sheet.T5Actual_mm(row_num);
-T8_height     = sbj_sheet.T8Actual_mm(row_num);
+carina_height = sbj_sheet.CarinaFromBottom_mm(row_num);
+T5_height     = sbj_sheet.T5FromBottom_mm(row_num);
+T8_height     = sbj_sheet.T8FromBottom_mm(row_num);
 
 % %KH DELETE ME TESTING FOR R1133
 if contains(msh_name, "R1133")
     carina_height = carina_height - 50;
 end
+
+sbj_info.carina = carina_height;
+sbj_info.T5     = T5_height;
+sbj_info.T8     = T8_height;
 
 if flags.are_bones == 1
     background  = 1;
@@ -180,16 +183,13 @@ if flags.are_bones == 1
     heart       = 7;
     external    = 8;
 else
-    background  = 1;
-    lung        = 2;
-    trachea     = 3;
-    soft_tissue = 4;
-    esophagus   = 5;
-    heart       = 6;
+     lung        = 1;
+    trachea     = 2;
+    soft_tissue = 3;
+    esophagus   = 4;
+    heart       = 5;
+    background  = 6;
     external    = 7;
-    % background = 1;
-    % soft_tissue = 2;
-    % external = 3;
 end
 
 % DELETE ME!!! - Manually erasing spinal cords for those who have it while
@@ -206,71 +206,67 @@ for label = unique(labels)'
     organ_connects{i} = connectivity(labels==label, :);
     i = i + 1;
 end
+[body_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
+
 
 % ----------------------------------------------------------------------- %
 %%                        Rotation and Translation                        %
 % ----------------------------------------------------------------------- %
-% Determine if the body is upside down
-[body_nodes, ~]     = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
-[trachea_nodes, ~]  = Get_Tet_Nodes(nodes, organ_connects{trachea});
 % Check the excel doc
-% if upside_down == 0
-% Check if the difference between the trachea and the top of the body is less than 5% of the total height
-if abs(min(trachea_nodes(:,3)) - min(body_nodes(:,3))) < 0.05*max(nodes(:,3))
+if upside_down == 1
     fprintf("Rotating Body Upright\n")
     theta = pi;
     rotationMatrix = [cos(theta), 0, -sin(theta);...
                       0,          1,  0;...
                       sin(theta), 0,  cos(theta)];
+    % figure; 
+    % subplot(1,2,1)
+    %     scatter(nodes(:,1), nodes(:,3)); xlabel("x"); ylabel("z");
+    %     title("Original")
 
-    % Rotate and shift the body
     nodes      = nodes*rotationMatrix;
     nodes(:,1) = nodes(:,1) * -1;
     nodes(:,3) = nodes(:,3) + abs(min(nodes(:,3)));
+
+    % subplot(1,2,2)
+    %     scatter(nodes(:,1), nodes(:,3)); xlabel("x"); ylabel("z");
+    %     title("Rotated")
 end
 
-[heart_nodes, ~]   = Get_Tet_Nodes(nodes, organ_connects{heart});
-[body_nodes, ~]    = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
-[trachea_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects{trachea});
-heart_center       = range(heart_nodes(:,2))/2 + min(heart_nodes(:,2));
-body_center        = range(body_nodes(:,2))/2 + min(body_nodes(:,2));
-trachea_center     = range(trachea_nodes(:,2))/2 + min(trachea_nodes(:,2));
-% if facing_dir == "Posterior"
-if (heart_center < body_center) || (trachea_center > body_center) % Check if the heart/trachea is on the wrong side
+if facing_dir == "Posterior"
     fprintf("Rotating the Chest Forward\n")
-    theta = pi;
-    rotationMatrix = [cos(theta), -sin(theta), 0;...
-                      sin(theta),  cos(theta), 0;...
-                      0,           0,          1];
 
-    % Rotate and shift the body
-    nodes      = nodes*rotationMatrix;
-    nodes(:,1) = nodes(:,1) + abs(min(nodes(:,1)));
-    nodes(:,2) = nodes(:,2) + abs(min(nodes(:,2)));
 end
 
 fprintf("Translating to the Origin\n")
-[body_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
-nodes           = nodes         - min(body_nodes);
-sbj_info.carina = carina_height - min(body_nodes(:,3));
-sbj_info.T5     = T5_height     - min(body_nodes(:,3));
-sbj_info.T8     = T8_height     - min(body_nodes(:,3));
-[body_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
-
+nodes = nodes - min(nodes);
 
 % ----------------------------------------------------------------------- %
 %%                              Surface Nodes                             %
 % ----------------------------------------------------------------------- %
 fprintf("Extracting Trachea and Surface Nodes\n")
 % Extract desired faces & find their intersection
-body_faces       = Get_Unique_Faces(organ_connects{soft_tissue});
-background_faces = Get_Unique_Faces(organ_connects{background});
-surface_faces    = intersect(sort(body_faces,2),  sort(background_faces,2), 'rows');
+body_faces      = Get_Unique_Faces(organ_connects{soft_tissue});
+lung_faces      = Get_Unique_Faces(organ_connects{lung});
+trachea_faces   = Get_Unique_Faces(organ_connects{trachea});
+heart_faces     = Get_Unique_Faces(organ_connects{heart});
+esophagus_faces = Get_Unique_Faces(organ_connects{esophagus});
+
+lung_intersect      = intersect(sort(body_faces,2),  sort(lung_faces,2),      'rows');
+trachea_intersect   = intersect(sort(body_faces,2),  sort(trachea_faces,2),   'rows');
+heart_intersect     = intersect(sort(body_faces,2),  sort(heart_faces,2),     'rows');
+esophagus_intersect = intersect(sort(body_faces,2),  sort(esophagus_faces,2), 'rows');
+ 
+inner_intersects = vertcat(lung_intersect, trachea_intersect, heart_intersect, esophagus_intersect);
+surface_faces    = setdiff(sort(body_faces,2), sort(inner_intersects,2), 'rows');
 
 % Extract desired organ nodes
 [trachea_nodes, ~]    = Get_Tet_Nodes(nodes, organ_connects{trachea});
 [lung_nodes, ~]       = Get_Tet_Nodes(nodes, organ_connects{lung});
 [boundary_nodes, ind] = Get_Surface_Nodes(nodes, surface_faces);
+
+clear trachea_faces heart_faces esophagus_faces
+clear lung_intersect trachea_intersect heart_intersect esophagus_intersect inner_intersects surface_faces
 
 % Delete any extra nodes in the center of boundary_nodes
 inside_indices                   = Find_Internal_Nodes(boundary_nodes, flags);
@@ -283,14 +279,19 @@ if flags.plot_trachea == 1
     subplot(1,2,1)
         scatter3(trachea_nodes(:,1), trachea_nodes(:,2), trachea_nodes(:,3), "MarkerEdgeAlpha", 0.2)
         hold on
-        scatter3(mean(trachea_nodes(:,1)), mean(trachea_nodes(:,2)), sbj_info.carina, 'r', 'filled')
-        scatter3(trachea_nodes(startsWith(string(trachea_nodes(:,3)), sprintf("%.1f", sbj_info.carina)), 1), trachea_nodes(startsWith(string(trachea_nodes(:,3)), sprintf("%.1f", sbj_info.carina)), 2), sbj_info.carina, 'r', 'filled')
-        % constantplane('z', sbj_info.carina) R2024b
-        title(sprintf("Carina: %.2f mm", sbj_info.carina))
+        % scatter3(mean(trachea_nodes(:,1)), mean(trachea_nodes(:,2)), carina_height, 'r', 'filled')
+        scatter3(trachea_nodes(startsWith(string(trachea_nodes(:,3)), string(carina_height)), 1), trachea_nodes(startsWith(string(trachea_nodes(:,3)), string(carina_height)), 2), carina_height, 'r', 'filled')
+        % constantplane('z', carina_height) R2024b
+        title(sprintf("Carina: %.2f mm", carina_height))
+        xlabel("x"); ylabel("y"); zlabel("z")
+        axis equal
     subplot(1,2,2)
-        pdeplot3D(nodes', organ_connects{lung}')
+        % pdeplot3D(nodes', organ_connects{lung}')
+        trisurf(lung_faces, nodes(:,1), nodes(:,2), nodes(:,3), "LineStyle", "none")
+        xlabel("x"); ylabel("y"); zlabel("z")
+        axis equal
 end
-return
+
 % ----------------------------------------------------------------------- %
 %%                             Make Electrodes                            %
 % ----------------------------------------------------------------------- %
