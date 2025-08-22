@@ -6,3 +6,9 @@
 
 # Ignore all .asv files
 *.asv
+
+# Ignore mesh for Dylan
+Heart_Mesh.mat
+
+# Ignore testing mesh
+Utility_Functions/mesh_upsidedown_backwards.mat
