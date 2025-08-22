@@ -29,9 +29,7 @@ function inside_indices = Find_Internal_Nodes(t_nodes, flags)
         end
 
         % Find a cluster radius
-        xrange       = range(x);
-        yrange       = range(y);
-        cluster_rad  = max([xrange, yrange]) / 2;
+        cluster_rad  = mean([range(x), range(y)]) / 2;
 
         % Finding clusters
         clusters = dbscan([x,y], cluster_rad, 1, 'Distance','squaredeuclidean');

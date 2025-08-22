@@ -85,37 +85,41 @@ function [E_nodes, perim_mm_high] = Make_Electrodes3(boundary_nodes, all_nodes, 
 % ----------------------------------------------------------------------- %
     % Find the plane in which the center lies
     if E.type == "patch"
-        try
-            plane_gap = E.E_rad;
-        catch
-            plane_gap = E.E_height / 2;
-        end
-
-        z_check = (boundary_nodes(:,3) > sbj_info.carina - plane_gap) & (boundary_nodes(:,3) < sbj_info.carina + plane_gap);
-        plane_high = boundary_nodes(z_check,:);
-
-        % Find the nodes that are the center of the front/back of the body
-        x_mid = (min(plane_high(:,1)) + max(plane_high(:,1))) / 2;
-        y_min = min(plane_high(:,2));
-        y_max = max(plane_high(:,2));
-        front = plane_high(dsearchn(plane_high, [x_mid, y_max, sbj_info.carina]),:);
-        back  = plane_high(dsearchn(plane_high, [x_mid, y_min, sbj_info.carina]),:);
-        % front = find_node(plane, x_mid, y_min, sbj_info.carina);
-        % back  = find_node(plane, x_mid, y_max, sbj_info.carina);
+        % try
+        %     plane_gap = E.E_rad;
+        % catch
+        %     plane_gap = E.E_height / 2;
+        % end
+        % 
+        % z_check = (boundary_nodes(:,3) > sbj_info.carina - plane_gap) & (boundary_nodes(:,3) < sbj_info.carina + plane_gap);
+        % plane_high = boundary_nodes(z_check,:);
+        % 
+        % % Find the nodes that are the center of the front/back of the body
+        % x_mid = (min(plane_high(:,1)) + max(plane_high(:,1))) / 2;
+        % y_min = min(plane_high(:,2));
+        % y_max = max(plane_high(:,2));
+        % front = plane_high(dsearchn(plane_high, [x_mid, y_max, sbj_info.carina]),:);
+        % back  = plane_high(dsearchn(plane_high, [x_mid, y_min, sbj_info.carina]),:);
+        % % front = find_node(plane, x_mid, y_min, sbj_info.carina);
+        % % back  = find_node(plane, x_mid, y_max, sbj_info.carina);
+        [front, plane_high] = find_center(boundary_nodes, sbj_info.carina, E, "front");
+        [back,  ~]          = find_center(boundary_nodes, sbj_info.carina, E, "back");
 
     elseif E.type == "belt"
-        if E.shape == "circle"
-            plane_gap = E.E_rad;
-        elseif E.shape == "rectangle"
-            plane_gap = E.E_height;
-        end
-
-        z_check_high = (boundary_nodes(:,3) > sbj_info.T5 - plane_gap) & (boundary_nodes(:,3) < sbj_info.T5 + plane_gap);
-        plane_high   = boundary_nodes(z_check_high,:);
-
-        % height_low  = sbj_info.carina - E.E_dia - E.gap;
-        z_check_low = (boundary_nodes(:,3) > sbj_info.T8 - plane_gap) & (boundary_nodes(:,3) < sbj_info.T8 + plane_gap);
-        plane_low   = boundary_nodes(z_check_low,:);
+        % if E.shape == "circle"
+        %     plane_gap = E.E_rad;
+        % elseif E.shape == "rectangle"
+        %     plane_gap = E.E_height;
+        % end
+        % 
+        % z_check_high = (boundary_nodes(:,3) > sbj_info.T5 - plane_gap) & (boundary_nodes(:,3) < sbj_info.T5 + plane_gap);
+        % plane_high   = boundary_nodes(z_check_high,:);
+        % 
+        % % height_low  = sbj_info.carina - E.E_dia - E.gap;
+        % z_check_low = (boundary_nodes(:,3) > sbj_info.T8 - plane_gap) & (boundary_nodes(:,3) < sbj_info.T8 + plane_gap);
+        % plane_low   = boundary_nodes(z_check_low,:);
+        [~, plane_high] = find_center(boundary_nodes, sbj_info.T5, E);
+        [~, plane_low]  = find_center(boundary_nodes, sbj_info.T8, E);
     end
 
     
@@ -172,8 +176,8 @@ function [E_nodes, perim_mm_high] = Make_Electrodes3(boundary_nodes, all_nodes, 
 % ----------------------------------------------------------------------- %
     if E.type == "patch"
         % Find the corners of the electrodes
-        front_nodes = create_patch(boundary_nodes, front, E, "front", all_nodes, body_faces, flags);
-        back_nodes  = create_patch(boundary_nodes, back,  E, "back", all_nodes, body_faces, flags);
+        front_nodes = create_patch(boundary_nodes, front, E, "front", all_nodes, body_faces);
+        back_nodes  = create_patch(boundary_nodes, back,  E, "back", all_nodes, body_faces);
         E_nodes     = [front_nodes; back_nodes];
 
     elseif E.type == "belt"
@@ -185,8 +189,8 @@ function [E_nodes, perim_mm_high] = Make_Electrodes3(boundary_nodes, all_nodes, 
     % Reorder electrode placement if using the 4x8 pattern
     if flags.CP_choice == 2
         fprintf("   Placing 4x8 Electrode Arrays\n")
-        all_ind = [13,14,15,16,32,31,30,29,9,10,11,12,28,27,26,25,5,6,7,8,24,23,22,21,1,2,3,4,20,19,18,17];
-        E_nodes = E_nodes(all_ind);
+        new_ind = [13,14,15,16,32,31,30,29,9,10,11,12,28,27,26,25,5,6,7,8,24,23,22,21,1,2,3,4,20,19,18,17];
+        E_nodes = E_nodes(new_ind);
     end
 
 
@@ -226,43 +230,54 @@ end
 %% -------------------------- Custom Functions -------------------------- %
 % ----------------------------------------------------------------------- %
 
-function [center, plane] = find_center(nodes, height, FoB)
+function [center, plane] = find_center(nodes, height, E, FoB)
     %{
     Find the center of the body and the plane it is on
     9/27/24 - Kyler Howard
 
     param: nodes  - All nodes on the boundary of the surface
     param: height - The wanted height for the plane
+    param: E      - Structure containing the size and type of electrode
     param: FoB    - Flag for if we are looking at the front or back of the body
 
     return: center - Coordinate of the center
     return: plane  - Plane containing the center
     %}
 
-    z_check = (nodes(:,3) > height - 1.5) & (nodes(:,3) < height + 1.5);
+    try
+        plane_gap = E.E_rad;
+    catch
+        plane_gap = E.E_height / 2;
+    end
+
+    z_check = (nodes(:,3) > height - plane_gap) & (nodes(:,3) < height + plane_gap);
     plane   = nodes(z_check,:);
 
     % Find the nodes that are the center of the front/back of the body
     x_mid = (min(plane(:,1)) + max(plane(:,1))) / 2;
     y_min = min(plane(:,2));
     y_max = max(plane(:,2));
-    if lower(FoB) == "front"
-        center = plane(dsearchn(plane, [x_mid, y_min, height]),:);
+    if nargin < 4
+        center = [];
+    elseif lower(FoB) == "front"
+        center = plane(dsearchn(plane, [x_mid, y_max, height]),:);
     elseif lower(FoB) == "back"
-        center  = plane(dsearchn(plane, [x_mid, y_max, height]),:);
+        center  = plane(dsearchn(plane, [x_mid, y_min, height]),:);
     end
 end
 
-function E_nodes = create_electrode(local_nodes, coord, E, all_nodes, body_faces, flags)
+function E_nodes = create_electrode(local_nodes, coord, E, all_nodes, body_faces)
     %{
     Create an individual electrode and find the nodes/connectivity
     9/27/24 - Kyler Howard
 
-    param: local_nodes - All nodes on to look at for making the electrode
+    param: local_nodes - Subset of nodes to look at for making the electrode
     param: coord       - Reference coordinate for each electrode, always the center
     param: E           - Structure containing the size and type of electrode
+    param: all_nodes   - Matrix of all nodes to calculate electrode areas
+    param: body_faces  - Matrix of surface faces to calculate electrode areas
 
-    return: corners   - Coordinates of the electrode
+    return: E_nodes    - Coordinates of the electrode
     %}
 
     good_electrode = 0;
@@ -313,7 +328,7 @@ function E_nodes = create_electrode(local_nodes, coord, E, all_nodes, body_faces
 
         if E_area < E.E_area
             good_electrode = 0;
-            search_dist = search_dist + 0.5;
+            search_dist = search_dist + 1; % Look 1 mm further
         else
             good_electrode = 1;
         end
@@ -321,30 +336,30 @@ function E_nodes = create_electrode(local_nodes, coord, E, all_nodes, body_faces
     end
 end
 
-function nodes = create_rows(local_nodes, coord, E, all_nodes, body_faces, flags)
+function E_nodes = create_rows(local_nodes, coord, E, all_nodes, body_faces)
     %{
     Create an row of electrodes and find the nodes/connectivity
+    Electrode 1 is the largest x value, and electrode 4 is the smallest x value
     9/27/24 - Kyler Howard
 
     param: local_nodes - All nodes on to look at for making the electrode
-    param: coord       - Reference coordinate for each electrode
-                         Bottom left corner  for patches
-                         Center of electrode for belt
+    param: coord       - Reference coordinate for each electrode (center)
     param: E           - Structure containing the size and type of electrode
 
-    return: corners - Coordinates of the electrodes
+    return: E_nodes - all nodes within the electrode
     %}
 
-    nodes   = cell(E.E_count(2),1);
+    E_nodes   = cell(E.E_count(2),1);
 
+    % Move in the +x direction to the center of the second electrode
     try
-        coord = coord + [E.E_rad + E.gap_width/2, 0, 0];
+        coord = coord + [E.E_rad + E.gap_width/2,    0,  0];
     catch
         coord = coord + [E.E_width/2 + E.gap_width/2, 0, 0];
     end
 
-    % Find the third electrode
-    nodes{3} = create_electrode(local_nodes, coord, E, all_nodes, body_faces, flags);
+    % Find the second electrode
+    E_nodes{2} = create_electrode(local_nodes, coord, E, all_nodes, body_faces);
 
     % Set up the distance between electrodes
     try
@@ -355,36 +370,54 @@ function nodes = create_rows(local_nodes, coord, E, all_nodes, body_faces, flags
         dist = E.E_width/2 + 5/3*E.gap_width;
     end
 
-    % Find the fourth electrode
-    max_vals = max(nodes{3});
-    coord(1) = max_vals(1) + dist;
-    nodes{4} = create_electrode(local_nodes, coord, E, all_nodes, body_faces, flags);
-
-    % Find the second electrode
-    min_vals = min(nodes{3});
-    coord(1) = min_vals(1) - dist;
-    nodes{2} = create_electrode(local_nodes, coord, E, all_nodes, body_faces, flags);
-
-
     % Find the first electrode
-    min_vals = min(nodes{2});
-    coord(1) = min_vals(1) - dist;
-    nodes{1} = create_electrode(local_nodes, coord, E, all_nodes, body_faces, flags);
+    max_vals   = max(E_nodes{2});
+    coord(1)   = max_vals(1) + dist;
+    E_nodes{1} = create_electrode(local_nodes, coord, E, all_nodes, body_faces);
 
-    % % Find the other 3 electrodes
-    % corners(13:16, :) = create_electrode(local_nodes, coord +   [dist,0,0], E);
-    % corners(5:8, :) = create_electrode(local_nodes, coord -   [dist,0,0], E);
-    % corners(1:4, :) = create_electrode(local_nodes, coord - 2*[dist,0,0], E);
+    % Determine if electrodes 1 and 2 are touching each other side-to-side
+    search_dist = 0;
+    while ~isempty(intersect(E_nodes{2}, E_nodes{1}, "rows"))
+        search_dist = search_dist + 1; % Look 1 mm further away
+        coord(1)    = coord(1) + search_dist;
+        E_nodes{1}  = create_electrode(local_nodes, coord, E, all_nodes, body_faces);
+    end
+
+    % Find the third electrode
+    min_vals   = min(E_nodes{2});
+    coord(1)   = min_vals(1) - dist;
+    E_nodes{3} = create_electrode(local_nodes, coord, E, all_nodes, body_faces);
+
+    % Determine if electrodes 3 and 2 are touching each other side-to-side
+    search_dist = 0;
+    while ~isempty(intersect(E_nodes{2}, E_nodes{3}, "rows"))
+        search_dist = search_dist + 1; % Look 1 mm further away
+        coord(1)    = coord(1) - search_dist;
+        E_nodes{3}  = create_electrode(local_nodes, coord, E, all_nodes, body_faces);
+    end
+
+    % Find the fourth electrode
+    min_vals   = min(E_nodes{3});
+    coord(1)   = min_vals(1) - dist;
+    E_nodes{4} = create_electrode(local_nodes, coord, E, all_nodes, body_faces);
+
+    % Determine if electrodes 3 and 4 are touching each other side-to-side
+    search_dist = 0;
+    while ~isempty(intersect(E_nodes{4}, E_nodes{3}, "rows"))
+        search_dist = search_dist + 1; % Look 1 mm further away
+        coord(1)    = coord(1) - search_dist;
+        E_nodes{4}  = create_electrode(local_nodes, coord, E, all_nodes, body_faces);
+    end
 end
 
-function E_nodes = create_patch(local_nodes, start_point, E, FoB, all_nodes, body_faces, flags)
+function E_nodes = create_patch(local_nodes, row_center3, E, FoB, all_nodes, body_faces)
     %{
     Create a patch of electrodes and find the nodes/connectivity
+    Row 1 is the largest z value, and row 4 is the smallest z value
     9/27/24 - Kyler Howard
 
     param: local_nodes - All nodes on to look at for making the electrode
-    param: coord       - Reference coordinate for each electrode
-                         Bottom left corner  for patches
+    param: row_center3 - Reference coordinate for the third row (center)
     param: E           - Structure containing the size and type of electrode
     param: FoB         - Flag for if we are looking at the front or back of the body
 
@@ -395,7 +428,7 @@ function E_nodes = create_patch(local_nodes, start_point, E, FoB, all_nodes, bod
     row_nodes = cell(E.E_count(1), 1);
 
     % Find the third row
-    row_nodes{3} = create_rows(local_nodes, start_point, E, all_nodes, body_faces, flags);
+    row_nodes{3} = create_rows(local_nodes, row_center3, E, all_nodes, body_faces);
     for i = 1:4
         E_nodes{8+i} = row_nodes{3}{i};
     end
@@ -410,33 +443,87 @@ function E_nodes = create_patch(local_nodes, start_point, E, FoB, all_nodes, bod
     end
 
     % Find the fourth row
-    % max(corners(49:64,3))
-    min_vals = min([min(E_nodes{9}); min(E_nodes{10}); min(E_nodes{11}); min(E_nodes{12})]);
-    [coord2, ~]= find_center(local_nodes, min_vals(3) - dist, FoB);
-    % coord2 = find_center(local_nodes, coord(3) + dist, FoB);
-    row_nodes{4} = create_rows(local_nodes, coord2, E, all_nodes, body_faces, flags);
+    min_vals         = min([min(E_nodes{9}); min(E_nodes{10}); min(E_nodes{11}); min(E_nodes{12})]);
+    [row_center4, ~] = find_center(local_nodes, min_vals(3) - dist, E, FoB);
+    row_nodes{4}     = create_rows(local_nodes, row_center4, E, all_nodes, body_faces);
     for i = 1:4
         E_nodes{12+i} = row_nodes{4}{i};
     end
 
+    % Determine if rows 3 and 4 are touching each other top-to-bottom
+    check1 = intersect(E_nodes{9}, E_nodes{13},"rows");
+    check2 = intersect(E_nodes{10},E_nodes{14},"rows");
+    check3 = intersect(E_nodes{11},E_nodes{15},"rows");
+    check4 = intersect(E_nodes{12},E_nodes{16},"rows");
+    search_dist = 0;
+    while ~isempty(check1) | ~isempty(check2) | ~isempty(check3) | ~isempty(check4)
+        search_dist = search_dist + 1; % Look 1 mm further away
+        [row_center4, ~] = find_center(local_nodes, min_vals(3) - dist - search_dist, E, FoB);
+        row_nodes{4}     = create_rows(local_nodes, row_center4, E, all_nodes, body_faces);
+        for i = 1:4
+            E_nodes{12+i} = row_nodes{4}{i};
+        end
+
+        check1 = intersect(E_nodes{9}, E_nodes{13},"rows");
+        check2 = intersect(E_nodes{10},E_nodes{14},"rows");
+        check3 = intersect(E_nodes{11},E_nodes{15},"rows");
+        check4 = intersect(E_nodes{12},E_nodes{16},"rows");
+    end
+
     % Find the second row
-    % max(corners(33:48,3))
     max_vals = max([max(E_nodes{9}); max(E_nodes{10}); max(E_nodes{11}); max(E_nodes{12})]);
-    [coord3, ~] = find_center(local_nodes, max_vals(3) + dist, FoB);
-    % coord3 = find_center(local_nodes, coord2(3) + dist, FoB);
-    row_nodes{2} = create_rows(local_nodes, coord3, E, all_nodes, body_faces, flags);
+    [row_center2, ~] = find_center(local_nodes, max_vals(3) + dist, E, FoB);
+    row_nodes{2} = create_rows(local_nodes, row_center2, E, all_nodes, body_faces);
     for i = 1:4
         E_nodes{4+i} = row_nodes{2}{i};
     end
 
+    % Determine if rows 3 and 2 are touching each other top-to-bottom
+    check1 = intersect(E_nodes{9}, E_nodes{5},"rows");
+    check2 = intersect(E_nodes{10},E_nodes{6},"rows");
+    check3 = intersect(E_nodes{11},E_nodes{7},"rows");
+    check4 = intersect(E_nodes{12},E_nodes{8},"rows");
+    search_dist = 0;
+    while ~isempty(check1) | ~isempty(check2) | ~isempty(check3) | ~isempty(check4)
+        search_dist = search_dist + 1; % Look 1 mm further away
+        [row_center2, ~] = find_center(local_nodes, max_vals(3) + dist + search_dist, E, FoB);
+        row_nodes{2}     = create_rows(local_nodes, row_center2, E, all_nodes, body_faces);
+        for i = 1:4
+            E_nodes{4+i} = row_nodes{2}{i};
+        end
+
+        check1 = intersect(E_nodes{9}, E_nodes{5},"rows");
+        check2 = intersect(E_nodes{10},E_nodes{6},"rows");
+        check3 = intersect(E_nodes{11},E_nodes{7},"rows");
+        check4 = intersect(E_nodes{12},E_nodes{8},"rows");
+    end
+
     % Find the first row
-    % max(corners(17:32,3))
     max_vals = max([max(E_nodes{5}); max(E_nodes{6}); max(E_nodes{7}); max(E_nodes{8})]);
-    [coord4, ~] = find_center(local_nodes, max_vals(3) + dist, FoB);
-    % coord4 = find_center(local_nodes, coord3(3) + dist, FoB);
-    row_nodes{1} = create_rows(local_nodes, coord4, E, all_nodes, body_faces, flags);
+    [row_center1, ~] = find_center(local_nodes, max_vals(3) + dist, E, FoB);
+    row_nodes{1} = create_rows(local_nodes, row_center1, E, all_nodes, body_faces);
     for i = 1:4
         E_nodes{i} = row_nodes{1}{i};
+    end
+
+    % Determine if rows 1 and 2 are touching each other top-to-bottom
+    check1 = intersect(E_nodes{1},E_nodes{5},"rows");
+    check2 = intersect(E_nodes{2},E_nodes{6},"rows");
+    check3 = intersect(E_nodes{3},E_nodes{7},"rows");
+    check4 = intersect(E_nodes{4},E_nodes{8},"rows");
+    search_dist = 0;
+    while ~isempty(check1) | ~isempty(check2) | ~isempty(check3) | ~isempty(check4)
+        search_dist = search_dist + 1; % Look 1 mm further away
+        [row_center1, ~] = find_center(local_nodes, max_vals(3) + dist + search_dist, E, FoB);
+        row_nodes{1}     = create_rows(local_nodes, row_center1, E, all_nodes, body_faces);
+        for i = 1:4
+            E_nodes{i} = row_nodes{1}{i};
+        end
+
+        check1 = intersect(E_nodes{1},E_nodes{5},"rows");
+        check2 = intersect(E_nodes{2},E_nodes{6},"rows");
+        check3 = intersect(E_nodes{3},E_nodes{7},"rows");
+        check4 = intersect(E_nodes{4},E_nodes{8},"rows");
     end
 end
 
@@ -456,35 +543,27 @@ function E_nodes = create_belt(local_nodes, E_plane, E, all_nodes, body_faces, f
 
     center = (max(E_plane,[],1) + min(E_plane,[],1)) / 2;
 
-    % KH: Equal Angle Electrodes
-    % i = 1;
-    % for theta = pi/2 : -(2*pi)/E.E_count : -(3*pi)/2 + (2*pi)/E.E_count % Shift to start at the back of the body
-    %     % 3*pi/2 : -(2*pi)/16 : -pi/2 + (2*pi)/16
-    %     % Parameratize using 15 terms of a Fourier expansion
-    %     radius =  Parameratize_Bdry(E_plane, 15, theta);
-    %     c_point = [center(1) + radius*cos(theta), center(2) + radius*sin(theta), center(3)];
-    % 
-    %     E_center = E_plane(dsearchn(E_plane,c_point),:);
-    % 
-    %     E_nodes{i} = create_electrode(local_nodes, E_center, E, all_nodes, body_faces, flags);
-    % 
-    %     i = i + 1;
-    % end
-
     % KH: Equal Arc Length Electrodes
     i = 1;
     j = 1;
     arc_length = 0;
     point = zeros(200, 3);
-    for theta = 3*pi/2 : -(2*pi)/200 : -pi/2 + (2*pi)/200
+
+    % Determine the order to place the electrodes
+    if flags.use_GE == 1
+        thetas = 3*pi/2 : -(2*pi)/200 : -pi/2 + (2*pi)/200;
+    elseif flags.use_GE == 0
+        thetas = pi : 2*pi/200 : 3*pi - 2*pi/200;
+    end
+    for theta = thetas
         radius =  Parameratize_Bdry(E_plane, 15, theta);
         point(j,:) = [center(1) + radius*cos(theta), center(2) + radius*sin(theta), center(3)];
         
-        % Always make electrode on the back
-        if theta == 3*pi/2
+        % Make the first electrode
+        if theta == thetas(1)
             c_point    = point(j,:);
             E_center   = E_plane(dsearchn(E_plane,c_point),:);
-            E_nodes{i} = create_electrode(local_nodes, E_center, E, all_nodes, body_faces, flags);
+            E_nodes{i} = create_electrode(local_nodes, E_center, E, all_nodes, body_faces);
             i = i + 1;
         end
 
@@ -495,14 +574,7 @@ function E_nodes = create_belt(local_nodes, E_plane, E, all_nodes, body_faces, f
         end
 
         % Check if we have moved around enough
-        % if arc_length >= perim_mm / (E.E_count + 1)
-        % try
-        %     goal_arc_length = (perim_mm - 2*E.E_width) / E.E_count;
-        % catch
-            % goal_arc_length = (perim_mm - 2*E.E_rad) / E.E_count;
-            goal_arc_length = perim_mm / (E.E_count + 0.7);
-        % end
-
+        goal_arc_length = perim_mm / (E.E_count + 0.7);
         if arc_length >= goal_arc_length
             % Reset arc length
             arc_length = 0;
@@ -510,16 +582,16 @@ function E_nodes = create_belt(local_nodes, E_plane, E, all_nodes, body_faces, f
             % Find the electrode
             c_point    = point(j,:);
             E_center   = E_plane(dsearchn(E_plane,c_point),:);
-            E_nodes{i} = create_electrode(local_nodes, E_center, E, all_nodes, body_faces, flags);
+            E_nodes{i} = create_electrode(local_nodes, E_center, E, all_nodes, body_faces);
             i = i + 1;
+
+            if i == 17
+                break
+            end
         end
 
         % Update the point index
         j = j + 1;
-
-        if i == 17
-            break
-        end
     end
 
 end

@@ -26,12 +26,15 @@ msh_path = "Meshes";
 % msh_name = "R1035_Mesh_NoBones_Fine.mat"; % 13 months
 % msh_name = "R1035_Mesh.mat"; % 13 months
 % msh_name = "R1133_Mesh_NoBones.mat"; % 16 years, KYLER SIZED
-% msh_name = "R1002_Mesh_NoBones.mat";
+msh_name = "R1002_Mesh_NoBones.mat"; % 1 year, 8 months old
 % msh_name = "R1043_Mesh_NoBones.mat";
 % msh_name = "case101819_Mesh_Trimmed.mat";
 % msh_name = "case101819_Mesh_Trimmed_NoBones.mat";
 
-[msh_name, msh_path] = uigetfile("G:\Lungmap_EIT\Radiology_Images","Select Mesh File"); 
+
+msh_name = "R1044_Mesh_NoBones.mat"; % 1 month old
+
+% [msh_name, msh_path] = uigetfile("G:\Lungmap_EIT\Radiology_Images","Select Mesh File"); 
 
 % Load the mesh
 tetmesh     = load(fullfile(msh_path,msh_name), "tetmesh").tetmesh;
@@ -42,14 +45,14 @@ tetmesh     = load(fullfile(msh_path,msh_name), "tetmesh").tetmesh;
 % User settings
 flags.do_pauses       = 0; % Decide to include pauses to check things or not
 flags.solve_problem   = 0; % Decide if you want to setup (0), or fully solve (1)
-flags.use_GE          = 1; % Decide if you want to use GE (1) or ACT5 (0) current patterns/conductivities
-flags.do_parfor       = 0; % Decide if you want to paralize (1) or not (0)
+flags.use_GE          = 0; % Decide if you want to use GE (1) or ACT5 (0) current patterns/conductivities
+flags.do_parfor       = 1; % Decide if you want to paralize (1) or not (0)
 
 % Conductivity Settings
-flags.set_complex     = 0; % Choice of complex (1) or real (0) conductivities
+flags.set_complex     = 1; % Choice of complex (1) or real (0) conductivities
 flags.const_body      = 0; % Decide if you want a solid/constant body (1) or not (0)
 flags.esoph_intubate  = 0; % Decide if the esophagus is intubated (1) or not (0)
-flags.max_inspiration = 1; % Decide if the lungs should be at inspiration (1), expiration (0), or somewhere in-between
+flags.max_inspiration = 0.5; % Decide if the lungs should be at inspiration (1), expiration (0), or somewhere in-between
 flags.equal_vent      = 1; % Decide if you want equal ventilation (1) or split (0)
 flags.left_only       = 0; % Decide if you want only ventilation on the left side (1) or not (0)
 flags.right_only      = 0; % Decide if you want only ventilation on the right side (1) or not (0)
@@ -60,10 +63,11 @@ flags.plot_slices     = 0; % Plot individual slices when going slice by slice
 flags.plot_trachea    = 1; % Plotting of carina height
 flags.plot_electrodes = 1; % Plotting of electrode consturction
 flags.plot_conds      = 1; % Plotting of conductivities
+flags.plot_GTs        = 1; % Plot ground truth images
 flags.plot_internal   = 0; % Plotting of internal nodes
 flags.plot_volts      = 1; % Plotting of nodal voltages
 
-flags.CP_choice       = 1; % Choice of current pattern
+flags.CP_choice       = 1; % Choice of current pattern for patches
     % 1: Standard pattern
     % 2: 4x8 pattern
 flags.E_choice        = 4; % Choice of Electrode configuration
@@ -76,12 +80,22 @@ flags.E_choice        = 4; % Choice of Electrode configuration
 % Custom Electrode Settings
 flags.E_type          = "patch";   % Choice between "patch" and "belt"
 flags.E_shape         = "circle"; % Choice between "circle" and "rectangle"
-flags.E_dia           = 20;  % Diameter of electrode in mm (for circle)
+flags.E_dia           = 20;  % Diameter of electrode in mm (for circle) %20
 flags.E_width         = 22;  % Width  of electrode in mm (for rectangle)
 flags.E_height        = 29;  % Height of electrode in mm (for rectangle)
-flags.gap_width       = 46.675; % Gap between electrodes vertically in mm (edge-edge) (for patch) %2.5 / 46.675
-flags.gap_height      = 32.875; % Gap between electrodes vertically in mm (edge-edge) (for patch) %2.5 / 32.3875
-flags.E_count         = [4,4];  % Number of electrodes per row (for belt), or matrix of how many rows and columns (for patch)
+flags.gap_width       = 46.675; % Gap between electrodes horizontally in mm (edge-edge) (for patch) %2.5 / 46.675
+flags.gap_height      = 32.875; % Gap between electrodes vertically   in mm (edge-edge) (for patch) %2.5 / 32.3875
+flags.E_count         = [4,4];  % Number of electrodes per row (for belt), or vector of how many rows and columns (for patch)
+
+% Custom Electrode Settings
+flags.E_type          = "belt";   % Choice between "patch" and "belt"
+flags.E_shape         = "circle"; % Choice between "circle" and "rectangle"
+flags.E_dia           = 20;  % Diameter of electrode in mm (for circle) %20
+flags.E_width         = 22;  % Width  of electrode in mm (for rectangle)
+flags.E_height        = 29;  % Height of electrode in mm (for rectangle)
+flags.gap_width       = 46.675; % Gap between electrodes horizontally in mm (edge-edge) (for patch) %2.5 / 46.675
+flags.gap_height      = 32.875; % Gap between electrodes vertically   in mm (edge-edge) (for patch) %2.5 / 32.3875
+flags.E_count         = 16;  % Number of electrodes per row (for belt), or vector of how many rows and columns (for patch)
 
 err = [0, 0, 0, 0];       % Noise and error parameters
     % noise_rel = err(1);
@@ -114,30 +128,34 @@ if (flags.E_choice == 5 && flags.E_type == "patch") || flags.E_choice <= 2
     elseif flags.CP_choice == 2
         current_pattern = load(fullfile("Current_Patterns", "CP32_4x8.mat"), "CP32_4x8").CP32_4x8;
     end
-    L               = size(current_pattern, 1); % Number of electrodes
-    num_CP          = size(current_pattern, 2); % Number of current patterns
+    L = size(current_pattern, 1); % Number of electrodes
+    K = size(current_pattern, 2); % Number of current patterns
 elseif (flags.E_choice == 5 && flags.E_type == "belt") || flags.E_choice > 2
     % current_pat = load(fullfile("Current_Patterns", "CP32_16x2_M1.mat"), "Cur_pat3D").Cur_pat3D; % Normalized CP
     if flags.use_GE == 1
         % Current pattern from GE is in µA
         current_pattern = load(fullfile("Current_Patterns", "clinical_belt_CP.mat"), "CP_belt_16x2").CP_belt_16x2;
+
+        % Scale the current pattern
+        CP_scale        = load(fullfile("Current_Patterns", "clinical_belt_CP.mat"), "CPscale_belt_16x2").CPscale_belt_16x2;
+        CP_scale        = repmat(CP_scale', 1, K);
+        current_pattern = CP_scale .* current_pattern;
+        
+        % Convert to be in A
+        current_pattern = current_pattern * 1e-6;
     else
-        % Current pattern from ACT5 is in ???
-        error("ACT5 Current Not Loaded")
+        % Current pattern from ACT5 is in A
+        current_pattern = load(fullfile("Current_Patterns", "ACT5_CP32_2x16.mat"), "cur_pattern").cur_pattern;
+        current_pattern = current_pattern(:,1:31);
     end
 
-    L      = size(current_pattern, 1); % Number of electrodes
-    num_CP = size(current_pattern, 2); % Number of current patterns
-
-    % Scale the current pattern
-    CP_scale        = load(fullfile("Current_Patterns", "clinical_belt_CP.mat"), "CPscale_belt_16x2").CPscale_belt_16x2;
-    CP_scale        = repmat(CP_scale', 1, num_CP);
-    current_pattern = CP_scale .* current_pattern;
+    L = size(current_pattern, 1); % Number of electrodes
+    K = size(current_pattern, 2); % Number of current patterns
 end
 
 % Extracting the subject name
 parts    = split(msh_name, '_');
-sbj_name = parts(1);
+sbj_name = parts{1};
 clear tetmesh parts
 
 % Load the table
@@ -210,53 +228,12 @@ end
 % ----------------------------------------------------------------------- %
 %%                        Rotation and Translation                        %
 % ----------------------------------------------------------------------- %
-% Determine if the body is upside down
-[body_nodes, ~]     = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
-[trachea_nodes, ~]  = Get_Tet_Nodes(nodes, organ_connects{trachea});
-% Check the excel doc
-% if upside_down == 0
-% Check if the difference between the trachea and the top of the body is less than 5% of the total height
-if abs(min(trachea_nodes(:,3)) - min(body_nodes(:,3))) < 0.05*max(nodes(:,3))
-    fprintf("Rotating Body Upright\n")
-    theta = pi;
-    rotationMatrix = [cos(theta), 0, -sin(theta);...
-                      0,          1,  0;...
-                      sin(theta), 0,  cos(theta)];
 
-    % Rotate and shift the body
-    nodes      = nodes*rotationMatrix;
-    nodes(:,1) = nodes(:,1) * -1;
-    nodes(:,3) = nodes(:,3) + abs(min(nodes(:,3)));
-end
-
-[heart_nodes, ~]   = Get_Tet_Nodes(nodes, organ_connects{heart});
-[body_nodes, ~]    = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
-[trachea_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects{trachea});
-heart_center       = range(heart_nodes(:,2))/2 + min(heart_nodes(:,2));
-body_center        = range(body_nodes(:,2))/2 + min(body_nodes(:,2));
-trachea_center     = range(trachea_nodes(:,2))/2 + min(trachea_nodes(:,2));
-% if facing_dir == "Posterior"
-if (heart_center < body_center) || (trachea_center > body_center) % Check if the heart/trachea is on the wrong side
-    fprintf("Rotating the Chest Forward\n")
-    theta = pi;
-    rotationMatrix = [cos(theta), -sin(theta), 0;...
-                      sin(theta),  cos(theta), 0;...
-                      0,           0,          1];
-
-    % Rotate and shift the body
-    nodes      = nodes*rotationMatrix;
-    nodes(:,1) = nodes(:,1) + abs(min(nodes(:,1)));
-    nodes(:,2) = nodes(:,2) + abs(min(nodes(:,2)));
-end
-
-fprintf("Translating to the Origin\n")
-[body_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
-nodes           = nodes         - min(body_nodes);
-sbj_info.carina = carina_height - min(body_nodes(:,3));
-sbj_info.T5     = T5_height     - min(body_nodes(:,3));
-sbj_info.T8     = T8_height     - min(body_nodes(:,3));
-[body_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
-
+% Rotate and then translate the body to standard axis:
+    % Anterior is positive y
+    % Superior is positive z
+    % Right    is positive x
+[nodes, sbj_info] = Rotate_and_Translate_Body(nodes, organ_connects, carina_height, T5_height, T8_height, flags);
 
 % ----------------------------------------------------------------------- %
 %%                              Surface Nodes                             %
@@ -268,6 +245,7 @@ background_faces = Get_Unique_Faces(organ_connects{background});
 surface_faces    = intersect(sort(body_faces,2),  sort(background_faces,2), 'rows');
 
 % Extract desired organ nodes
+[body_nodes, ~]       = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
 [trachea_nodes, ~]    = Get_Tet_Nodes(nodes, organ_connects{trachea});
 [lung_nodes, ~]       = Get_Tet_Nodes(nodes, organ_connects{lung});
 [boundary_nodes, ind] = Get_Surface_Nodes(nodes, surface_faces);
@@ -290,7 +268,7 @@ if flags.plot_trachea == 1
     subplot(1,2,2)
         pdeplot3D(nodes', organ_connects{lung}')
 end
-return
+
 % ----------------------------------------------------------------------- %
 %%                             Make Electrodes                            %
 % ----------------------------------------------------------------------- %
@@ -298,13 +276,15 @@ fprintf("Making Electrodes\n")
 tic
 % carina_height = ((max(boundary_nodes(:,3)) + min(boundary_nodes(:,3)))/2) + 15/2 + 5/2; % DELETE ME!!!! FOR CYLINDER ONLY
 [E_nodes, perim_mm] = Make_Electrodes3(boundary_nodes, nodes, body_faces, sbj_info, flags);
+fprintf("   Perimeter is %.2f mm\n", perim_mm)
+
 if iscell(E_nodes) == 0
     E_nodes = {E_nodes};
 end
-
+%%
 % Find the surface mesh faces that make up the electrodes
 E_connect = Align_Electrode_Faces(nodes, body_faces, E_nodes, flags);
-
+%%
 make_time = toc;
 fprintf("   It took %.2f seconds to make the electrodes\n", make_time)
 
@@ -445,6 +425,59 @@ end
     sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, flags);
 
 % ----------------------------------------------------------------------- %
+%%                       Create Ground Truth Images                       %
+% ----------------------------------------------------------------------- %
+E_heights = cellfun(@(x) mean(x(:,3)), E_nodes);
+if flags.E_type == "patch"
+    if flags.CP_choice == 1
+        E_heights = sort([mean(E_heights([1:4,17:20])), mean(E_heights([5:8,21:24])), mean(E_heights([9:12,25:28])), mean(E_heights([13:16,29:32]))], "descend");
+    else
+        E_heights = sort([mean(E_heights(1:8)), mean(E_heights(9:16)), mean(E_heights(17:24)), mean(E_heights(25:32))], "descend");
+    end
+else
+    E_heights = sort([mean(E_heights(1:16)), mean(E_heights(17:32))], "descend");
+end
+
+if flags.E_type == "patch"
+    sigma_GT = cell(4,1);
+else
+    sigma_GT = cell(2,1);
+end
+for row = 1:length(E_heights)
+    plane = (nodes(:,3) > E_heights(row) - 5) & (nodes(:,3) < E_heights(row) + 5);
+    plane = plane & sigma~=0;
+
+    sigma_GT{row} = plane;
+end
+    
+if flags.plot_GTs == 1
+    figure('color','w');
+    for row = 1:length(sigma_GT)
+        if flags.E_type == "patch"
+            subplot(4,1,row)
+        else
+            subplot(2,1,row)
+        end
+    
+        scatter(nodes(sigma_GT{row},1), nodes(sigma_GT{row},2), 10, real(sigma(sigma_GT{row})), 'filled')
+
+        % Flip the x axis horizontally to be in DICOM standard
+        % set(gca, 'XDir', 'reverse'); % KH: it already was I think
+        axis equal off
+
+        colormap("jet")
+        clim([min(real(sigma)), max(real(sigma))])
+    
+        if row == 1
+            title("Ground Truth Conductivity")
+        end
+    end
+
+    c = colorbar('Position', [0.66 0.11 0.025 0.815]);
+    c.Label.String = "S/m";
+end
+
+% ----------------------------------------------------------------------- %
 %%                                 Solve                                  %
 % ----------------------------------------------------------------------- %
 % zeta = [0.05, 0.10, 0.15];
@@ -455,21 +488,21 @@ end
         fprintf("Solving Forward Problem\n")
     
         % Set the current pattern (IN AMPS)
-        solver.Iel = current_pattern * 1e-6;
+        solver.Iel = current_pattern;
     
         % Solve the voltage
-        solve_start          = tic;
+        solve_start = tic;
         if flags.do_parfor == 1
             [Umeas, Imeas, Uall] = MF_Simulation(fmesh, [], sigma, solver.zeta, solver, 'current', err);
         else
             [Umeas, Imeas, Uall] = MF_Simulation2(fmesh, [], sigma, solver.zeta, solver, 'current', err);
         end
-        solve_time           = toc(solve_start);
+        solve_time = toc(solve_start);
         fprintf("   It took %.2f minutes to solve for voltages\n", solve_time/60)
     
         Umeas = Umeas * 1e3; % Convert V to mV
         Uall  = Uall  * 1e3; % Convert V to mV
-        Umeas = reshape(Umeas, L, num_CP);
+        Umeas = reshape(Umeas, L, K);
     
         % Create the suffix for saving the file based on the settings chosen
         save_suffix = Make_Save_Name(solver.zeta, flags);
@@ -477,8 +510,8 @@ end
         % Save the voltages and conductivties
         volt_name = sprintf("Volt_%s%s.mat", sbj_name, save_suffix);
         cond_name = sprintf("Cond_%s%s.mat", sbj_name, save_suffix);
-        save(fullfile("Results",volt_name), "Umeas", "Uall", "current_pattern", "perim_mm", "-v7.3")
-        save(fullfile("Results",cond_name), "sigma", "nodes", "-v7.3")
+        save(fullfile("Results",volt_name), "Umeas", "Uall", "current_pattern", "perim_mm", "flags", "-v7.3")
+        save(fullfile("Results",cond_name), "sigma", "nodes", "E_connect", "flags", "-v7.3")
     
     % ----------------------------------------------------------------------- %
     %%                                Plotting                                %
@@ -487,7 +520,7 @@ end
         if flags.plot_volts > 0
             figure()
             ax1 = subplot(1,2,1);
-                p1 = scatter3(nodes(:,1), nodes(:,2), nodes(:,3), 10, real(Uall(1:end-num_CP,flags.plot_volts)), 'filled');
+                p1 = scatter3(nodes(:,1), nodes(:,2), nodes(:,3), 10, real(Uall(1:end-K,flags.plot_volts)), 'filled');
                 title(sprintf("Voltage: CP %d", flags.plot_volts))
                 xlabel("x (mm)")
                 ylabel("y (mm)")
@@ -497,7 +530,7 @@ end
                 c.Location     = 'southoutside';
         
             ax2 = subplot(1,2,2);
-                scatter3(nodes(:,1), nodes(:,2), nodes(:,3), 10, imag(Uall(1:end-num_CP,flags.plot_volts)))
+                scatter3(nodes(:,1), nodes(:,2), nodes(:,3), 10, imag(Uall(1:end-K,flags.plot_volts)))
                 title(sprintf("Imaginary Voltage: CP %d", flags.plot_volts))
                 xlabel("x (mm)")
                 ylabel("y (mm)")

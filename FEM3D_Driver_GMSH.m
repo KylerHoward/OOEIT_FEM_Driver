@@ -19,7 +19,7 @@ addpath Modified_OOEIT\ForwardProblemSolvers\ Modified_OOEIT\MiscClasses\ Utilit
 
 msh_path = "Meshes";
 % msh_name = "R1053_Mesh_NoBones.mat"; % 4 months
-msh_name = "R1053_Mesh_NoBones_GMSH.mat"; % 4 months
+% msh_name = "R1053_Mesh_NoBones_GMSH.mat"; % 4 months
 % msh_name = "R1035_Mesh_Cylinder.mat"; % Adjust labels lines 103-112
 % msh_name = "R1035_Mesh_NoBones.mat"; % 13 months
 % msh_name = "R1035_Mesh_NoBones_Fine.mat"; % 13 months
@@ -29,6 +29,7 @@ msh_name = "R1053_Mesh_NoBones_GMSH.mat"; % 4 months
 % msh_name = "R1043_Mesh_NoBones.mat";
 % msh_name = "case101819_Mesh_Trimmed.mat";
 % msh_name = "case101819_Mesh_Trimmed_NoBones.mat";
+msh_name = "case101819_Mesh_NoBones_Eroded_Rotated.mat";
 
 % [msh_name, msh_path] = uigetfile("Select Mesh File"); 
 
@@ -65,7 +66,7 @@ flags.plot_volts      = 1; % Plotting of nodal voltages
 flags.CP_choice       = 1; % Choice of current pattern
     % 1: Standard pattern
     % 2: 4x8 pattern
-flags.E_choice        = 4; % Choice of Electrode configuration
+flags.E_choice        = 3; % Choice of Electrode configuration
     % 1: Large patch front back  (GE Patch)
     % 2: Small patch front back  (GE Patch)
     % 3: Two rows of large belts (GE Belt)
@@ -168,6 +169,9 @@ T8_height     = sbj_sheet.T8FromBottom_mm(row_num);
 if contains(msh_name, "R1133")
     carina_height = carina_height - 50;
 end
+if contains(msh_name, "case101819")
+    carina_height = 150;
+end
 
 sbj_info.carina = carina_height;
 sbj_info.T5     = T5_height;
@@ -206,40 +210,86 @@ for label = unique(labels)'
     organ_connects{i} = connectivity(labels==label, :);
     i = i + 1;
 end
-[body_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
-
 
 % ----------------------------------------------------------------------- %
 %%                        Rotation and Translation                        %
 % ----------------------------------------------------------------------- %
+% Determine if the body is upside down or on it's side
+[body_nodes, ~]     = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
+[trachea_nodes, ~]  = Get_Tet_Nodes(nodes, organ_connects{trachea});
+
+% Check if the body is tilted on it's side
+if (median(trachea_nodes(:,2)) - mean(trachea_nodes(:,2))) > 0.05*range(trachea_nodes(:,2))
+    fprintf("Sitting them upright\n")
+    theta = -pi/2;
+    rotationMatrix = [1, 0,          0;...
+                      0, cos(theta), sin(theta);...
+                      0, sin(theta), cos(theta)];
+
+    % Rotate and shift the body
+    nodes      = nodes*rotationMatrix;
+    nodes(:,1) = nodes(:,1) * -1;
+    nodes(:,3) = nodes(:,3) + abs(min(nodes(:,3)));
+
+    % Recalculate shifted nodes
+    [body_nodes, ~]    = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
+    [trachea_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects{trachea});
+end
+
 % Check the excel doc
-if upside_down == 1
+% if upside_down == 0
+% Check if the difference between the trachea and the top of the body is less than 5% of the total height
+if abs(min(trachea_nodes(:,3)) - min(body_nodes(:,3))) < 0.05*max(nodes(:,3))
     fprintf("Rotating Body Upright\n")
     theta = pi;
     rotationMatrix = [cos(theta), 0, -sin(theta);...
                       0,          1,  0;...
                       sin(theta), 0,  cos(theta)];
-    % figure; 
-    % subplot(1,2,1)
-    %     scatter(nodes(:,1), nodes(:,3)); xlabel("x"); ylabel("z");
-    %     title("Original")
 
+    % Rotate and shift the body
     nodes      = nodes*rotationMatrix;
     nodes(:,1) = nodes(:,1) * -1;
     nodes(:,3) = nodes(:,3) + abs(min(nodes(:,3)));
 
-    % subplot(1,2,2)
-    %     scatter(nodes(:,1), nodes(:,3)); xlabel("x"); ylabel("z");
-    %     title("Rotated")
+    % Recalculate shifted nodes
+    [body_nodes, ~]    = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
+    [trachea_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects{trachea});
 end
 
-if facing_dir == "Posterior"
-    fprintf("Rotating the Chest Forward\n")
+[heart_nodes, ~]   = Get_Tet_Nodes(nodes, organ_connects{heart});
+heart_center       = range(heart_nodes(:,2))/2 + min(heart_nodes(:,2));
+body_center        = range(body_nodes(:,2))/2 + min(body_nodes(:,2));
+trachea_center     = range(trachea_nodes(:,2))/2 + min(trachea_nodes(:,2));
 
+% if facing_dir == "Posterior"
+% if (heart_center < body_center) || (trachea_center > body_center) % Check if the heart/trachea is on the wrong side
+if range(body_nodes(:,1)) < range(body_nodes(:,2)) % Check if the heart/trachea is on the wrong side
+    fprintf("Rotating the Chest Forward\n")
+    % theta = pi;
+    theta = -pi/2;
+    rotationMatrix = [cos(theta), -sin(theta), 0;...
+                      sin(theta),  cos(theta), 0;...
+                      0,           0,          1];
+
+    % Rotate and shift the body
+    nodes      = nodes*rotationMatrix;
+    nodes(:,1) = nodes(:,1) + abs(min(nodes(:,1)));
+    nodes(:,2) = nodes(:,2) + abs(min(nodes(:,2)));
 end
 
 fprintf("Translating to the Origin\n")
-nodes = nodes - min(nodes);
+[body_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
+nodes           = nodes         - min(body_nodes);
+sbj_info.carina = carina_height - min(body_nodes(:,3));
+sbj_info.T5     = T5_height     - min(body_nodes(:,3));
+sbj_info.T8     = T8_height     - min(body_nodes(:,3));
+[body_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
+
+if contains(sbj_name, "case101819")
+    sbj_info.carina = 150;
+    sbj_info.T5 = 165;
+    sbj_info.T8 = 100;
+end
 
 % ----------------------------------------------------------------------- %
 %%                              Surface Nodes                             %
@@ -265,31 +315,26 @@ surface_faces    = setdiff(sort(body_faces,2), sort(inner_intersects,2), 'rows')
 [lung_nodes, ~]       = Get_Tet_Nodes(nodes, organ_connects{lung});
 [boundary_nodes, ind] = Get_Surface_Nodes(nodes, surface_faces);
 
-clear trachea_faces heart_faces esophagus_faces
-clear lung_intersect trachea_intersect heart_intersect esophagus_intersect inner_intersects surface_faces
-
 % Delete any extra nodes in the center of boundary_nodes
 inside_indices                   = Find_Internal_Nodes(boundary_nodes, flags);
 old_boundary_nodes               = boundary_nodes;
 boundary_nodes(inside_indices,:) = [];
 ind(inside_indices,:)            = [];
 
+clear trachea_faces heart_faces esophagus_faces
+clear lung_intersect trachea_intersect heart_intersect esophagus_intersect inner_intersects surface_faces
+
 if flags.plot_trachea == 1
     figure()
     subplot(1,2,1)
         scatter3(trachea_nodes(:,1), trachea_nodes(:,2), trachea_nodes(:,3), "MarkerEdgeAlpha", 0.2)
         hold on
-        % scatter3(mean(trachea_nodes(:,1)), mean(trachea_nodes(:,2)), carina_height, 'r', 'filled')
-        scatter3(trachea_nodes(startsWith(string(trachea_nodes(:,3)), string(carina_height)), 1), trachea_nodes(startsWith(string(trachea_nodes(:,3)), string(carina_height)), 2), carina_height, 'r', 'filled')
-        % constantplane('z', carina_height) R2024b
-        title(sprintf("Carina: %.2f mm", carina_height))
-        xlabel("x"); ylabel("y"); zlabel("z")
-        axis equal
+        scatter3(mean(trachea_nodes(:,1)), mean(trachea_nodes(:,2)), sbj_info.carina, 'r', 'filled')
+        scatter3(trachea_nodes(startsWith(string(trachea_nodes(:,3)), sprintf("%.1f", sbj_info.carina)), 1), trachea_nodes(startsWith(string(trachea_nodes(:,3)), sprintf("%.1f", sbj_info.carina)), 2), sbj_info.carina, 'r', 'filled')
+        % constantplane('z', sbj_info.carina) R2024b
+        title(sprintf("Carina: %.2f mm", sbj_info.carina))
     subplot(1,2,2)
-        % pdeplot3D(nodes', organ_connects{lung}')
-        trisurf(lung_faces, nodes(:,1), nodes(:,2), nodes(:,3), "LineStyle", "none")
-        xlabel("x"); ylabel("y"); zlabel("z")
-        axis equal
+        pdeplot3D(nodes', organ_connects{lung}')
 end
 
 % ----------------------------------------------------------------------- %
@@ -357,7 +402,7 @@ carina_plane = find(boundary_nodes(:,3) < sbj_info.carina + 1.25 & boundary_node
 if flags.plot_electrodes == 1
     figure()
         hold on
-        scatter3(boundary_nodes(:,1), boundary_nodes(:,2), boundary_nodes(:,3), 'MarkerEdgeColor', [0.3010 0.7450 0.9330], 'LineWidth',0.2)
+        scatter3(boundary_nodes(:,1), boundary_nodes(:,2), boundary_nodes(:,3), 'MarkerEdgeColor', [0.3010 0.7450 0.9330], 'LineWidth',0.05)
         % for cell_i = 1:length(E_nodes)
         %     scatter3(E_nodes{cell_i}(:,1), E_nodes{cell_i}(:,2), E_nodes{cell_i}(:,3), 'r')
         % end
@@ -375,7 +420,7 @@ if flags.plot_electrodes == 1
         pause
     end
 end
-
+return
 % ----------------------------------------------------------------------- %
 %%                             Create Solver                              %
 % ----------------------------------------------------------------------- %
