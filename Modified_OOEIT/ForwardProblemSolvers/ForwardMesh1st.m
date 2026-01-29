@@ -192,46 +192,46 @@ classdef ForwardMesh1st < handle
                 %get the elements that contain the support of basis 
                 %function jj, i.e. have the non-zero gradient dot products
                 %in the derivative of the FEM matrix:
-              El = self.EC(jj,self.EC(jj,:)>0);
-              %due to how this info is stored (in a matrix), there may be
-              %zeros on some (many) rows. They are to be omitted.
-
-              %Initialize the matrices for collecting the indices and values
-              %for creating a sparse matrix.
-              ar = zeros(length(El)*(self.gDim+1),self.gDim+1);
-              ac = zeros(length(El)*(self.gDim+1),self.gDim+1);
-              av = zeros(length(El)*(self.gDim+1),self.gDim+1);
-
-              %index for collecting values to the matrices
-              rid = 1;
-              for ii=1:length(El)%Go through the relevant elements
-                  
-                ind = self.H(El(ii),:); % Indices of the element
-                gg=self.g(ind,:);%the node coordinates
-
-                idc = repmat(ind,self.gDim+1,1);%The row and column indices of the values in the derivative matrix
-                idr = idc';
+                El = self.EC(jj,self.EC(jj,:)>0);
+                %due to how this info is stored (in a matrix), there may be
+                %zeros on some (many) rows. They are to be omitted.
                 
-                % difference matrix of the (linear) basis functions
-                L=[-ones(self.gDim,1) eye(self.gDim)];
-                Jt=L*gg;
-                dJt=abs(det(Jt)); % Triangle/tetrahedra volume
-                G=Jt\L; % Gradients of each basis function
-                GdJt=G'*G*dJt;
-                if self.gDim == 3
-                    int=1/24*GdJt;
-                elseif self.gDim == 2
-                    int=1/6*GdJt;
-                end
-                %now int contains integrals of grad(phi_i) dot grad(phi_j)
-                %for i and j in nodes in ind
-
-                % temporary storage
-                ar(rid:rid+self.gDim,:) = idr;
-                ac(rid:rid+self.gDim,:) = idc;
-                av(rid:rid+self.gDim,:) = int;
-                rid = rid + 1 + self.gDim;      
-              end     
+                %Initialize the matrices for collecting the indices and values
+                %for creating a sparse matrix.
+                ar = zeros(length(El)*(self.gDim+1),self.gDim+1);
+                ac = zeros(length(El)*(self.gDim+1),self.gDim+1);
+                av = zeros(length(El)*(self.gDim+1),self.gDim+1);
+                
+                %index for collecting values to the matrices
+                rid = 1;
+                for ii=1:length(El)%Go through the relevant elements
+                  
+                    ind = self.H(El(ii),:); % Indices of the element
+                    gg=self.g(ind,:);%the node coordinates
+                    
+                    idc = repmat(ind,self.gDim+1,1);%The row and column indices of the values in the derivative matrix
+                    idr = idc';
+                    
+                    % difference matrix of the (linear) basis functions
+                    L=[-ones(self.gDim,1) eye(self.gDim)];
+                    Jt=L*gg;
+                    dJt=abs(det(Jt)); % Triangle/tetrahedra volume
+                    G=Jt\L; % Gradients of each basis function
+                    GdJt=G'*G*dJt;
+                    if self.gDim == 3
+                        int=1/24*GdJt;
+                    elseif self.gDim == 2
+                        int=1/6*GdJt;
+                    end
+                    %now int contains integrals of grad(phi_i) dot grad(phi_j)
+                    %for i and j in nodes in ind
+                    
+                    % temporary storage
+                    ar(rid:rid+self.gDim,:) = idr;
+                    ac(rid:rid+self.gDim,:) = idc;
+                    av(rid:rid+self.gDim,:) = int;
+                    rid = rid + 1 + self.gDim;      
+                end     
 
               %Create the sparse derivative matrix of the FEM matrix
               S = sparse(ar,ac,av,self.ng,self.ng);
@@ -347,12 +347,12 @@ classdef ForwardMesh1st < handle
         end
 
         function A=ElementArea2D(g)
-            %Compute the are of element defined by the coordinates in g
+            %Compute the area of element defined by the coordinates in g
             A= 0.5*norm(cross(g(2,:)-g(1,:), g(3,:)-g(1,:)));
         end
 
         function A=ElementArea1D(g)
-            %Compute the are of element defined by the coordinates in g
+            %Compute the area of element defined by the coordinates in g
             A = sqrt((g(1,1)-g(2,1))^2 + (g(1,2)-g(2,2))^2);
         end
 

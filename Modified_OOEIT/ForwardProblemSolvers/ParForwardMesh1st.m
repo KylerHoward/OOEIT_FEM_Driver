@@ -330,8 +330,8 @@ classdef ParForwardMesh1st < handle
 
             Jt = L*g;
             % iJt = inv(Jt);
-            dJt = abs(det(Jt));
             % G   = iJt*L;
+            dJt = abs(det(Jt));
             G   = Jt\L; % KH: Swapped to faster inverse
             GdJt = G'*G*dJt/factorial(self.gDim+1);
             int = sum(sigma)*GdJt;
