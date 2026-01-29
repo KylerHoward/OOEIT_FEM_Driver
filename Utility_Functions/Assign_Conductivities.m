@@ -13,17 +13,18 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
     tic
 %% ------------------------------- Setup -------------------------------- %
 
+    % S/m
     % Set up Ventilation Lung Conductivity settings
     if flags.use_GE == 1 % Freq = 10 kHz
         background_cond  = 0.0;    background_cond_range  = 0.0;     % 0.0,   0.0
         trachea_cond     = 0.311;  trachea_cond_range     = 0.0086;  % 0.15,  0.0
-        soft_tissue_cond = 0.4;    soft_tissue_cond_range = 0.023;   % 0.3,   0.0       % 0.2254, 0.023
+        soft_tissue_cond = 0.4;    soft_tissue_cond_range = 0.023;   % 0.3,   0.0       % 0.4, 0.023
         bone_cond        = 0.0204; bone_cond_range        = 0.0003;  % 0.05,  0.02
         heart_cond       = 0.66;   heart_cond_range       = 0.1;     % 0.4,   0.1
         % lung_cond        = 0.168;   lung_cond_range        = 0.075;    % 0.175, 0.125
         % KH: Updated 2/13/25 based on TFC
         lung_cond        = -0.1498 * flags.max_inspiration + 0.243;  % Linear range between max/min
-        lung_cond_range  = 0.125;
+        lung_cond_range  = 0.03745; % Old range (0.125) was 80% of possible values! Dropped to a 25% range
         if flags.esoph_intubate == 1
             esophagus_cond   = 0.164;  esophagus_cond_range   = 0.054;   % 0.164, 0.054
         else
@@ -40,7 +41,9 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
         heart_susc       = 0.4;    heart_susc_range       = 0.2;     % 0.4,   0.2
 
     else % Freq = 93 kHz
-        fprintf("   All these values are wrong. Doing this for Chris\n")
+        if flags.verbose == 1
+            fprintf("      All these values are wrong. Doing this for Chris\n")
+        end
         background_cond  = 0.0;    background_cond_range  = 0.0;     % 0.0,   0.0
         trachea_cond     = 0.311;  trachea_cond_range     = 0.0086;  % 0.15,  0.0
         soft_tissue_cond = 0.4;    soft_tissue_cond_range = 0.023;   % 0.3,   0.0       % 0.2254, 0.023
@@ -111,6 +114,15 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
                           1i*(esophagus_susc + esophagus_susc_pm*esophagus_susc_range);
         heart_val       = heart_cond + heart_cond_range*heart_cond_pm + ...
                           1i*(heart_susc + heart_susc_range*heart_susc_pm);
+
+        % Ensure each real value is positive
+        left_lung_val = make_real_positive(left_lung_val);
+        right_lung_val = make_real_positive(right_lung_val);
+        right_lung_val = make_real_positive(right_lung_val);
+        right_lung_val = make_real_positive(right_lung_val);
+        right_lung_val = make_real_positive(right_lung_val);
+        right_lung_val = make_real_positive(right_lung_val);
+        right_lung_val = make_real_positive(right_lung_val);
     else
         % Set complex conductivity values
         background_val  = background_cond + 1i*background_susc;
@@ -158,43 +170,47 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
     % REMEMBER: LABELS ARE [0,8], NOT [1,9]. NEED A COND_VALS(LABEL + 1);
 
 %% ----------------------------- Lung Prep ------------------------------ %
-split_correct = false;
-while split_correct == false
-    [clusters, centroids] = kmeans(lung_nodes(:, [1,2]), 2, 'Distance','cityblock');
+    split_correct = false;
+    while split_correct == false
+        [clusters, centroids] = kmeans(lung_nodes(:, [1,2]), 2, 'Distance','cityblock');
+        
+        % Left and right are flipped
+        if centroids(1,1) < centroids(2,1)
+            clusters(clusters==1) = 3;
+            clusters(clusters==2) = 1;
+            clusters(clusters==3) = 2;
+        
+            centroids(3,:) = centroids(1,:);
+            centroids(1,:) = centroids(2,:);
+            centroids(2,:) = centroids(3,:);
+            centroids(3,:) = [];
+        end
     
-    % Left and right are flipped
-    if centroids(1,1) < centroids(2,1)
-        clusters(clusters==1) = 3;
-        clusters(clusters==2) = 1;
-        clusters(clusters==3) = 2;
-    
-        centroids(3,:) = centroids(1,:);
-        centroids(1,:) = centroids(2,:);
-        centroids(2,:) = centroids(3,:);
-        centroids(3,:) = [];
+        x_diff = abs(centroids(1,1) - centroids(2,1));
+        y_diff = abs(centroids(1,2) - centroids(2,2));
+        if x_diff > y_diff
+            if flags.verbose == 1
+                fprintf("      Split lungs correctly\n")
+            end
+            split_correct = true;
+        else
+            if flags.verbose == 1
+                fprintf("      Split lungs failed\n")
+            end
+        end
     end
-
-    x_diff = abs(centroids(1,1) - centroids(2,1));
-    y_diff = abs(centroids(1,2) - centroids(2,2));
-    if x_diff > y_diff
-        fprintf("   Split lungs correctly\n")
-        split_correct = true;
-    else
-        fprintf("   Split lungs failed\n")
+        
+    if flags.plot_conds == 1
+        figure()
+            hold on
+            scatter3(lung_nodes(clusters==1,1),lung_nodes(clusters==1,2),lung_nodes(clusters==1,3),'b')
+            scatter3(lung_nodes(clusters==2,1),lung_nodes(clusters==2,2),lung_nodes(clusters==2,3),'red')
+            xlabel('x')
+            ylabel('y')
+            zlabel('z')
+            legend("Left (1)", "Right (2)", location='southoutside')
+            title('xy projected - cityblock distance')
     end
-end
-    
-if flags.plot_conds == 1
-    figure()
-        hold on
-        scatter3(lung_nodes(clusters==1,1),lung_nodes(clusters==1,2),lung_nodes(clusters==1,3),'b')
-        scatter3(lung_nodes(clusters==2,1),lung_nodes(clusters==2,2),lung_nodes(clusters==2,3),'red')
-        xlabel('x')
-        ylabel('y')
-        zlabel('z')
-        legend("Left (1)", "Right (2)", location='southoutside')
-        title('xy projected - cityblock distance')
-end
 
 
 %% ----------------------------- Assigning ------------------------------ %
@@ -256,7 +272,9 @@ end
     end
 
     cond_time = toc;
-    fprintf("   It took %.2f seconds to assign values\n", cond_time)
+    if flags.verbose == 1
+        fprintf("      It took %.2f seconds to assign values\n", cond_time)
+    end
 
 %% ----------------------------- Plotting ------------------------------- %
     if flags.plot_conds == 1
@@ -313,7 +331,7 @@ end
         end
 
         if flags.do_pauses == 1
-            fprintf("   Press any key if correct\n")
+            fprintf("      Press any key if correct\n")
             pause
         end
     end
@@ -331,5 +349,12 @@ function update_ylim(axes, minVal, maxVal)
     % Set new y-axis limits based on slider value
     for ax = axes
         ax.YLim = [minVal, maxVal];
+    end
+end
+
+function value = make_real_positive(value)
+    % Ensure that only the real part gets set to zero
+    if real(value) < 0
+        value = 0 + imag(value);
     end
 end

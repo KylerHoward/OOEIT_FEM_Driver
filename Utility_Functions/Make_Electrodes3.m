@@ -1,4 +1,4 @@
-function [E_nodes, perim_mm_high] = Make_Electrodes3(boundary_nodes, all_nodes, body_faces,  sbj_info, flags)
+function [E_nodes, perim_mm_high] = Make_Electrodes3(boundary_nodes, all_nodes, body_faces, sbj_info, flags)
     %{
     Find the nodes that make up all 32 electrodes, for either a belt or patch configuration
     Updated to compute area of each electrode, and make sure they are the correct sizes
@@ -105,6 +105,16 @@ function [E_nodes, perim_mm_high] = Make_Electrodes3(boundary_nodes, all_nodes, 
         [front, plane_high] = find_center(boundary_nodes, sbj_info.carina, E, "front");
         [back,  ~]          = find_center(boundary_nodes, sbj_info.carina, E, "back");
 
+        % KH: 1/14/26 front/back were the center of the third row. Adjusting
+        % so carina is the center of the third row
+        if E.shape == "circle"
+            front(3) = front(3) - E.E_dia - E.gap_height;
+            back(3)  = back(3)  - E.E_dia - E.gap_height;
+        elseif E.shape == "rectangle"
+            front(3) = front(3) - E.E_height - E.gap_height;
+            back(3)  = back(3)  - E.E_height - E.gap_height;
+        end
+
     elseif E.type == "belt"
         % if E.shape == "circle"
         %     plane_gap = E.E_rad;
@@ -138,8 +148,9 @@ function [E_nodes, perim_mm_high] = Make_Electrodes3(boundary_nodes, all_nodes, 
     point_high    = zeros(200, 3);
     perim_mm_low  = 0;
     perim_mm_high = 0;
+    param_terms   = 15;
     for theta = 0 : (2*pi)/200 : 2*pi - (2*pi)/200 
-        radius_high =  Parameratize_Bdry(plane_high, 15, theta);
+        radius_high =  Parameratize_Bdry(plane_high, param_terms, theta);
 
         point_high(i,:) = [center_high(1) + radius_high*cos(theta), center_high(2) + radius_high*sin(theta), center_high(3)];
 
@@ -150,7 +161,7 @@ function [E_nodes, perim_mm_high] = Make_Electrodes3(boundary_nodes, all_nodes, 
 
         % Repeat for the lower belt
         if E.type == "belt"
-            radius_low =  Parameratize_Bdry(plane_low, 15, theta);
+            radius_low =  Parameratize_Bdry(plane_low, param_terms, theta);
 
             point_low(i,:) = [center_low(1) + radius_low*cos(theta), center_low(2) + radius_low*sin(theta), center_low(3)];
             
@@ -165,19 +176,44 @@ function [E_nodes, perim_mm_high] = Make_Electrodes3(boundary_nodes, all_nodes, 
 
     if flags.plot_slices && flags.plot_electrodes
         figure()
-            hold on
-            scatter(plane_high(:,1), plane_high(:,2))
-            plot(point_low(:,1),   point_low(:,2), 'r', 'linewidth', 1.5)
-            legend("Exact Points", "Parameratized Boundary", 'location','southoutside')
+            if flags.E_choice <= 2 || (flags.E_choice == 5 && flags.E_type == "patch")
+                hold on
+                scatter(plane_high(:,1), plane_high(:,2))
+                plot(point_high(:,1),   point_high(:,2), 'r', 'linewidth', 1.5)
+                legend("Exact Points", "Parameratized Boundary", 'location','southoutside')
+                title("Center of Patch")
+            else
+                subplot(2,1,1)
+                    hold on
+                    scatter(plane_high(:,1), plane_high(:,2))
+                    plot(point_high(:,1),   point_high(:,2), 'r', 'linewidth', 1.5)
+                    legend("Exact Points", "Parameratized Boundary", 'location','southoutside')
+                    title("Top Row")
+                subplot(2,1,2)
+                    hold on
+                    scatter(plane_low(:,1), plane_low(:,2))
+                    plot(point_low(:,1),   point_low(:,2), 'r', 'linewidth', 1.5)
+                    legend("Exact Points", "Parameratized Boundary", 'location','southoutside')
+                    title("Bottom Row")
+            end
     end
 
 % ----------------------------------------------------------------------- %
 %% ---------------------- Finding Electrode Nodes ----------------------- %
 % ----------------------------------------------------------------------- %
     if E.type == "patch"
+        % Adjust boundary nodes to not include the top/bottom plane. Remove top/bot 0.5 mm
+        tube_nodes       = boundary_nodes(boundary_nodes(:,3)>0.5 & boundary_nodes(:,3)<max(boundary_nodes(:,3))-0.5, :);
+        
+        % Only look at the nodes near the patch. Don't waste time looking at nodes near the armpits
+        front_tube_nodes   = tube_nodes(tube_nodes(:,2) > mean(tube_nodes(:,2)),:);
+        back_tube_nodes    = tube_nodes(tube_nodes(:,2) < mean(tube_nodes(:,2)),:);
+        middle_front_nodes = front_tube_nodes(front_tube_nodes(:,1) > mean(front_tube_nodes(:,1)) - 3*E.E_width - 2*E.gap_width & front_tube_nodes(:,1) < mean(front_tube_nodes(:,1)) + 3*E.E_width + 2*E.gap_width,:);
+        middle_back_nodes  = back_tube_nodes(back_tube_nodes(:,1) > mean(back_tube_nodes(:,1)) - 3*E.E_width - 2*E.gap_width & back_tube_nodes(:,1) < mean(back_tube_nodes(:,1)) + 3*E.E_width + 2*E.gap_width,:);
+
         % Find the corners of the electrodes
-        front_nodes = create_patch(boundary_nodes, front, E, "front", all_nodes, body_faces);
-        back_nodes  = create_patch(boundary_nodes, back,  E, "back", all_nodes, body_faces);
+        front_nodes = create_patch(middle_front_nodes, front, E, "front", all_nodes, body_faces);
+        back_nodes  = create_patch(middle_back_nodes, back,  E, "back", all_nodes, body_faces);
         E_nodes     = [front_nodes; back_nodes];
 
     elseif E.type == "belt"
@@ -189,7 +225,8 @@ function [E_nodes, perim_mm_high] = Make_Electrodes3(boundary_nodes, all_nodes, 
     % Reorder electrode placement if using the 4x8 pattern
     if flags.CP_choice == 2
         fprintf("   Placing 4x8 Electrode Arrays\n")
-        new_ind = [13,14,15,16,32,31,30,29,9,10,11,12,28,27,26,25,5,6,7,8,24,23,22,21,1,2,3,4,20,19,18,17];
+        % new_ind = [13,14,15,16,32,31,30,29,9,10,11,12,28,27,26,25,5,6,7,8,24,23,22,21,1,2,3,4,20,19,18,17]; % KH 12/5/25 - GE Changed the 4x8 patch configuration
+        new_ind = [31,32,16,15,14,13,29,30,27,28,12,11,10,9,25,26,23,24,8,7,6,5,21,22,19,20,4,3,2,1,17,18];
         E_nodes = E_nodes(new_ind);
     end
 
@@ -293,10 +330,12 @@ function E_nodes = create_electrode(local_nodes, coord, E, all_nodes, body_faces
             if E.type == "belt"
             ycheck = (local_nodes(:,2) >= coord(2) - (E.E_width + search_dist/2)/2)  & (local_nodes(:,2) <= coord(2) + (E.E_width + search_dist/2)/2);
             elseif E.type == "patch"
-                ycheck = (local_nodes(:,2) >= coord(2) - (E.E_width + search_dist/2))  & (local_nodes(:,2) <= coord(2) + (E.E_width + search_dist/2));
+                % Allow all nodes in the y direction
+                ycheck = ones(length(local_nodes),1);
+                % ycheck = (local_nodes(:,2) >= coord(2) - (E.E_width + search_dist/2))  & (local_nodes(:,2) <= coord(2) + (E.E_width + search_dist/2));
             end
-            % zcheck = (local_nodes(:,3) >= coord(3) - (E.E_height + 2*search_dist)/2) & (local_nodes(:,3) <= coord(3) + (E.E_height + 2*search_dist)/2);
             zcheck = (local_nodes(:,3) >= coord(3) - (E.E_height + search_dist)/2) & (local_nodes(:,3) <= coord(3) + (E.E_height + search_dist)/2);
+            % zcheck = (local_nodes(:,3) >= coord(3) - (E.E_height + search_dist/5)/2) & (local_nodes(:,3) <= coord(3) + (E.E_height + search_dist/5)/2);
             binary_check = xcheck & ycheck & zcheck;
 
             ind = zeros(sum(binary_check), 1);
@@ -328,7 +367,7 @@ function E_nodes = create_electrode(local_nodes, coord, E, all_nodes, body_faces
 
         if E_area < E.E_area
             good_electrode = 0;
-            search_dist = search_dist + 1; % Look 1 mm further
+            search_dist = search_dist + 0.5; % Look 1 mm further
         else
             good_electrode = 1;
         end
@@ -575,6 +614,7 @@ function E_nodes = create_belt(local_nodes, E_plane, E, all_nodes, body_faces, f
 
         % Check if we have moved around enough
         goal_arc_length = perim_mm / (E.E_count + 0.7);
+        % goal_arc_length = perim_mm / (E.E_count + 0.1);
         if arc_length >= goal_arc_length
             % Reset arc length
             arc_length = 0;
