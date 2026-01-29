@@ -18,7 +18,7 @@ function E_connect = Align_Electrode_Faces(G_nodes, surface_faces, E_nodes, flag
     if flags.plot_electrodes == 1
         figure
         hold on
-        trimesh(surface_faces, G_nodes(:,1),G_nodes(:,2),G_nodes(:,3))
+        trimesh(surface_faces, G_nodes(:,1),G_nodes(:,2),G_nodes(:,3),"FaceColor","cyan","EdgeColor",'blue')
     end
     
     % Loop through each electrode

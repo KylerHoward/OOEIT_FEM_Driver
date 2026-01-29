@@ -20,20 +20,10 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
         soft_tissue_cond = 0.4;    soft_tissue_cond_range = 0.023;   % 0.3,   0.0       % 0.2254, 0.023
         bone_cond        = 0.0204; bone_cond_range        = 0.0003;  % 0.05,  0.02
         heart_cond       = 0.66;   heart_cond_range       = 0.1;     % 0.4,   0.1
-        if flags.max_inspiration == 1
-            % lung_cond        = 0.0375;  lung_cond_range        = 0.0375;    % 0.175, 0.125
-            % KH: Updated 2/13/25 based on TFC
-            lung_cond        = 0.0932;  lung_cond_range        = 0.01;    % 0.175, 0.125
-        elseif flags.max_inspiration == 0
-            % lung_cond        = 0.3625;  lung_cond_range        = 0.0375;    % 0.175, 0.125
-            % KH: Updated 2/13/25 based on TFC
-            lung_cond        = 0.243;  lung_cond_range        = 0.01;    % 0.175, 0.125
-        else
-            % lung_cond        = 0.168;   lung_cond_range        = 0.075;    % 0.175, 0.125
-            % KH: Updated 2/13/25 based on TFC
-            lung_cond       = -0.1498 * flags.max_inspiration + 0.243;  % Linear range between max/min
-            lung_cond_range = 0.125;
-        end
+        % lung_cond        = 0.168;   lung_cond_range        = 0.075;    % 0.175, 0.125
+        % KH: Updated 2/13/25 based on TFC
+        lung_cond        = -0.1498 * flags.max_inspiration + 0.243;  % Linear range between max/min
+        lung_cond_range  = 0.125;
         if flags.esoph_intubate == 1
             esophagus_cond   = 0.164;  esophagus_cond_range   = 0.054;   % 0.164, 0.054
         else
@@ -50,18 +40,21 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
         heart_susc       = 0.4;    heart_susc_range       = 0.2;     % 0.4,   0.2
 
     else % Freq = 93 kHz
-        error("Lung values not figured out")
+        fprintf("   All these values are wrong. Doing this for Chris\n")
         background_cond  = 0.0;    background_cond_range  = 0.0;     % 0.0,   0.0
-        lung_cond        = 0.18;   lung_cond_range        = 0.08;    % 0.175, 0.125
-        trachea_cond     = 0.34;   trachea_cond_range     = 0.0086;  % 0.15,  0.0
-        soft_tissue_cond = 0.2298; soft_tissue_cond_range = 0.023;   % 0.3,   0.0       % 0.388, 0.023
-        bone_cond        = 0.0205; bone_cond_range        = 0.0003;  % 0.05,  0.02
-        if flags.empty_esoph == 1
+        trachea_cond     = 0.311;  trachea_cond_range     = 0.0086;  % 0.15,  0.0
+        soft_tissue_cond = 0.4;    soft_tissue_cond_range = 0.023;   % 0.3,   0.0       % 0.2254, 0.023
+        bone_cond        = 0.0204; bone_cond_range        = 0.0003;  % 0.05,  0.02
+        heart_cond       = 0.66;   heart_cond_range       = 0.1;     % 0.4,   0.1
+        % lung_cond        = 0.168;   lung_cond_range        = 0.075;    % 0.175, 0.125
+        % KH: Updated 2/13/25 based on TFC
+        lung_cond        = -0.1498 * flags.max_inspiration + 0.243;  % Linear range between max/min
+        lung_cond_range  = 0.125;
+        if flags.esoph_intubate == 1
             esophagus_cond   = 0.164;  esophagus_cond_range   = 0.054;   % 0.164, 0.054
         else
             esophagus_cond   = 0.530;  esophagus_cond_range   = 0.054;   % 0.164, 0.054
         end
-        heart_cond       = 0.66;   heart_cond_range       = 0.1;     % 0.4,   0.1
     
         % Set up Complex Conductivity settings
         background_susc  = 0.0;    background_susc_range  = 0.0;     % 0.0,   0.0
