@@ -31,6 +31,12 @@ msh_path = "Meshes";
 % msh_name = "case101819_Mesh_Trimmed_NoBones.mat";
 msh_name = "case101819_Mesh_NoBones_Eroded_Rotated.mat";
 
+
+msh_path = "R:\Segmentations\Ella Test Meshes";
+msh_name = "R1044_Mesh_NoBones_Eroded_Condition1.mat";
+% msh_name = "R1044_Mesh_NoBones_Eroded_Condition2.mat";
+% msh_name = "R1044_Mesh_NoBones_Eroded_Condition3.mat";
+
 % [msh_name, msh_path] = uigetfile("Select Mesh File"); 
 
 % Load the mesh
@@ -214,76 +220,12 @@ end
 % ----------------------------------------------------------------------- %
 %%                        Rotation and Translation                        %
 % ----------------------------------------------------------------------- %
-% Determine if the body is upside down or on it's side
-[body_nodes, ~]     = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
-[trachea_nodes, ~]  = Get_Tet_Nodes(nodes, organ_connects{trachea});
 
-% Check if the body is tilted on it's side
-if (median(trachea_nodes(:,2)) - mean(trachea_nodes(:,2))) > 0.05*range(trachea_nodes(:,2))
-    fprintf("Sitting them upright\n")
-    theta = -pi/2;
-    rotationMatrix = [1, 0,          0;...
-                      0, cos(theta), sin(theta);...
-                      0, sin(theta), cos(theta)];
-
-    % Rotate and shift the body
-    nodes      = nodes*rotationMatrix;
-    nodes(:,1) = nodes(:,1) * -1;
-    nodes(:,3) = nodes(:,3) + abs(min(nodes(:,3)));
-
-    % Recalculate shifted nodes
-    [body_nodes, ~]    = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
-    [trachea_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects{trachea});
-end
-
-% Check the excel doc
-% if upside_down == 0
-% Check if the difference between the trachea and the top of the body is less than 5% of the total height
-if abs(min(trachea_nodes(:,3)) - min(body_nodes(:,3))) < 0.05*max(nodes(:,3))
-    fprintf("Rotating Body Upright\n")
-    theta = pi;
-    rotationMatrix = [cos(theta), 0, -sin(theta);...
-                      0,          1,  0;...
-                      sin(theta), 0,  cos(theta)];
-
-    % Rotate and shift the body
-    nodes      = nodes*rotationMatrix;
-    nodes(:,1) = nodes(:,1) * -1;
-    nodes(:,3) = nodes(:,3) + abs(min(nodes(:,3)));
-
-    % Recalculate shifted nodes
-    [body_nodes, ~]    = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
-    [trachea_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects{trachea});
-end
-
-[heart_nodes, ~]   = Get_Tet_Nodes(nodes, organ_connects{heart});
-heart_center       = range(heart_nodes(:,2))/2 + min(heart_nodes(:,2));
-body_center        = range(body_nodes(:,2))/2 + min(body_nodes(:,2));
-trachea_center     = range(trachea_nodes(:,2))/2 + min(trachea_nodes(:,2));
-
-% if facing_dir == "Posterior"
-% if (heart_center < body_center) || (trachea_center > body_center) % Check if the heart/trachea is on the wrong side
-if range(body_nodes(:,1)) < range(body_nodes(:,2)) % Check if the heart/trachea is on the wrong side
-    fprintf("Rotating the Chest Forward\n")
-    % theta = pi;
-    theta = -pi/2;
-    rotationMatrix = [cos(theta), -sin(theta), 0;...
-                      sin(theta),  cos(theta), 0;...
-                      0,           0,          1];
-
-    % Rotate and shift the body
-    nodes      = nodes*rotationMatrix;
-    nodes(:,1) = nodes(:,1) + abs(min(nodes(:,1)));
-    nodes(:,2) = nodes(:,2) + abs(min(nodes(:,2)));
-end
-
-fprintf("Translating to the Origin\n")
-[body_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
-nodes           = nodes         - min(body_nodes);
-sbj_info.carina = carina_height - min(body_nodes(:,3));
-sbj_info.T5     = T5_height     - min(body_nodes(:,3));
-sbj_info.T8     = T8_height     - min(body_nodes(:,3));
-[body_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
+% Rotate and then translate the body to standard axis:
+    % Anterior is positive y
+    % Superior is positive z
+    % Right    is positive x
+[nodes, sbj_info] = Rotate_and_Translate_Body(nodes, organ_connects, carina_height, T5_height, T8_height, flags);
 
 if contains(sbj_name, "case101819")
     sbj_info.carina = 150;

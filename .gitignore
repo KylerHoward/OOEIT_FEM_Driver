@@ -1,14 +1,17 @@
 # Ignore all files in results.
 /Results/
 
-# Ignore all files in Meshes
+# Ignore all files in Meshes & Heart Meshes
 /Meshes/
+/Heart_Meshes
+/Heart_BCs
+
+# Ignore all files in Clincal Data
+/Clinical_Data
+
+# Ignore mesh creation stuff
+/Mesh_Creation_and_Conversion
+/Mesh_Erosion
 
 # Ignore all .asv files
 *.asv
-
-# Ignore mesh for Dylan
-Heart_Mesh.mat
-
-# Ignore testing mesh
-Utility_Functions/mesh_upsidedown_backwards.mat
