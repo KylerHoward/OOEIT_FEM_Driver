@@ -167,15 +167,16 @@ Editted: 10/10/24 - Kyler Howard
             
             self.A = A0 + self.S; % Combine parts to make the full FEM matrix
 
-            % tic
-            % self.solVec = self.A\self.b;%Solve FEM
-            % toc
-
-            tol   = 1e-6;
-            maxit = 200;
-            [self.L,self.U] = ilu(self.A,struct('type','nofill','droptol',1e-6));
-            for i = 1:size(self.b,2)
-                [self.solVec(:,i), ~] = gmres(self.A, self.b(:,i),[],tol,maxit,self.L,self.U);
+            % Solve FEM
+            try
+                tol   = 1e-6;
+                maxit = 200;
+                [self.L,self.U] = ilu(self.A,struct('type','nofill','droptol',1e-6));
+                for i = 1:size(self.b,2)
+                    [self.solVec(:,i), ~] = gmres(self.A, self.b(:,i),[],tol,maxit,self.L,self.U);
+                end
+            catch
+                self.solVec = self.A\self.b;
             end
 
             solVec = self.solVec;

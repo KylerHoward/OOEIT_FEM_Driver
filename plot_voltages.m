@@ -1,7 +1,7 @@
 clearvars -except filepath
 clc
-close all
-
+% close all
+    
 if exist('filepath', 'var') && ischar(filepath)
     [filename, filepath] = uigetfile(filepath, "Open Voltage File to Inspect");
 else
@@ -12,9 +12,34 @@ fprintf("Inspecting %s\n", filename)
 load(fullfile(filepath, filename))  
 % Tripped at about 2190, so could only compute ECG to 2190
 % Truncate the number of frames
-frame_voltage = squeeze(frame_voltage(1:31,:,:));  % CP, electrode, frame
-[tt,L,Slides] = size(frame_voltage);
-fprintf("The voltage is %d by %d by %d\n", tt, L, Slides)
+try % Try ACT5 loading
+    frame_voltage = squeeze(frame_voltage(1:31,:,:));  % CP, electrode, frame
+catch % GE loading. Must multiply by Vscale/Iscale
+    frame_voltage = eval(squeeze(filename(1:end-4)));
+    Vscale        = eval(sprintf('%s_VScale', filename(1:end-4)));
+    Vscale        = mean(Vscale(1:32));
+    frame_voltage = frame_voltage .* Vscale;
+    frame_voltage = reshape(frame_voltage, [size(frame_voltage,1),32,31]);
+    frame_voltage = permute(frame_voltage, [3,2,1]);
+
+    cur_pattern = eval(sprintf('%s_Pattern', filename(1:end-4)));
+    Iscale      = eval(sprintf('%s_IScale',  filename(1:end-4)));
+    cur_pattern = cur_pattern .* mean(Iscale(1:32));
+    cur_pattern = cur_pattern'/1000; % Scale it for the later scaling back
+    current_amp = max(real(cur_pattern),[],'all');
+end
+[K,L,Slides] = size(frame_voltage);
+try
+    minutes = floor(Slides / system_frame_rate / 60);
+    seconds = floor((Slides/system_frame_rate/60 - minutes)*60);
+catch
+    system_frame_rate = eval(sprintf('%s_FPS', filename(1:end-4)));
+    minutes = floor(Slides / system_frame_rate / 60);
+    seconds = floor((Slides/system_frame_rate/60 - minutes)*60);
+end
+    
+fprintf("The voltage is %d by %d by %d\n", K, L, Slides)
+fprintf("   That is %d minutes and %d seconds\n", minutes, seconds)
 
 % figure
 % plot(real(squeeze(frame_voltage(1,1,:))))
@@ -84,7 +109,7 @@ Lambda = inv(R);                % Lambda is the DN map, size L-1 x L-1
 % figure
 % mesh(real(R))
 % figure
-% plot them
+% % plot them
 % for ii = 1:31
 %     plot(J(:,ii));
 %     title('Normalized CPs')
@@ -107,4 +132,4 @@ end
 figure
     power_wavef = squeeze(power_wavef_mx(1,1,:));
     plot(power_wavef)
-    title('Power Waveform First data set')
+    title(sprintf("Power Waveform of %s", filename), 'Interpreter', 'none')

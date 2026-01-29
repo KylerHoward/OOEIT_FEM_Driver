@@ -39,12 +39,26 @@ function E_connect = Align_Electrode_Faces(G_nodes, surface_faces, E_nodes, flag
         
         % Plot the individual electrode if plotting electrodes
         if flags.plot_electrodes == 1
-            scatter3(E_nodes{l}(:,1), E_nodes{l}(:,2), E_nodes{l}(:,3),'r', 'filled')
-            trimesh(filteredRows, G_nodes(:,1),G_nodes(:,2),G_nodes(:,3), 'FaceColor', [0.6,0,0], 'EdgeColor', [0.6,0,0])
+            % Find center and normals for each electrode & plot them
+            [centers, normals] = Find_Plot_Normals(E_connect{l}, G_nodes);
+            
+            % Check if the normals are pointing inward (>0), or outward (<0)
+            if dot(mean(normals), mean(G_nodes) - mean(centers)) < 0
+                scatter_color = [1,  0,0];
+                mesh_color    = [0.6,0,0];
+            else
+                scatter_color = [0,1,  0];
+                mesh_color    = [0,0.6,0];
+            end
+            
+            scatter3(E_nodes{l}(:,1), E_nodes{l}(:,2), E_nodes{l}(:,3), 'MarkerEdgeColor', scatter_color, 'MarkerFaceColor', scatter_color)
+            trimesh(filteredRows, G_nodes(:,1),G_nodes(:,2),G_nodes(:,3), 'FaceColor', mesh_color, 'EdgeColor', mesh_color)
+            % quiver3(centers(:,1),centers(:,2),centers(:,3), normals(:,1),normals(:,2),normals(:,3), 2, 'color',scatter_color);
             xlabel("X (mm)");
             ylabel("Y (mm)");
             zlabel("Z (mm)");
             axis equal
+            title("Red faces are outward normals")
         end
     end
 end
