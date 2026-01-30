@@ -8,44 +8,10 @@ Current Version: 01/30/26 - Kyler Howard
 %}
 
 close all
-clearvars -except msh_path old_path
+clearvars -except msh_path old_msh_path save_path old_save_path
 clc
 pause('on')
 start_time = tic;
-
-% Add paths in a way that works for macs as well
-addpath(fullfile("Modified_OOEIT", "ForwardProblemSolvers"))
-addpath(fullfile("Modified_OOEIT", "MiscClasses"))
-addpath(fullfile("Utility_Functions"))
-
-% Select the mesh you wish to run
-if exist("msh_path", "var") && ischar(msh_path)
-    % Use the previous mesh path
-    old_path = msh_path;
-    [msh_name, msh_path] = uigetfile(msh_path, "Select Mesh File");
-elseif exist("msh_path", "var") && exist("old_path", "var")
-    % User hit cancel. Use mesh path from two attempts ago
-    [msh_name, msh_path] = uigetfile(old_path, "Select Mesh File");
-else
-    % First time running this
-    [msh_name, msh_path] = uigetfile("Select Mesh File");
-end
-
-% Some user validation
-if ischar(msh_path) == 0
-    error("Did not select a valid path")
-end
-if contains(msh_name, ".mat") == 0
-    error("Did not select a .mat file")
-end
-if contains(lower(msh_name), "mesh") == 0
-    error("Did not select a valid mesh file")
-end
-
-% Extracting the subject name
-parts    = split(msh_name, '_');
-sbj_name = parts{1};
-fprintf("Running %s\n", sbj_name)
 
 % ----------------------------------------------------------------------- %
 %%                                Settings                                %
@@ -54,22 +20,45 @@ fprintf("Running %s\n", sbj_name)
 flags.do_pauses       = 0; % Decide to include pauses to check things or not
 flags.solve_problem   = 1; % Decide if you want to setup (0), or fully solve (1)
 flags.use_GE          = 1; % Decide if you want to use GE (1) or ACT5 (0) current patterns/conductivities
-flags.do_parfor       = 0; % Decide if you want to paralize (1) or not (0)
+flags.do_parfor       = 1; % Decide if you want to paralize (1) or not (0)
 flags.inject_current  = 1; % Decide if you want to inject ANY current (1) or only measure voltages (0)
 flags.heart_BCs       = 0; % Decide if you want to include heart BCs (1) or not (0)
 flags.save_heart_mesh = 0; % Decide if you want to generate and save a heart mesh (1) or not (0)
 flags.do_beeps        = 0; % Decide if you want the code to beep after each simulation (1) or not (0)
 flags.verbose         = 1; % Decide if you want to print status updates along the way (1) or not (0)
 
+% Condition & permutation settings
+    % Conditions are a cell array, where each cell contains its own condition
+    % Condition is {max_inspiration, equal_vent, left_only, right_only, esoph_intubate, condition_name}
+flags.conditions   = {{0.625, 1, 0, 0, 0, "Max_Insp"};...       Max Baby Inspiration
+                      {0.375, 1, 0, 0, 0, "Min_Insp"};...       Max Baby Expiration
+                      {0.500, 1, 0, 0, 0, "Mean_Insp"};...      Mean Inspiration
+                    % {1.500, 1, 0, 0, 0, "Deep_Insp"},...      Deep Inspiration
+                      {0.500, 0, 0, 1, 0, "Left_Intubate"};...  Left Bronchus Intubation
+                      {0.500, 0, 1, 0, 0, "Right_Intubate"};... Right Bronchus Intubation
+                      {0.000, 1, 0, 0, 1, "Esoph_Intubate"}}; % Esophageal Intubation
+    % Permutations are a cell array, where each cell contains its own permutation settings
+    % Perumutation is {num_perm, lung_range, esoph_range}
+flags.permutations = {{2,  0.025, 0.000};... Max Baby Inspiration
+                      {2,  0.025, 0.000};... Max Baby Expiration
+                      {10, 0.125, 0.000};... Mean Inspiration
+                    % {2,  0.100, 0.000};... Deep Inspiration
+                      {5,  0.125, 0.000};... Left Bronchus Intubation
+                      {5,  0.125, 0.000};... Right Bronchus Intubation
+                      {5,  0.000, 0.125}}; % Esophageal Intubation
+
 % Conductivity Settings
-flags.set_complex     = 1; % Choice of complex (1) or real (0) conductivities
-flags.const_body      = 0; % Decide if you want a solid/constant body (1) or not (0)
-flags.esoph_intubate  = 0; % Decide if the esophagus is intubated (1) or not (0)
-flags.max_inspiration = 0.5; % Decide if the lungs should be at inspiration (1), expiration (0), or somewhere in-between
-flags.equal_vent      = 1; % Decide if you want equal ventilation (1) or split (0)
-flags.left_only       = 0; % Decide if you want only ventilation on the left side (1) or not (0)
-flags.right_only      = 0; % Decide if you want only ventilation on the right side (1) or not (0)
-flags.permute_conds   = 0; % Decide if you want random conds (1) or not (0)
+flags.set_complex       = 0; % Choice of complex (1) or real (0) conductivities
+flags.const_body        = 0; % Decide if you want a solid/constant body (1) or not (0)
+flags.do_conditions     = 1; % Decide if you want to run multiple conditions (1), or just the programed condition below (0)
+flags.max_inspiration   = 0.5; % Decide if the lungs should be at inspiration (1), expiration (0), or somewhere in-between
+flags.lung_range        = 0.25; % Decide what percentage of inspiration range you are okay with. Default is 0.25/25%
+flags.esoph_range       = 0.125; % Decide what percentage of inspiration range for the lungs for esoph intubation
+flags.equal_vent        = 1; % Decide if you want equal ventilation (1) or split (0)
+flags.left_only         = 0; % Decide if you want only ventilation on the left side (1) or not (0)
+flags.right_only        = 0; % Decide if you want only ventilation on the right side (1) or not (0)
+flags.esoph_intubate    = 0; % Decide if the esophagus is intubated (1) or not (0)
+flags.permute_conds     = 1; % Decide if you want random conds (1) or not (0)
 
 % Plot settings
 flags.plot_slices     = 0; % Plot individual slices when going slice by slice
@@ -111,22 +100,125 @@ noise = [0, 0, 0, 0];       % Noise and error parameters
     % e_systematic_rel = err(3);
     % e_systematic_abs = err(4);
 
+% ----------------------------------------------------------------------- %
+%%                         Select The Mesh To Run                         %
+% ----------------------------------------------------------------------- %
+
+% Select the mesh you wish to run
+if exist("msh_path", "var") && ischar(msh_path)
+    % Use the previous mesh path
+    old_msh_path = msh_path;
+    [msh_name, msh_path] = uigetfile(msh_path, "Select Mesh File");
+elseif exist("msh_path", "var") && exist("old_path", "var")
+    % User hit cancel. Use mesh path from two attempts ago
+    [msh_name, msh_path] = uigetfile(old_msh_path, "Select Mesh File");
+else
+    % First time running this
+    [msh_name, msh_path] = uigetfile("Select Mesh File");
+end
+
+% Some user validation
+if ischar(msh_path) == 0
+    error("Did not select a valid mesh path")
+end
+if contains(msh_name, ".mat") == 0
+    error("Did not select a .mat file")
+end
+if contains(lower(msh_name), "mesh") == 0
+    error("Did not select a valid mesh file")
+end
+
+% Extracting the subject name
+parts    = split(msh_name, '_');
+sbj_name = parts{1};
+
+% Updating setting based on the mesh
 if contains(msh_name, 'NoBones')
     flags.are_bones = 0; % There are no bones
 else
     flags.are_bones = 1; % There are bones
 end
 
+% ----------------------------------------------------------------------- %
+%%                            Select Save Path                            %
+% ----------------------------------------------------------------------- %
+
+% Select the parent folder to save the file in
+if exist("save_path", "var") && ischar(save_path)
+    % Use the previous mesh path
+    old_save_path = save_path;
+    [save_path] = uigetdir(save_path, "Select Parent Folder to Save Files In");
+elseif exist("save_path", "var") && exist("old_save_path", "var")
+    % User hit cancel. Use mesh path from two attempts ago
+    [save_path] = uigetdir(old_save_path, "Select Parent Folder to Save Files In");
+else
+    % First time running this
+    [save_path] = uigetdir(msh_path, "Select Parent Folder to Save Files In");
+end
+
+% Some user validation
+if ischar(save_path) == 0
+    error("Did not select a valid save path")
+end
+
+% Check if the user isn't just saving to the results folder
+if contains(save_path, fullfile("OOEIT_FEM_Driver","Results")) ~= 1
+    % Create the subject specific save path if the user didn't select it
+    if contains(save_path, sbj_name) == 0
+        sbj_save_path = fullfile(save_path, sbj_name);
+        if isfolder(sbj_save_path) == 0
+            mkdir(sbj_save_path)
+        end
+    else
+        sbj_save_path = save_path;
+    end
+    
+    % Create the nested folders to save into
+    electrode_save_path = fullfile(sbj_save_path, flags.E_type);
+    if isfolder(electrode_save_path) == 0
+        mkdir(electrode_save_path)
+    end
+    cond_save_path = fullfile(electrode_save_path, "conductivities");
+    if isfolder(cond_save_path) == 0
+        mkdir(cond_save_path)
+    end
+    volt_save_path = fullfile(electrode_save_path, "voltages");
+    if isfolder(volt_save_path) == 0
+        mkdir(volt_save_path)
+    end
+    % Loop through each condition
+    for i = 1:numel(flags.conditions)
+        condition_cond_save_path = fullfile(cond_save_path, flags.conditions{i}{6});
+        if isfolder(condition_cond_save_path) == 0
+            mkdir(condition_cond_save_path)
+        end
+        condition_volt_save_path = fullfile(volt_save_path, flags.conditions{i}{6});
+        if isfolder(condition_volt_save_path) == 0
+            mkdir(condition_volt_save_path)
+        end
+    end
+else
+    sbj_save_path = save_path;
+end
+
+% ----------------------------------------------------------------------- %
+%%                         Running FEM3D Function                         %
+% ----------------------------------------------------------------------- %
+
+
+% Add paths in a way that works for macs as well
+addpath(fullfile("Modified_OOEIT", "ForwardProblemSolvers"))
+addpath(fullfile("Modified_OOEIT", "MiscClasses"))
+addpath(fullfile("Utility_Functions"))
+
 if isempty(gcp('nocreate')) && flags.solve_problem == 1 && flags.do_parfor == 1
     % Open a parallel pool
     parpool;
 end
 
-
-% ----------------------------------------------------------------------- %
-%%                         Running FEM3D Function                         %
-% ----------------------------------------------------------------------- %
-FEM3D_Function(msh_path, msh_name, sbj_name, flags, noise)
+% RUN THE 3D FEM 
+fprintf("Running %s\n", sbj_name)
+FEM3D_Function(msh_path, msh_name, sbj_name, sbj_save_path, flags, noise)
 
 stop_time = toc(start_time);
 fprintf("\n   It took %.2f hours to solve the forward problem\n", stop_time / 3600)

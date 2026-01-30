@@ -1,4 +1,4 @@
-function FEM3D_Function(filepath, filename, sbj_name, flags, noise)
+function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, noise)
     %{
     Run a 3D FEM simulation on the subject selected with the given settings
     The driver expects the subject to have the origin at the bottom, posterior,
@@ -345,114 +345,152 @@ function FEM3D_Function(filepath, filename, sbj_name, flags, noise)
 % ----------------------------------------------------------------------- %
 %%                         Assign Conductivities                          %
 % ----------------------------------------------------------------------- %
-    for i = 1
-
-        if flags.verbose == 1
-            fprintf("   Assigning Conductivities\n")
+    if flags.do_conditions == 1
+        num_conditions = numel(flags.conditions);
+    else
+        num_conditions = 1;
+        condition_name = "Custom";
+    end
+    for i_condition = 1:num_conditions
+        if flags.do_conditions == 1
+            % Save the condition settings
+            condition = flags.conditions{i_condition};
+            flags.max_inspiration = condition{1};
+            flags.equal_vent      = condition{2};
+            flags.left_only       = condition{3};
+            flags.right_only      = condition{4};
+            flags.esoph_intubate  = condition{5};
+            condition_name        = condition{6};
         end
-    
-        % Creating the conductivity vector at the nodes (IN SIEMENS PER METER)
-        sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, flags);
-    
-% ----------------------------------------------------------------------- %
-%%                       Create Ground Truth Images                       %
-% ----------------------------------------------------------------------- %
-        % Plot the ground truth images at each row
-        GT_Thickness = 5; %mm
-        sigma_GT = Create_GT_Images(GT_Thickness, nodes, E_nodes, sigma, flags);
-    
-% ----------------------------------------------------------------------- %
-%%                                 Solve                                  %
-% ----------------------------------------------------------------------- %
-    % DELETE ME: TESTING CONTACT IMPEDANCES
-    % zeta = [0.041];
-    % for ii = 1:length(zeta)
-    %     solver.zeta = zeta(ii)*ones(L,1);
-    %     flags.zeta  = solver.zeta;    
-    
-        if flags.solve_problem == 1
-            fprintf("   Solving Forward Problem\n")
-        
-            % Set the current pattern (IN AMPS)
-            solver.Iel = cur_pat;
-        
-            % Solve the voltage
-            solve_start          = tic;
-            if flags.do_parfor == 1
-                [Umeas, Imeas, Uall] = MF_Simulation(fmesh, [], sigma, solver.zeta, solver, 'current', noise);
-            else
-                [Umeas, Imeas, Uall] = MF_Simulation2(fmesh, [], sigma, solver.zeta, solver, 'current', noise);
-            end
-            solve_time           = toc(solve_start);
+            
+        if flags.permute_conds == 1
+            % Save the permutation settings
+            permutation       = flags.permutations{i_condition};
+            num_permutations  = permutation{1};
+            flags.lung_range  = permutation{2};
+            flags.esoph_range = permutation{3};
+        else
+            num_permutations = 1;
+        end
+
+        for i_permutation = 1:num_permutations
+            
             if flags.verbose == 1
-                fprintf("      It took %.2f minutes to solve for voltages\n", solve_time/60)
+                fprintf("   Assigning Conductivities\n")
             end
         
-            Umeas = Umeas * 1e3; % Convert V to mV
-            Uall  = Uall  * 1e3; % Convert V to mV
-            Umeas = reshape(Umeas, L, K);
-    
-            if noise(1) == 0 || noise(2) == 0
-                Umeas_NoNoise = Umeas;
-                Uall_NoNoise  = Uall;
-            end
+            % Creating the conductivity vector at the nodes (IN SIEMENS PER METER)
+            sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, flags);
         
-            % Create the suffix for saving the file based on the settings chosen
-            save_suffix = Make_Save_Name(solver.zeta, flags);
-    
-            % Create metadata to include with the saving
-            volt_metadata = Make_Metadata("Volt");
-            cond_metadata = Make_Metadata("Cond");
+    % ----------------------------------------------------------------------- %
+    %%                       Create Ground Truth Images                       %
+    % ----------------------------------------------------------------------- %
+            % Plot the ground truth images at each row
+            GT_Thickness = 5; %mm
+            sigma_GT = Create_GT_Images(GT_Thickness, nodes, E_nodes, sigma, flags);
         
-            % Save the voltages and conductivties
-            volt_name = sprintf("%s_Volt%s.mat", sbj_name, save_suffix);
-            cond_name = sprintf("%s_Cond%s.mat", sbj_name, save_suffix);
-            if noise(1) == 0 || noise(2) == 0
-                save(fullfile("Results", volt_name), "Umeas_NoNoise", "Uall_NoNoise", "cur_pat", "perim_mm", "noise", "flags", "volt_metadata", "-v7.3")
-            else
-                save(fullfile("Results",volt_name), "Umeas", "Uall", "cur_pat", "perim_mm", "noise", "flags", "volt_metadata", "-v7.3")
-            end
-            save(fullfile("Results",cond_name), "sigma", "sigma_GT", "nodes", "E_connect", "flags", "cond_metadata", "-v7.3")
+    % ----------------------------------------------------------------------- %
+    %%                                 Solve                                  %
+    % ----------------------------------------------------------------------- %
+        % DELETE ME: TESTING CONTACT IMPEDANCES
+        % zeta = [0.041];
+        % for ii = 1:length(zeta)
+        %     solver.zeta = zeta(ii)*ones(L,1);
+        %     flags.zeta  = solver.zeta;    
         
-% ----------------------------------------------------------------------- %
-%%                                Plotting                                %
-% ----------------------------------------------------------------------- %
-            % Plot voltages
-            if flags.plot_volts > 0
-                figure()
-                ax1 = subplot(1,2,1);
-                    p1 = scatter3(nodes(:,1), nodes(:,2), nodes(:,3), 10, real(Uall(1:size(nodes,1),flags.plot_volts)), 'filled');
-                    title(sprintf("Voltage: CP %d", flags.plot_volts))
-                    xlabel("x (mm)")
-                    ylabel("y (mm)")
-                    zlabel("z (mm)")
-                    c = colorbar;
-                    c.Label.String = "mV";
-                    c.Location     = 'southoutside';
+            if flags.solve_problem == 1
+                fprintf("   Solving Forward Problem\n")
             
-                ax2 = subplot(1,2,2);
-                    scatter3(nodes(:,1), nodes(:,2), nodes(:,3), 10, imag(Uall(1:size(nodes,1),flags.plot_volts)))
-                    title(sprintf("Imaginary Voltage: CP %d", flags.plot_volts))
-                    xlabel("x (mm)")
-                    ylabel("y (mm)")
-                    zlabel("z (mm)")
-                    c = colorbar;
-                    c.Label.String = "mV";
-                    c.Location     = 'southoutside';
+                % Set the current pattern (IN AMPS)
+                solver.Iel = cur_pat;
             
-                % Add a slider for x-axis min limit
-                uicontrol('Style', 'slider', 'Min', min(nodes(:,1)), 'Max', max(nodes(:,1))-1, 'Value', 0, ...
-                          'Position', [210, 30, 150, 20], ...
-                          'Callback', @(src, event) update_xlim([ax1, ax2], src.Value, max(nodes(:,1))));
+                % Solve the voltage
+                solve_start          = tic;
+                if flags.do_parfor == 1
+                    [Umeas, Imeas, Uall] = MF_Simulation(fmesh, [], sigma, solver.zeta, solver, 'current', noise);
+                else
+                    [Umeas, Imeas, Uall] = MF_Simulation2(fmesh, [], sigma, solver.zeta, solver, 'current', noise);
+                end
+                solve_time           = toc(solve_start);
+                if flags.verbose == 1
+                    fprintf("      It took %.2f minutes to solve for voltages\n", solve_time/60)
+                end
+            
+                Umeas = Umeas * 1e3; % Convert V to mV
+                Uall  = Uall  * 1e3; % Convert V to mV
+                Umeas = reshape(Umeas, L, K);
         
-                % Add a slider for y-axis min limit
-                uicontrol('Style', 'slider', 'Min', min(nodes(:,2)), 'Max', max(nodes(:,2))-1, 'Value', 0, ...
-                          'Position', [210, 10, 150, 20], ...
-                          'Callback', @(src, event) update_ylim([ax1, ax2], src.Value, max(nodes(:,1))));
+                if noise(1) == 0 || noise(2) == 0
+                    Umeas_NoNoise = Umeas;
+                    Uall_NoNoise  = Uall;
+                end
             
-                if flags.do_pauses == 1
-                    fprintf("      Press any key if correct\n")
-                    pause
+                % Create the suffix for saving the file based on the settings chosen
+                save_suffix = Make_Save_Name(condition_name, i_permutation, solver.zeta, flags);
+        
+                % Create metadata to include with the saving
+                volt_metadata = Make_Metadata("Volt");
+                cond_metadata = Make_Metadata("Cond");
+            
+                % Check if the user isn't just saving to the results folder
+                if contains(sbj_save_path, fullfile("OOEIT_FEM_Driver","Results")) ~= 1
+                    cond_save_path = fullfile(sbj_save_path, flags.E_type, "conductivities", condition_name);
+                    volt_save_path = fullfile(sbj_save_path, flags.E_type, "voltages",        condition_name);
+                else
+                    cond_save_path = sbj_save_path;
+                    volt_save_path = sbj_save_path;
+                end
+
+                % Save the voltages and conductivties
+                volt_name = sprintf("%s-Volt%s.mat", sbj_name, save_suffix);
+                cond_name = sprintf("%s-Cond%s.mat", sbj_name, save_suffix);
+                if noise(1) == 0 || noise(2) == 0
+                    save(fullfile(volt_save_path, volt_name), "Umeas_NoNoise", "Uall_NoNoise", "cur_pat", "perim_mm", "noise", "flags", "volt_metadata", "-v7.3")
+                else
+                    save(fullfile(volt_save_path,volt_name), "Umeas", "Uall", "cur_pat", "perim_mm", "noise", "flags", "volt_metadata", "-v7.3")
+                end
+                save(fullfile(cond_save_path,cond_name), "sigma", "sigma_GT", "nodes", "E_connect", "flags", "cond_metadata", "-v7.3")
+            
+    % ----------------------------------------------------------------------- %
+    %%                                Plotting                                %
+    % ----------------------------------------------------------------------- %
+                % Plot voltages
+                if flags.plot_volts > 0
+                    figure()
+                    ax1 = subplot(1,2,1);
+                        p1 = scatter3(nodes(:,1), nodes(:,2), nodes(:,3), 10, real(Uall(1:size(nodes,1),flags.plot_volts)), 'filled');
+                        title(sprintf("Voltage: CP %d", flags.plot_volts))
+                        xlabel("x (mm)")
+                        ylabel("y (mm)")
+                        zlabel("z (mm)")
+                        c = colorbar;
+                        c.Label.String = "mV";
+                        c.Location     = 'southoutside';
+                
+                    ax2 = subplot(1,2,2);
+                        scatter3(nodes(:,1), nodes(:,2), nodes(:,3), 10, imag(Uall(1:size(nodes,1),flags.plot_volts)))
+                        title(sprintf("Imaginary Voltage: CP %d", flags.plot_volts))
+                        xlabel("x (mm)")
+                        ylabel("y (mm)")
+                        zlabel("z (mm)")
+                        c = colorbar;
+                        c.Label.String = "mV";
+                        c.Location     = 'southoutside';
+                
+                    % Add a slider for x-axis min limit
+                    uicontrol('Style', 'slider', 'Min', min(nodes(:,1)), 'Max', max(nodes(:,1))-1, 'Value', 0, ...
+                              'Position', [210, 30, 150, 20], ...
+                              'Callback', @(src, event) update_xlim([ax1, ax2], src.Value, max(nodes(:,1))));
+            
+                    % Add a slider for y-axis min limit
+                    uicontrol('Style', 'slider', 'Min', min(nodes(:,2)), 'Max', max(nodes(:,2))-1, 'Value', 0, ...
+                              'Position', [210, 10, 150, 20], ...
+                              'Callback', @(src, event) update_ylim([ax1, ax2], src.Value, max(nodes(:,1))));
+                
+                    if flags.do_pauses == 1
+                        fprintf("      Press any key if correct\n")
+                        pause
+                    end
                 end
             end
         end

@@ -45,13 +45,19 @@ function metadata = Make_Metadata(type)
     metadata.descriptions.flags.do_beeps        = "Decide if you want the code to beep after each simulation (1) or not (0).";
     metadata.descriptions.flags.verbose         = "Decide if you want to print status updates along the way (1) or not (0).";
 
+    metadata.descriptions.flags.conditions      = "Cell array, where each cell contains its own condition in the order of {max_inspiration, equal_vent, left_only, right_only, esoph_intubate, condition_name}.";
+    metadata.descriptions.flags.permutations    = "Cell array, where each cell contains its own permutation settings in the order of {num_perm, lung_range, esoph_range}.";
+    
     metadata.descriptions.flags.set_complex     = "Choice of complex (1) or real (0) conductivities. Default is 1.";
     metadata.descriptions.flags.const_body      = "Decide if you want a solid/constant body (1) or not (0). Default is 0.";
-    metadata.descriptions.flags.esoph_intubate  = "Decide if the esophagus is intubated (1) or not (0).";
+    metadata.descriptions.flags.do_conditions   = "Decide if you want to run multiple conditions (1), or just the programed condition below (0).";
     metadata.descriptions.flags.max_inspiration = "Decide if the lungs should be at inspiration (1), expiration (0), or somewhere in-between. Default is 0.5.";
+    metadata.descriptions.flags.lung_range      = "Decide what percentage of inspiration range you are okay with. Default is 0.25/25.";
+    metadata.descriptions.flags.esoph_range     = "Decide what percentage of inspiration range for the lungs for esoph intubation.";
     metadata.descriptions.flags.equal_vent      = "Decide if you want equal ventilation (1) or split (0).";
     metadata.descriptions.flags.left_only       = "Decide if you want only ventilation on the left side (1) or not (0).";
     metadata.descriptions.flags.right_only      = "Decide if you want only ventilation on the right side (1) or not (0).";
+    metadata.descriptions.flags.esoph_intubate  = "Decide if the esophagus is intubated (1) or not (0).";
     metadata.descriptions.flags.permute_conds   = "Decide if you want random conds (1) or not (0).";
 
     metadata.descriptions.flags.plot_slices     = "Plot individual slices when going slice by slice.";
@@ -95,7 +101,7 @@ function metadata = Make_Metadata(type)
     metadata.computer_info.MATLAB_version = version;
 
     % Random metadata information
-    metadata.timestamp      = datetime('now', 'Format', 'm_dd_y HH:mm:ss');
+    metadata.timestamp = datetime('now', 'Format', 'm_dd_y HH:mm:ss');
     
     % Get the username depending on the operating system
     if ispc
