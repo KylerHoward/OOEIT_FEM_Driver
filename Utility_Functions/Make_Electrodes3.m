@@ -5,11 +5,13 @@ function [E_nodes, perim_mm_high] = Make_Electrodes3(boundary_nodes, all_nodes, 
     1/29/25 - Kyler Howard
 
     param: boundary_nodes - All nodes on the boundary of the surface
+    param: all_nodes      - All nodes in the entire body
+    param: body_faces     - Triangular faces that make up the surface of the body
     param: sbj_info       - Heights of anatomical markers for electrode placement
     param: flags          - Various flags controlling plotting and other parameters
 
-    return: E_nodes   - 1x32 Cell array containing electrode nodes
-    return: perim_mm  - Double of the perimeter around the body in mm
+    return: E_nodes       - 1x32 Cell array containing electrode nodes
+    return: perim_mm_high - The perimeter around the body in mm
     %}
 
 % ----------------------------------------------------------------------- %
@@ -85,28 +87,11 @@ function [E_nodes, perim_mm_high] = Make_Electrodes3(boundary_nodes, all_nodes, 
 % ----------------------------------------------------------------------- %
     % Find the plane in which the center lies
     if E.type == "patch"
-        % try
-        %     plane_gap = E.E_rad;
-        % catch
-        %     plane_gap = E.E_height / 2;
-        % end
-        % 
-        % z_check = (boundary_nodes(:,3) > sbj_info.carina - plane_gap) & (boundary_nodes(:,3) < sbj_info.carina + plane_gap);
-        % plane_high = boundary_nodes(z_check,:);
-        % 
-        % % Find the nodes that are the center of the front/back of the body
-        % x_mid = (min(plane_high(:,1)) + max(plane_high(:,1))) / 2;
-        % y_min = min(plane_high(:,2));
-        % y_max = max(plane_high(:,2));
-        % front = plane_high(dsearchn(plane_high, [x_mid, y_max, sbj_info.carina]),:);
-        % back  = plane_high(dsearchn(plane_high, [x_mid, y_min, sbj_info.carina]),:);
-        % % front = find_node(plane, x_mid, y_min, sbj_info.carina);
-        % % back  = find_node(plane, x_mid, y_max, sbj_info.carina);
         [front, plane_high] = find_center(boundary_nodes, sbj_info.carina, E, "front");
         [back,  ~]          = find_center(boundary_nodes, sbj_info.carina, E, "back");
 
-        % KH: 1/14/26 front/back were the center of the third row. Adjusting
-        % so carina is the center of the third row
+        % KH: 1/14/26 front/back were the center of the second row. 
+        % Adjusting so carina is the center of the third row from now on.
         if E.shape == "circle"
             front(3) = front(3) - E.E_dia - E.gap_height;
             back(3)  = back(3)  - E.E_dia - E.gap_height;
@@ -116,23 +101,9 @@ function [E_nodes, perim_mm_high] = Make_Electrodes3(boundary_nodes, all_nodes, 
         end
 
     elseif E.type == "belt"
-        % if E.shape == "circle"
-        %     plane_gap = E.E_rad;
-        % elseif E.shape == "rectangle"
-        %     plane_gap = E.E_height;
-        % end
-        % 
-        % z_check_high = (boundary_nodes(:,3) > sbj_info.T5 - plane_gap) & (boundary_nodes(:,3) < sbj_info.T5 + plane_gap);
-        % plane_high   = boundary_nodes(z_check_high,:);
-        % 
-        % % height_low  = sbj_info.carina - E.E_dia - E.gap;
-        % z_check_low = (boundary_nodes(:,3) > sbj_info.T8 - plane_gap) & (boundary_nodes(:,3) < sbj_info.T8 + plane_gap);
-        % plane_low   = boundary_nodes(z_check_low,:);
         [~, plane_high] = find_center(boundary_nodes, sbj_info.T5, E);
         [~, plane_low]  = find_center(boundary_nodes, sbj_info.T8, E);
     end
-
-    
 
 % ----------------------------------------------------------------------- %
 %% ------------------------- Finding Perimeter -------------------------- %
@@ -141,7 +112,6 @@ function [E_nodes, perim_mm_high] = Make_Electrodes3(boundary_nodes, all_nodes, 
     if E.type == "belt"
         center_low = (max(plane_low,[],1) + min(plane_low,[],1)) / 2;
     end
-
 
     i = 1;
     point_low     = zeros(200, 3);
@@ -203,7 +173,7 @@ function [E_nodes, perim_mm_high] = Make_Electrodes3(boundary_nodes, all_nodes, 
 % ----------------------------------------------------------------------- %
     if E.type == "patch"
         % Adjust boundary nodes to not include the top/bottom plane. Remove top/bot 0.5 mm
-        tube_nodes       = boundary_nodes(boundary_nodes(:,3)>0.5 & boundary_nodes(:,3)<max(boundary_nodes(:,3))-0.5, :);
+        tube_nodes = boundary_nodes(boundary_nodes(:,3)>0.5 & boundary_nodes(:,3)<max(boundary_nodes(:,3))-0.5, :);
         
         % Only look at the nodes near the patch. Don't waste time looking at nodes near the armpits
         front_tube_nodes   = tube_nodes(tube_nodes(:,2) > mean(tube_nodes(:,2)),:);
@@ -223,8 +193,9 @@ function [E_nodes, perim_mm_high] = Make_Electrodes3(boundary_nodes, all_nodes, 
     end
 
     % Reorder electrode placement if using the 4x8 pattern
-    if flags.CP_choice == 2
+    if flags.CP_choice == 2 && E.type == "patch"
         fprintf("   Placing 4x8 Electrode Arrays\n")
+        % 1/1/26 KH: GE updated the order for the patch array
         % new_ind = [13,14,15,16,32,31,30,29,9,10,11,12,28,27,26,25,5,6,7,8,24,23,22,21,1,2,3,4,20,19,18,17]; % KH 12/5/25 - GE Changed the 4x8 patch configuration
         new_ind = [31,32,16,15,14,13,29,30,27,28,12,11,10,9,25,26,23,24,8,7,6,5,21,22,19,20,4,3,2,1,17,18];
         E_nodes = E_nodes(new_ind);

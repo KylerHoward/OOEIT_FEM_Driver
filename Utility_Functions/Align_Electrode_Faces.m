@@ -1,6 +1,7 @@
 function E_connect = Align_Electrode_Faces(G_nodes, surface_faces, E_nodes, flags)
     %{
     Go through and find all faces on the original mesh that contain the electrode nodes
+    Plot the electrodes with their face normals
     10/4/24 - Kyler Howard
 
     param: G_nodes - All nodes in the global mesh

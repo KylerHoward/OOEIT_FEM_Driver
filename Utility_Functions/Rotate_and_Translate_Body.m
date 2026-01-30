@@ -48,7 +48,7 @@ function [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, organ_connects, ca
     [~, min_index]     = min(range(trachea_nodes));
     [~, max_index]     = max(range(trachea_nodes));
     % Check if the minimm range of the trachea is on the z axis -> laying down
-    % KH: 1/8/26. Swapping to a max index not being z instead. Hopefully this works?
+    % KH: 1/8/26. Swapping to a max index not being z instead
     if min_index == 3 || max_index ~= 3
         if flags.verbose == 1
             fprintf("   Sitting Body Upright\n")
@@ -71,7 +71,7 @@ function [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, organ_connects, ca
     [trachea_nodes, ~]  = Get_Tet_Nodes(nodes, organ_connects{trachea});
     % Check if the difference between the top of the trachea and the top of the body is less than 2 mm
     % Using the percentage of height doesn't work for short subjects
-    if abs(max(trachea_nodes(:,3)) - max(body_nodes(:,3))) > 2 % 0.02*abs(max(nodes(:,3)))
+    if abs(max(trachea_nodes(:,3)) - max(body_nodes(:,3))) > 2
         if flags.verbose == 1
             fprintf("   Rotating Body Rightside Up\n")
         end
