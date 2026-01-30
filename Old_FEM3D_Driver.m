@@ -1,4 +1,4 @@
-function FEM3D_Function(filepath, filename, sbj_name, flags, noise)
+function FEM3D_Function(filepath, filename, flags)
     %{
     Run a 3D FEM simulation on the subject selected with the given settings
     The driver expects the subject to have the origin at the bottom, posterior,
@@ -7,11 +7,9 @@ function FEM3D_Function(filepath, filename, sbj_name, flags, noise)
     Initial Version: 10/07/24 - Kyler Howard
     Current Version: 01/30/26 - Kyler Howard
     
-    param: filepath - Filepath to the GMSH mesh
-    param: filename - Filename of the GMSH mesh
-    param: sbj_name - Character array of the subject's name
+    param: filepath - filepath to the GMSH mesh
+    param: filename - filename of the GMSH mesh
     param: flags    - Settings to run the simulation
-    param: noise    - Noise and error vector
 
     load: tetmesh  - Mesh structure containing the nodes, connectivity, and labels
     load: cur_pat  - Current patterns for belt/patch electodes
@@ -21,7 +19,7 @@ function FEM3D_Function(filepath, filename, sbj_name, flags, noise)
     save: Uall          - Measured voltages on all nodes for each current pattern (with or without noise appended to the name)
     save: cur_pat       - Current pattern used to create the simulation
     save: perim_mm      - Perimeter of the subject in mm
-    save: noise         - Noise and error vector used to create the simulation
+    save: noise         - Noise and error vector
     save: sigma         - Conductivity on every node
     save: sigma_GT      - Ground truth conductivity matrix. One slice for each plane of electrodes
     save: nodes         - All nodes in space
@@ -31,22 +29,132 @@ function FEM3D_Function(filepath, filename, sbj_name, flags, noise)
     save: cond_metadata - All metadata related to cond saving. Includes units and variable descriptions
     %}
     
+    close all
+    clearvars -except msh_path
+    clc
+    pause('on')
+    start_time = tic;
+    
+    % Add paths in a way that works for macs as well
+    addpath(fullfile("Modified_OOEIT", "ForwardProblemSolvers"))
+    addpath(fullfile("Modified_OOEIT", "MiscClasses"))
+    addpath(fullfile("Utility_Functions"))
+    
+    % msh_path = "Meshes";
+    % msh_name = "R1053_Mesh_NoBones.mat"; % 4 months
+    % msh_name = "R1053_Mesh_NoBones_GMSH.mat"; % 4 months
+    % msh_name = "R1035_Mesh_Cylinder.mat"; % Adjust labels lines 103-112
+    % msh_name = "R1035_Mesh_NoBones.mat"; % 13 months
+    % msh_name = "R1035_Mesh_NoBones_Fine.mat"; % 13 months
+    % msh_name = "R1035_Mesh.mat"; % 13 months
+    % msh_name = "R1133_Mesh_NoBones.mat"; % 16 years, KYLER SIZED
+    % msh_name = "R1002_Mesh_NoBones.mat";
+    % msh_name = "R1043_Mesh_NoBones.mat";
+    % msh_name = "case101819_Mesh_Trimmed.mat";
+    % msh_name = "case101819_Mesh_Trimmed_NoBones.mat";
+    % msh_name = "case101819_Mesh_NoBones_Eroded_Rotated.mat";
+    % msh_name = "R1044_Mesh_NoBones_Eroded_GMSH10.mat";
     
     
+    if exist("msh_path", "var") && ischar(msh_path)
+        [msh_name, msh_path] = uigetfile( msh_path, "Select Mesh File");
+    else
+        [msh_name, msh_path] = uigetfile("Select Mesh File");
+    end
     
+    % Extracting the subject name
+    parts    = split(msh_name, '_');
+    sbj_name = parts{1};
+    fprintf("Running %s\n", sbj_name)
+    
+    % Load the mesh
+    tetmesh     = load(fullfile(msh_path,msh_name), "tetmesh").tetmesh;
+    
+    % ----------------------------------------------------------------------- %
+    %%                                Settings                                %
+    % ----------------------------------------------------------------------- %
+    % User settings
+    flags.do_pauses       = 0; % Decide to include pauses to check things or not
+    flags.solve_problem   = 1; % Decide if you want to setup (0), or fully solve (1)
+    flags.use_GE          = 1; % Decide if you want to use GE (1) or ACT5 (0) current patterns/conductivities
+    flags.do_parfor       = 0; % Decide if you want to paralize (1) or not (0)
+    flags.inject_current  = 1; % Decide if you want to inject ANY current (1) or only measure voltages (0)
+    flags.heart_BCs       = 0; % Decide if you want to include heart BCs (1) or not (0)
+    flags.save_heart_mesh = 0; % Decide if you want to generate and save a heart mesh (1) or not (0)
+    flags.do_beeps        = 0; % Decide if you want the code to beep after each simulation (1) or not (0)
+    flags.verbose         = 1; % Decide if you want to print status updates along the way (1) or not (0)
+    
+    % Conductivity Settings
+    flags.set_complex     = 1; % Choice of complex (1) or real (0) conductivities
+    flags.const_body      = 0; % Decide if you want a solid/constant body (1) or not (0)
+    flags.esoph_intubate  = 0; % Decide if the esophagus is intubated (1) or not (0)
+    flags.max_inspiration = 0.5; % Decide if the lungs should be at inspiration (1), expiration (0), or somewhere in-between
+    flags.equal_vent      = 1; % Decide if you want equal ventilation (1) or split (0)
+    flags.left_only       = 0; % Decide if you want only ventilation on the left side (1) or not (0)
+    flags.right_only      = 0; % Decide if you want only ventilation on the right side (1) or not (0)
+    flags.permute_conds   = 0; % Decide if you want random conds (1) or not (0)
+    
+    % Plot settings
+    flags.plot_slices     = 0; % Plot individual slices when going slice by slice
+    flags.plot_trachea    = 1; % Plotting of carina height & trachea orientation
+    flags.plot_electrodes = 1; % Plotting of electrode consturction
+    flags.plot_conds      = 0; % Plotting of conductivities
+    flags.plot_GTs        = 1; % Plot ground truth images
+    flags.plot_internal   = 0; % Plotting of internal nodes
+    flags.plot_volts      = 1; % Plotting of nodal voltages
+    flags.fixed_range     = 1; % Set GT plots to be a standard range
+    
+    flags.CP_choice       = 1; % Choice of current pattern for patches
+        % 1: Standard pattern
+        % 2: 4x8 pattern
+    flags.E_choice        = 4; % Choice of Electrode configuration
+        % 1: Large patch front back  (GE Patch)
+        % 2: Small patch front back  (GE Patch)
+        % 3: Two rows of large belts (GE Belt)
+        % 4: Two rows of small belts (GE Belt)
+        % 5: Custom electrodes
+    
+    % Custom Electrode Settings
+    flags.E_type          = "belt";   % Choice between "patch" and "belt"
+    flags.E_shape         = "circle"; % Choice between "circle" and "rectangle"
+    flags.E_dia           = 30;  % Diameter of electrode in mm (for circle)
+    flags.E_width         = 22;  % Width  of electrode in mm (for rectangle)
+    flags.E_height        = 29;  % Height of electrode in mm (for rectangle)
+    flags.gap_width       = 46.675; % Gap between electrodes horizontally in mm (edge-edge) (for patch) %2.5 / 46.675
+    flags.gap_height      = 32.875; % Gap between electrodes vertically in mm (edge-edge) (for patch) %2.5 / 32.3875
+    flags.E_count         = [16];  % Number of electrodes per row (for belt), or matrix of how many rows and columns (for patch)
+    
+    % Save the correct electrode settings, not the custom ones when using the
+    % standard settings
+    flags = Construct_Electrode_Settings(flags);
+    
+    noise = [0, 0, 0, 0];       % Noise and error parameters
+        % noise_rel = err(1);
+        % noise_abs = err(2);
+        % e_systematic_rel = err(3);
+        % e_systematic_abs = err(4);
+    
+    if contains(msh_name, 'NoBones')
+        flags.are_bones = 0; % There are no bones
+    else
+        flags.are_bones = 1; % There are bones
+    end
+    
+    if isempty(gcp('nocreate')) && flags.solve_problem == 1 && flags.do_parfor == 1
+        % Open a parallel pool
+        parpool;
+    end
 % ----------------------------------------------------------------------- %
 %%                                 Setup                                  %
 % ----------------------------------------------------------------------- %
     if flags.verbose == 1
         fprintf("   Defining Variables\n")
     end
-
-    % Load the mesh & split the structure
-    tetmesh      = load(fullfile(filepath,filename), "tetmesh").tetmesh;
+    % Splitting the mesh structure
     connectivity = double(tetmesh.cell'); % indices of nodes making up an element
     nodes        = double(tetmesh.node'); % xyz coordinates in mm
     labels       = tetmesh.field';        % material id for each element
-    clear tetmesh
+    % clear tetmesh parts
     
     % Setting the Injection Current Pattern
     if flags.inject_current == 1
@@ -105,12 +213,16 @@ function FEM3D_Function(filepath, filename, sbj_name, flags, noise)
     % Load the table
     if contains(sbj_name, "R1")
         sbj_sheet = readtable("CT Data Boundaries.xlsx", "Sheet","Lungmap Set");
+        % flags.lungmap_set = 1;
     elseif contains(sbj_name, "case1")
         sbj_sheet = readtable("CT Data Boundaries.xlsx", "Sheet","New Mexico Baby Set");
+        % flags.lungmap_set = 0;
     elseif contains(sbj_name, "EIT1")
         sbj_sheet = readtable("CT Data Boundaries.xlsx", "Sheet","Anschutz Set");
+        % flags.lungmap_set = 0;
     elseif contains(sbj_name, "MCR0")
         sbj_sheet = readtable("CT Data Boundaries.xlsx", "Sheet","MCR Set");
+        % flags.lungmap_set = 0;
     else
         error("No excel file for subject %s\n", sbj_name)
     end
@@ -140,6 +252,13 @@ function FEM3D_Function(filepath, filename, sbj_name, flags, noise)
         external    = 7;
     end
     
+    % DELETE ME!!! - Manually erasing spinal cords for those who have it while
+    % testing
+    if size(unique(labels),1) > external
+        labels(labels == external - 1) = soft_tissue - 1;
+        labels(labels == external)     = external - 1;
+    end
+    
     % Create a cell array with each individual organ mesh
     organ_connects = cell(length(unique(labels)),1);
     i = 1;
@@ -164,7 +283,6 @@ function FEM3D_Function(filepath, filename, sbj_name, flags, noise)
     if flags.verbose == 1
         fprintf("   Extracting Trachea and Surface Nodes\n")
     end
-
     % Extract desired faces & find their intersection
     body_faces      = Get_Unique_Faces(organ_connects{soft_tissue});
     lung_faces      = Get_Unique_Faces(organ_connects{lung});
@@ -221,8 +339,8 @@ function FEM3D_Function(filepath, filename, sbj_name, flags, noise)
     if flags.verbose == 1
         fprintf("   Making Electrodes\n")
     end
-
     tic
+    % carina_height = ((max(boundary_nodes(:,3)) + min(boundary_nodes(:,3)))/2) + 15/2 + 5/2; % DELETE ME!!!! FOR CYLINDER ONLY
     [E_nodes, perim_mm] = Make_Electrodes3(boundary_nodes, nodes, body_faces, sbj_info, flags);
     if iscell(E_nodes) == 0
         E_nodes = {E_nodes};
@@ -240,14 +358,61 @@ function FEM3D_Function(filepath, filename, sbj_name, flags, noise)
         fprintf("      The perimeter is %.2f mm\n", perim_mm)
     end
     
-    % Look at the electrodes and plot their number of faces & areas per electrode
-    Compare_Electrodes(L, nodes, E_connect, flags)
+    num_E_faces = zeros(1,L);
+    E_areas     = zeros(1,L);
+    for i = 1:length(E_connect)
+        num_E_faces(i) = size(E_connect{i},1);
+        
+        for j = 1:num_E_faces(i)
+            face_nodes = E_connect{i}(j,:);
+            point1 = nodes(face_nodes(1),:);
+            point2 = nodes(face_nodes(2),:);
+            point3 = nodes(face_nodes(3),:);
     
+            E_areas(i) = E_areas(i) + norm(cross(point3-point1, point3-point2)) / 2;
+        end
+    end
+    clear i j
+    
+    if flags.E_choice < 3 || (flags.E_choice == 5 && flags.E_type == "patch")
+        front = 1:16;
+        back  = 17:32;
+    else
+        front = [5:12, 21:28];
+        back  = [1:4,13:20,29:32];
+    end
+    
+    if flags.plot_electrodes == 1
+        figure()
+            subplot(1,2,1)
+                hold on
+                bar(front,num_E_faces(front),'EdgeColor',"#0072BD",'FaceColor',"#0072BD")
+                bar(back,num_E_faces(back),  'EdgeColor',"#4DBEEE",'FaceColor',"#4DBEEE")
+                plot(1:L, mean(num_E_faces)*ones(1,L),'r')
+                xlabel("Electrode")
+                title("Number of Faces")
+                title(sprintf("Number of Faces\nMean: %.0f, STD: %.0f", mean(num_E_faces), std(num_E_faces)))
+                legend("Front", "Back")
+            subplot(1,2,2)
+                hold on
+                bar(front,E_areas(front),'EdgeColor',"#0072BD",'FaceColor',"#0072BD")
+                bar(back,E_areas(back),  'EdgeColor',"#4DBEEE",'FaceColor',"#4DBEEE")
+                plot(1:L, mean(E_areas)*ones(1,L),'r')
+                xlabel("Electrode")
+                title(sprintf("Electrode Area (mm²)\nMean: %.2f, STD: %.2f", mean(E_areas), std(E_areas)))
+                legend("Front", "Back")
+    end
+    
+    carina_plane = find(boundary_nodes(:,3) < sbj_info.carina + 1.25 & boundary_nodes(:,3) > sbj_info.carina - 1.25);
     
     if flags.plot_electrodes == 1
         figure()
             hold on
             scatter3(boundary_nodes(:,1), boundary_nodes(:,2), boundary_nodes(:,3), 'MarkerEdgeColor', [0.3010 0.7450 0.9330], 'LineWidth',0.05)
+            % for cell_i = 1:length(E_nodes)
+            %     scatter3(E_nodes{cell_i}(:,1), E_nodes{cell_i}(:,2), E_nodes{cell_i}(:,3), 'r')
+            % end
+            % scatter3(boundary_nodes(carina_plane,1), boundary_nodes(carina_plane, 2), boundary_nodes(carina_plane,3),'b','filled')
             scatter3(trachea_nodes(:,1),trachea_nodes(:,2),trachea_nodes(:,3),'y','filled')
             scatter3(lung_nodes(:,1), lung_nodes(:,2), lung_nodes(:,3), 'b')
             for i = 1:length(E_connect)
@@ -262,6 +427,7 @@ function FEM3D_Function(filepath, filename, sbj_name, flags, noise)
             pause
         end
     end
+    % return
     
 % ----------------------------------------------------------------------- %
 %%                            Heart Conditions                            %
@@ -345,8 +511,34 @@ function FEM3D_Function(filepath, filename, sbj_name, flags, noise)
 % ----------------------------------------------------------------------- %
 %%                         Assign Conductivities                          %
 % ----------------------------------------------------------------------- %
-    for i = 1
-
+    % for i = 1%:6
+        % if i == 1
+        %     flags.esoph_intubate  = 0; % Decide if the esophagus is intubated (1) or not (0)
+        %     flags.max_inspiration = 0.5; % Decide if the lungs should be at inspiration (1), expiration (0), or in-between (0.5)
+        %     flags.left_only       = 0; % Decide if you want only ventilation on the left side (1) or not (0)
+        %     flags.right_only      = 0; % Decide if you want only ventilation on the right side (1) or not (0)
+        % elseif i == 2
+        %     flags.esoph_intubate  = 0; % Decide if the esophagus is intubated (1) or not (0)
+        %     flags.max_inspiration = 0.2; % Decide if the lungs should be at inspiration (1), expiration (0), or in-between (0.5)
+        %     flags.left_only       = 0; % Decide if you want only ventilation on the left side (1) or not (0)
+        %     flags.right_only      = 0; % Decide if you want only ventilation on the right side (1) or not (0)
+        % elseif i == 3
+        %     flags.esoph_intubate  = 0; % Decide if the esophagus is intubated (1) or not (0)
+        %     flags.max_inspiration = 0; % Decide if the lungs should be at inspiration (1), expiration (0), or in-between (0.5)
+        %     flags.left_only       = 0; % Decide if you want only ventilation on the left side (1) or not (0)
+        %     flags.right_only      = 0; % Decide if you want only ventilation on the right side (1) or not (0)
+        % elseif i == 4
+        %     flags.esoph_intubate  = 0; % Decide if the esophagus is intubated (1) or not (0)
+        %     flags.max_inspiration = 1; % Decide if the lungs should be at inspiration (1), expiration (0), or in-between (0.5)
+        %     flags.left_only       = 1; % Decide if you want only ventilation on the left side (1) or not (0)
+        %     flags.right_only      = 0; % Decide if you want only ventilation on the right side (1) or not (0)
+        % elseif i == 5
+        %     flags.esoph_intubate  = 0; % Decide if the esophagus is intubated (1) or not (0)
+        %     flags.max_inspiration = 1; % Decide if the lungs should be at inspiration (1), expiration (0), or in-between (0.5)
+        %     flags.left_only       = 0; % Decide if you want only ventilation on the left side (1) or not (0)
+        %     flags.right_only      = 1; % Decide if you want only ventilation on the right side (1) or not (0)
+        % end
+    
         if flags.verbose == 1
             fprintf("   Assigning Conductivities\n")
         end
@@ -357,14 +549,155 @@ function FEM3D_Function(filepath, filename, sbj_name, flags, noise)
 % ----------------------------------------------------------------------- %
 %%                       Create Ground Truth Images                       %
 % ----------------------------------------------------------------------- %
-        % Plot the ground truth images at each row
-        GT_Thickness = 5; %mm
-        sigma_GT = Create_GT_Images(GT_Thickness, nodes, E_nodes, sigma, flags);
+        t_GT = 5;
+        E_heights = cellfun(@(x) mean(x(:,3)), E_nodes);
+        if flags.E_type == "patch"
+            if flags.CP_choice == 1
+                E_heights = sort([mean(E_heights([1:4,17:20])), mean(E_heights([5:8,21:24])), mean(E_heights([9:12,25:28])), mean(E_heights([13:16,29:32]))], "descend");
+            else
+                E_heights = sort([mean(E_heights(1:8)), mean(E_heights(9:16)), mean(E_heights(17:24)), mean(E_heights(25:32))], "descend");
+            end
+        else
+            E_heights = sort([mean(E_heights(1:16)), mean(E_heights(17:32))], "descend");
+        end
+        
+        if flags.E_type == "patch"
+            sigma_GT = cell(4,1);
+        else
+            sigma_GT = cell(2,1);
+        end
+        for row = 1:length(E_heights)
+            plane = (nodes(:,3) > E_heights(row) - t_GT/2) & (nodes(:,3) < E_heights(row) + t_GT/2);
+            plane = plane & sigma~=0;
+        
+            sigma_GT{row} = plane;
+        end
+            
+        if flags.plot_GTs == 1
+            if flags.set_complex == 1
+                num_col = 2;
+            else
+                num_col = 1;
+            end
+    
+            % Initialize
+            shift = 0;
+            rowStart = 1;
+            plane_nodes = zeros(sum(cellfun(@sum, sigma_GT)),2);
+            plane_sigma = zeros(sum(cellfun(@sum, sigma_GT)),1);
+            for k = 1:length(E_heights)
+                % Current matrices
+                nodemat = [nodes(sigma_GT{k},1), nodes(sigma_GT{k},2)];
+                sigmat  = sigma(sigma_GT{k});
+                nrows   = size(nodemat,1);
+                PN = nodemat;
+        
+                % Apply shift to second column
+                PN(:,2) = PN(:,2) - shift;
+        
+                % Append to full matrices
+                plane_nodes(rowStart:rowStart+nrows-1, :) = PN;
+                plane_sigma(rowStart:rowStart+nrows-1, :) = sigmat;
+        
+                % Update shift: add the max of y values plus 33%
+                shift = shift + 4/3*max(nodemat(:,2));
+                rowStart = rowStart + nrows;
+            end
+    
+            figure('color','w','Position',[573,337.67,700,420]);
+            for col = 1:num_col
+                subplot(1,num_col,col)
+                
+                if col == 1
+                    scatter(plane_nodes(:,1), plane_nodes(:,2), 10, real(plane_sigma), 'filled')
+                else
+                    scatter(plane_nodes(:,1), plane_nodes(:,2), 10, imag(plane_sigma), 'filled')
+                end
+        
+                % Flip the x axis horizontally to be in DICOM standard
+                % set(gca, 'XDir', 'reverse'); % KH: it already was I think
+                axis equal off
+        
+                colormap("jet")
+                if flags.fixed_range == 1
+                    clim([0, 0.8])
+                else
+                    if col == 1
+                        clim([min(real(plane_sigma)), max(real(plane_sigma))])
+                    else
+                        clim([min(imag(plane_sigma)), max(imag(plane_sigma))])
+                    end
+                end
+            
+                if col == 1
+                    title(sprintf("Ground Truth\nConductivity"))
+                else
+                    title(sprintf("Ground Truth\nSusceptivity"))
+                end
+    
+                c = colorbar("eastoutside");
+                c.Label.String = "S/m";
+            end
+    
+            % %%
+            % figure('color','w','Position',[573,337.67,700,420]);
+            % for col = 1:num_col
+            %     for row = 1:length(sigma_GT)
+            %         if flags.E_type == "patch"
+            %             subplot(4,num_col,2*row + col - 2)
+            %         else
+            %             subplot(2,num_col,2*row + col - 2)
+            %         end
+            % 
+            %         if col == 1
+            %             scatter(nodes(sigma_GT{row},1), nodes(sigma_GT{row},2), 10, real(sigma(sigma_GT{row})), 'filled')
+            %         else
+            %             scatter(nodes(sigma_GT{row},1), nodes(sigma_GT{row},2), 10, imag(sigma(sigma_GT{row})), 'filled')
+            %         end
+            % 
+            %         % Flip the x axis horizontally to be in DICOM standard
+            %         % set(gca, 'XDir', 'reverse'); % KH: it already was I think
+            %         axis equal off
+            % 
+            %         colormap("jet")
+            %         if flags.fixed_range == 1
+            %             clim([0, 0.8])
+            %         else
+            %             if col == 1
+            %                 clim([min(real(sigma)), max(real(sigma))])
+            %             else
+            %                 clim([min(imag(sigma)), max(imag(sigma))])
+            %             end
+            %         end
+            % 
+            %         if row == 1
+            %             if col == 1
+            %                 title(sprintf("Ground Truth\nConductivity"))
+            %             else
+            %                 title(sprintf("Ground Truth\nSusceptivity"))
+            %             end
+            %         end
+            % 
+            %     end
+            %     if flags.set_complex == 1
+            %         if col == 1
+            %             c = colorbar('Position', [0.48 0.11 0.025 0.815]);
+            %             c.Label.String = "S/m";
+            %         else
+            %             c = colorbar('Position', [0.91 0.11 0.025 0.815]);
+            %             c.Label.String = "S/m";
+            %         end
+            %     else
+            %         c = colorbar('Position', [0.7 0.11 0.025 0.815]);
+            %         c.Label.String = "S/m";
+            %     end
+            % end
+        end
     
 % ----------------------------------------------------------------------- %
 %%                                 Solve                                  %
 % ----------------------------------------------------------------------- %
-    % DELETE ME: TESTING CONTACT IMPEDANCES
+    
     % zeta = [0.041];
     % for ii = 1:length(zeta)
     %     solver.zeta = zeta(ii)*ones(L,1);
@@ -417,7 +750,7 @@ function FEM3D_Function(filepath, filename, sbj_name, flags, noise)
 % ----------------------------------------------------------------------- %
 %%                                Plotting                                %
 % ----------------------------------------------------------------------- %
-            % Plot voltages
+        
             if flags.plot_volts > 0
                 figure()
                 ax1 = subplot(1,2,1);
@@ -456,6 +789,15 @@ function FEM3D_Function(filepath, filename, sbj_name, flags, noise)
                 end
             end
         end
+    % end
+    
+    stop_time = toc(start_time);
+    if flags.verbose == 1
+        fprintf("\n   It took %.2f hours to solve the forward problem\n", stop_time / 3600)
+    end
+    
+    if flags.do_beeps == 1
+        beep
     end
 end
     
