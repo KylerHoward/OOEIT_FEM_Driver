@@ -60,9 +60,9 @@ tetmesh     = load(fullfile(msh_path,msh_name), "tetmesh").tetmesh;
 flags.do_pauses       = 0; % Decide to include pauses to check things or not
 flags.solve_problem   = 1; % Decide if you want to setup (0), or fully solve (1)
 flags.use_GE          = 1; % Decide if you want to use GE (1) or ACT5 (0) current patterns/conductivities
-flags.do_parfor       = 1; % Decide if you want to paralize (1) or not (0)
-flags.inject_current  = 0; % Decide if you want to inject ANY current (1) or only measure voltages (0)
-flags.heart_BCs       = 1; % Decide if you want to include heart BCs (1) or not (0)
+flags.do_parfor       = 0; % Decide if you want to paralize (1) or not (0)
+flags.inject_current  = 1; % Decide if you want to inject ANY current (1) or only measure voltages (0)
+flags.heart_BCs       = 0; % Decide if you want to include heart BCs (1) or not (0)
 flags.save_heart_mesh = 0; % Decide if you want to generate and save a heart mesh (1) or not (0)
 flags.do_beeps        = 0; % Decide if you want the code to beep after each simulation (1) or not (0)
 flags.verbose         = 1; % Decide if you want to print status updates along the way (1) or not (0)
@@ -258,7 +258,7 @@ clear i
     % Anterior is positive y
     % Superior is positive z
     % Right    is positive x
-[nodes, sbj_info] = Rotate_and_Translate_Body_GMSH(nodes, organ_connects, carina_height, T5_height, T8_height, flags);
+[nodes, sbj_info] = Rotate_and_Translate_Body(nodes, organ_connects, carina_height, T5_height, T8_height, flags);
 
 % ----------------------------------------------------------------------- %
 %%                              Surface Nodes                             %
