@@ -270,7 +270,7 @@ end
     % Anterior is positive y
     % Superior is positive z
     % Right    is positive x
-[nodes, sbj_info] = Rotate_and_Translate_Body(nodes, organ_connects, carina_height, T5_height, T8_height, flags);
+[nodes, sbj_info] = Rotate_and_Translate_Body_Cleaver(nodes, organ_connects, carina_height, T5_height, T8_height, flags);
 
 % ----------------------------------------------------------------------- %
 %%                              Surface Nodes                             %
