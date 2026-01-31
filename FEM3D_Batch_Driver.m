@@ -36,13 +36,13 @@ flags.verbose         = 1; % Decide if you want to print status updates along th
 % Condition & permutation settings
     % Conditions are a cell array, where each cell contains its own condition
     % Condition is {max_inspiration, equal_vent, left_only, right_only, esoph_intubate, condition_name}
-flags.conditions   = {{0.625, 1, 0, 0, 0, "Max_Insp"}};%;...       Max Baby Inspiration
-                    %   {0.375, 1, 0, 0, 0, "Min_Insp"};...       Max Baby Expiration
-                    %   {0.500, 1, 0, 0, 0, "Mean_Insp"};...      Mean Inspiration
-                    % % {1.500, 1, 0, 0, 0, "Deep_Insp"},...      Deep Inspiration
-                    %   {0.500, 0, 0, 1, 0, "Left_Intubate"};...  Left Bronchus Intubation
-                    %   {0.500, 0, 1, 0, 0, "Right_Intubate"};... Right Bronchus Intubation
-                    %   {0.000, 1, 0, 0, 1, "Esoph_Intubate"}}; % Esophageal Intubation
+flags.conditions   = {{0.625, 1, 0, 0, 0, "Max_Insp"};...       Max Baby Inspiration
+                      {0.375, 1, 0, 0, 0, "Min_Insp"};...       Max Baby Expiration
+                      {0.500, 1, 0, 0, 0, "Mean_Insp"};...      Mean Inspiration
+                    % {1.500, 1, 0, 0, 0, "Deep_Insp"},...      Deep Inspiration
+                      {0.500, 0, 0, 1, 0, "Left_Intubate"};...  Left Bronchus Intubation
+                      {0.500, 0, 1, 0, 0, "Right_Intubate"};... Right Bronchus Intubation
+                      {0.000, 1, 0, 0, 1, "Esoph_Intubate"}}; % Esophageal Intubation
     % Permutations are a cell array, where each cell contains its own permutation settings
     % Perumutation is {num_perm, lung_range, esoph_range}
 flags.permutations = {{2,  0.025, 0.000};... Max Baby Inspiration
@@ -57,23 +57,23 @@ flags.permutations = {{2,  0.025, 0.000};... Max Baby Inspiration
 flags.set_complex       = 0; % Choice of complex (1) or real (0) conductivities
 flags.const_body        = 0; % Decide if you want a solid/constant body (1) or not (0)
 flags.do_conditions     = 1; % Decide if you want to run multiple conditions (1), or just the programed condition below (0)
-flags.max_inspiration   = 0.5; % Decide if the lungs should be at inspiration (1), expiration (0), or somewhere in-between
-flags.lung_range        = 0.25; % Decide what percentage of inspiration range you are okay with. Default is 0.25/25%
-flags.esoph_range       = 0.125; % Decide what percentage of inspiration range for the lungs for esoph intubation
-flags.equal_vent        = 1; % Decide if you want equal ventilation (1) or split (0)
-flags.left_only         = 0; % Decide if you want only ventilation on the left side (1) or not (0)
-flags.right_only        = 0; % Decide if you want only ventilation on the right side (1) or not (0)
-flags.esoph_intubate    = 0; % Decide if the esophagus is intubated (1) or not (0)
+    flags.max_inspiration   = 0.5; % Decide if the lungs should be at inspiration (1), expiration (0), or somewhere in-between
+    flags.lung_range        = 0.25; % Decide what percentage of inspiration range you are okay with. Default is 0.25/25%
+    flags.esoph_range       = 0.125; % Decide what percentage of inspiration range for the lungs for esoph intubation
+    flags.equal_vent        = 1; % Decide if you want equal ventilation (1) or split (0)
+    flags.left_only         = 0; % Decide if you want only ventilation on the left side (1) or not (0)
+    flags.right_only        = 0; % Decide if you want only ventilation on the right side (1) or not (0)
+    flags.esoph_intubate    = 0; % Decide if the esophagus is intubated (1) or not (0)
 flags.permute_conds     = 1; % Decide if you want random conds (1) or not (0)
 
 % Plot settings
 flags.plot_slices     = 0; % Plot individual slices when going slice by slice
-flags.plot_trachea    = 1; % Plotting of carina height & trachea orientation
-flags.plot_electrodes = 1; % Plotting of electrode consturction
+flags.plot_trachea    = 0; % Plotting of carina height & trachea orientation
+flags.plot_electrodes = 0; % Plotting of electrode consturction
 flags.plot_conds      = 0; % Plotting of conductivities
-flags.plot_GTs        = 1; % Plot ground truth images
+flags.plot_GTs        = 0; % Plot ground truth images
 flags.plot_internal   = 0; % Plotting of internal nodes
-flags.plot_volts      = 1; % Plotting of nodal voltages
+flags.plot_volts      = 0; % Plotting of nodal voltages
 flags.fixed_range     = 1; % Set GT plots to be a standard range
 
 flags.CP_choice       = 1; % Choice of current pattern for patches
@@ -168,7 +168,7 @@ end
 dataset_contents = dir(dataset_path);
 sbjs_solved = 0;
 num_solves  = 0;
-for sbj_i = 3:4%size(dataset_contents, 1)
+for sbj_i = 86:108%size(dataset_contents, 1)
     % Get the subject name, mesh path, and mesh name from the folder
     sbj_name = dataset_contents(sbj_i).name;
     msh_path = fullfile(dataset_path, sbj_name);
