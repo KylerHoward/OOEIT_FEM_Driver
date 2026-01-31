@@ -1,22 +1,18 @@
-function save_suffix = Make_Save_Name(zeta, flags)
+function save_suffix = Make_Save_Name(condition_name, i_permutation, zeta, flags)
 
     save_suffix = "";
+    save_suffix = sprintf("%s-%s%d", save_suffix, condition_name, i_permutation);
     save_suffix = sprintf("%s-z%g", save_suffix, zeta(1));
 
     % Check Constant Body
     if flags.const_body == 1
         save_suffix = sprintf("%s-SolidBody", save_suffix);
-    else
-    % Otherwise, Ventilation Settings
+    elseif flags.do_conditions == 0
+    % Otherwise, custom settings
         if flags.esoph_intubate == 1
             save_suffix = sprintf("%s-EsophInt", save_suffix);
         end
 
-        % if flags.max_inspiration == 1
-        %     save_suffix = sprintf("%s-MaxInsp", save_suffix);
-        % elseif flags.max_inspiration == 0
-        %     save_suffix = sprintf("%s-MaxExp", save_suffix);
-        % end
         save_suffix = sprintf("%s-%.2fInsp", save_suffix, flags.max_inspiration);
 
         if flags.left_only == 1

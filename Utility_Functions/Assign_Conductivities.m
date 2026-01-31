@@ -23,13 +23,17 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
         heart_cond       = 0.66;   heart_cond_range       = 0.1;     % 0.4,   0.1
         % lung_cond        = 0.168;   lung_cond_range        = 0.075;    % 0.175, 0.125
         % KH: Updated 2/13/25 based on TFC
-        lung_cond        = -0.1498 * flags.max_inspiration + 0.243;  % Linear range between max/min
-        lung_cond_range  = 0.03745; % Old range (0.125) was 80% of possible values! Dropped to a 25% range
+        lung_m           = -0.1498;
+        lung_b           =  0.243;
+        lung_cond        = lung_m * flags.max_inspiration + lung_b;  % Linear range between max/min
+        lung_cond_range  = abs((lung_m * 0 + lung_b) - (lung_m * flags.lung_range + lung_b)); 
         if flags.esoph_intubate == 1
-            esophagus_cond   = 0.164;  esophagus_cond_range   = 0.054;   % 0.164, 0.054
+            esophagus_cond   = 0.168;  esophagus_cond_range   = abs((lung_m * 0 + lung_b) - (lung_m * flags.esoph_range + lung_b));   % 0.164, 0.054
+            lung_cond        = 0.243;  lung_cond_range = 0;
         else
             esophagus_cond   = 0.530;  esophagus_cond_range   = 0.054;   % 0.164, 0.054
         end
+        lung_tissue_cond = 0.243;
     
         % Set up Complex Conductivity settings
         background_susc  = 0.0;    background_susc_range  = 0.0;     % 0.0,   0.0
@@ -41,6 +45,7 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
         heart_susc       = 0.4;    heart_susc_range       = 0.2;     % 0.4,   0.2
 
     else % Freq = 93 kHz
+        error("KYLER YOU SHOULD REALLY FIX THIS")
         if flags.verbose == 1
             fprintf("      All these values are wrong. Doing this for Chris\n")
         end
@@ -104,9 +109,15 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
         soft_tissue_val = soft_tissue_cond + soft_tissue_cond_range*soft_tissue_cond_pm + ...
                           1i*(soft_tissue_susc + soft_tissue_susc_range*soft_tissue_susc_pm);
         if flags.left_only == 1
-            right_lung_val = soft_tissue_val;
+            right_lung_val = lung_tissue_cond;
+            if flags.set_complex == 1
+                error("KYLER FIX THIS")
+            end
         elseif flags.right_only == 1
-            left_lung_val = soft_tissue_val;
+            left_lung_val = lung_tissue_cond;
+            if flags.set_complex == 1
+                error("KYLER FIX THIS")
+            end
         end
         bone_val        = bone_cond + bone_cond_pm*bone_cond_range + ...
                           1i*(bone_susc + bone_susc_pm*bone_susc_range);
@@ -131,9 +142,15 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
         trachea_val     = trachea_cond + 1i*trachea_susc;
         soft_tissue_val = soft_tissue_cond + 1i*soft_tissue_susc;
         if flags.left_only == 1
-            right_lung_val = soft_tissue_val;
+            right_lung_val = lung_tissue_cond;
+            if flags.set_complex == 1
+                error("KYLER FIX THIS")
+            end
         elseif flags.right_only == 1
-            left_lung_val = soft_tissue_val;
+            left_lung_val = lung_tissue_cond;
+            if flags.set_complex == 1
+                error("KYLER FIX THIS")
+            end
         end
         bone_val        = bone_cond + 1i*bone_susc;
         esophagus_val   = esophagus_cond + 1i*esophagus_susc;

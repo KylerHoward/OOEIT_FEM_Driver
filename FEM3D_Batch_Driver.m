@@ -8,7 +8,7 @@ Current Version: 01/30/26 - Kyler Howard
 %}
 
 close all
-clearvars -except msh_path old_msh_path save_path old_save_path
+clearvars -except dataset_path old_dataset_path save_path old_save_path
 clc
 pause('on')
 
@@ -16,6 +16,8 @@ pause('on')
 addpath(fullfile("Modified_OOEIT", "ForwardProblemSolvers"))
 addpath(fullfile("Modified_OOEIT", "MiscClasses"))
 addpath(fullfile("Utility_Functions"))
+
+total_start_time = tic();
 
 % ----------------------------------------------------------------------- %
 %%                                Settings                                %
@@ -34,13 +36,13 @@ flags.verbose         = 1; % Decide if you want to print status updates along th
 % Condition & permutation settings
     % Conditions are a cell array, where each cell contains its own condition
     % Condition is {max_inspiration, equal_vent, left_only, right_only, esoph_intubate, condition_name}
-flags.conditions   = {{0.625, 1, 0, 0, 0, "Max_Insp"};...       Max Baby Inspiration
-                      {0.375, 1, 0, 0, 0, "Min_Insp"};...       Max Baby Expiration
-                      {0.500, 1, 0, 0, 0, "Mean_Insp"};...      Mean Inspiration
-                    % {1.500, 1, 0, 0, 0, "Deep_Insp"},...      Deep Inspiration
-                      {0.500, 0, 0, 1, 0, "Left_Intubate"};...  Left Bronchus Intubation
-                      {0.500, 0, 1, 0, 0, "Right_Intubate"};... Right Bronchus Intubation
-                      {0.000, 1, 0, 0, 1, "Esoph_Intubate"}}; % Esophageal Intubation
+flags.conditions   = {{0.625, 1, 0, 0, 0, "Max_Insp"}};%;...       Max Baby Inspiration
+                    %   {0.375, 1, 0, 0, 0, "Min_Insp"};...       Max Baby Expiration
+                    %   {0.500, 1, 0, 0, 0, "Mean_Insp"};...      Mean Inspiration
+                    % % {1.500, 1, 0, 0, 0, "Deep_Insp"},...      Deep Inspiration
+                    %   {0.500, 0, 0, 1, 0, "Left_Intubate"};...  Left Bronchus Intubation
+                    %   {0.500, 0, 1, 0, 0, "Right_Intubate"};... Right Bronchus Intubation
+                    %   {0.000, 1, 0, 0, 1, "Esoph_Intubate"}}; % Esophageal Intubation
     % Permutations are a cell array, where each cell contains its own permutation settings
     % Perumutation is {num_perm, lung_range, esoph_range}
 flags.permutations = {{2,  0.025, 0.000};... Max Baby Inspiration
@@ -110,42 +112,28 @@ if isempty(gcp('nocreate')) && flags.solve_problem == 1 && flags.do_parfor == 1
 end
 
 % ----------------------------------------------------------------------- %
-%%                         Select The Mesh To Run                         %
+%%                       Select The Dataset To Run                        %
 % ----------------------------------------------------------------------- %
 
 % Select the mesh you wish to run
-if exist("msh_path", "var") && ischar(msh_path)
+if exist("dataset_path", "var") && ischar(dataset_path)
     % Use the previous mesh path
-    old_msh_path = msh_path;
-    [msh_name, msh_path] = uigetfile(msh_path, "Select Mesh File");
-elseif exist("msh_path", "var") && exist("old_msh_path", "var")
-    % User hit cancel. Use mesh path from two attempts ago
-    [msh_name, msh_path] = uigetfile(old_msh_path, "Select Mesh File");
+    old_dataset_path = dataset_path;
+    [dataset_path]   = uigetdir(dataset_path, "Select Parent 'CTs' Folder With Data");
+elseif exist("dataset_path", "var") && exist("old_dataset_path", "var")
+    % User hit cancel. Use datset path from two attempts ago
+    [dataset_path]   = uigetdir(old_dataset_path, "Select Parent 'CTs' Folder With Data");
 else
     % First time running this
-    [msh_name, msh_path] = uigetfile(pwd,"Select Mesh File");
+    [dataset_path]   = uigetdir(pwd, "Select Parent 'CTs' Folder With Data");
 end
 
 % Some user validation
-if ischar(msh_path) == 0
-    error("Did not select a valid mesh path")
+if ischar(dataset_path) == 0
+    error("Did not select a valid path")
 end
-if contains(msh_name, ".mat") == 0
-    error("Did not select a .mat file")
-end
-if contains(lower(msh_name), "mesh") == 0
-    error("Did not select a valid mesh file")
-end
-
-% Extracting the subject name
-parts    = split(msh_name, '_');
-sbj_name = parts{1};
-
-% Updating setting based on the mesh
-if contains(msh_name, 'NoBones')
-    flags.are_bones = 0; % There are no bones
-else
-    flags.are_bones = 1; % There are bones
+if contains(dataset_path, "CT") == 0
+    error("Did not select a path containing 'CTs'")
 end
 
 % ----------------------------------------------------------------------- %
@@ -156,30 +144,53 @@ end
 if exist("save_path", "var") && ischar(save_path)
     % Use the previous mesh path
     old_save_path = save_path;
-    [save_path] = uigetdir(save_path, "Select Parent Folder to Save Files In");
+    [save_path] = uigetdir(save_path, "Select Anatomical Atlas to Save Files In");
 elseif exist("save_path", "var") && exist("old_save_path", "var")
     % User hit cancel. Use mesh path from two attempts ago
-    [save_path] = uigetdir(old_save_path, "Select Parent Folder to Save Files In");
+    [save_path] = uigetdir(old_save_path, "Select Anatomical Atlas to Save Files In");
 else
     % First time running this
-    [save_path] = uigetdir(msh_path, "Select Parent Folder to Save Files In");
+    [save_path] = uigetdir(dataset_path, "Select Anatomical Atlas to Save Files In");
 end
 
 % Some user validation
 if ischar(save_path) == 0
-    error("Did not select a valid save path")
+    error("Did not select a valid path")
+end
+if contains(save_path, "Anatomical_Atlas") == 0
+    error("Did not select a path containing 'Anatomical_Atlas'")
 end
 
-% Check if the user isn't just saving to the results folder
-if contains(save_path, fullfile("OOEIT_FEM_Driver","Results")) ~= 1
-    % Create the subject specific save path if the user didn't select it
+% ----------------------------------------------------------------------- %
+%%                          Loop Through Dataset                          %
+% ----------------------------------------------------------------------- %
+
+dataset_contents = dir(dataset_path);
+sbjs_solved = 0;
+num_solves  = 0;
+for sbj_i = 3:4%size(dataset_contents, 1)
+    % Get the subject name, mesh path, and mesh name from the folder
+    sbj_name = dataset_contents(sbj_i).name;
+    msh_path = fullfile(dataset_path, sbj_name);
+    msh_name = dir(fullfile(msh_path, "*Eroded.mat")).name;
+
+    % Updating setting based on the mesh
+    if contains(msh_name, 'NoBones')
+        flags.are_bones = 0; % There are no bones
+    else
+        flags.are_bones = 1; % There are bones
+    end
+
+% ----------------------------------------------------------------------- %
+%%                           Prep Saving Folders                          %
+% ----------------------------------------------------------------------- %
+
+    % Create the subject specific save path
     if contains(save_path, sbj_name) == 0
         sbj_save_path = fullfile(save_path, sbj_name);
         if isfolder(sbj_save_path) == 0
             mkdir(sbj_save_path)
         end
-    else
-        sbj_save_path = save_path;
     end
     
     % Create the nested folders to save into
@@ -206,23 +217,27 @@ if contains(save_path, fullfile("OOEIT_FEM_Driver","Results")) ~= 1
             mkdir(condition_volt_save_path)
         end
     end
-else
-    sbj_save_path = save_path;
-end
 
 % ----------------------------------------------------------------------- %
 %%                         Running FEM3D Function                         %
 % ----------------------------------------------------------------------- %
+    
+    sbj_start_time = tic;
+    
+    % RUN THE 3D FEM 
+    fprintf("Running %s\n", sbj_name)
+    FEM3D_Function(msh_path, msh_name, sbj_name, sbj_save_path, flags, noise)
+    
+    sbj_stop_time = toc(sbj_start_time);
+    fprintf("\n   It took %.2f hours to solve the forward problem\n", sbj_stop_time / 3600)
 
-start_time = tic;
+    sbjs_solved = sbjs_solved + 1;
+    num_solves  = num_solves + sum(cellfun(@(x) x{1}, flags.permutations));
+end
 
-% RUN THE 3D FEM 
-fprintf("Running %s\n", sbj_name)
-FEM3D_Function(msh_path, msh_name, sbj_name, sbj_save_path, flags, noise)
 
-stop_time = toc(start_time);
-fprintf("\n   It took %.2f hours to solve the forward problem\n", stop_time / 3600)
-
+total_stop_time = toc(total_start_time);
+fprintf("\n\nIt took %.2f hours to solve %d subjects & %d unique solves\n", total_stop_time / 3600, sbjs_solved, num_solves)
 if flags.do_beeps == 1
     beep
 end
