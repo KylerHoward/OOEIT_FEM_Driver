@@ -55,13 +55,13 @@ flags.permutations = {{2,  0.025, 0.000};... Max Baby Inspiration
 flags.set_complex       = 0; % Choice of complex (1) or real (0) conductivities
 flags.const_body        = 0; % Decide if you want a solid/constant body (1) or not (0)
 flags.do_conditions     = 1; % Decide if you want to run multiple conditions (1), or just the programed condition below (0)
-flags.max_inspiration   = 0.5; % Decide if the lungs should be at inspiration (1), expiration (0), or somewhere in-between
-flags.lung_range        = 0.25; % Decide what percentage of inspiration range you are okay with. Default is 0.25/25%
-flags.esoph_range       = 0.125; % Decide what percentage of inspiration range for the lungs for esoph intubation
-flags.equal_vent        = 1; % Decide if you want equal ventilation (1) or split (0)
-flags.left_only         = 0; % Decide if you want only ventilation on the left side (1) or not (0)
-flags.right_only        = 0; % Decide if you want only ventilation on the right side (1) or not (0)
-flags.esoph_intubate    = 0; % Decide if the esophagus is intubated (1) or not (0)
+    flags.max_inspiration   = 0.5; % Decide if the lungs should be at inspiration (1), expiration (0), or somewhere in-between
+    flags.lung_range        = 0.25; % Decide what percentage of inspiration range you are okay with. Default is 0.25/25%
+    flags.esoph_range       = 0.125; % Decide what percentage of inspiration range for the lungs for esoph intubation
+    flags.equal_vent        = 1; % Decide if you want equal ventilation (1) or split (0)
+    flags.left_only         = 0; % Decide if you want only ventilation on the left side (1) or not (0)
+    flags.right_only        = 0; % Decide if you want only ventilation on the right side (1) or not (0)
+    flags.esoph_intubate    = 0; % Decide if the esophagus is intubated (1) or not (0)
 flags.permute_conds     = 1; % Decide if you want random conds (1) or not (0)
 
 % Plot settings
