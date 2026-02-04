@@ -268,30 +268,52 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
 % ----------------------------------------------------------------------- %
     % Setting up heart boundary condition information
     if flags.heart_BCs == 1
-        heart_BCs = load(fullfile("Heart_BCs", sprintf("%s_Heart_BC_frame_1.mat",sbj_name)));
+        if flags.verbose == 1
+            fprintf("   Creating heart Dirchlet boundary conditions\n")
+        end
+        heart_BCs = load(fullfile("Heart_BCs", sprintf("%s_Heart_BC_frame_5.mat",sbj_name)));
         
-        heart_BC_active_current = heart_BCs.current_density(1)*10^-3; % CONVERT mAMPS TO AMPS
-        heart_BC_middle_current = heart_BCs.current_density(2)*10^-3; % CONVERT mAMPS TO AMPS
-        heart_BC_active_indices = heart_BCs.nodeGroups.active;
-        heart_BC_middle_indices = heart_BCs.nodeGroups.middle;
+        heart_BC_currents     = heart_BCs.current_density*10^-3; % CONVERT mAMPS TO AMPS
+        heart_BC_face_indices = heart_BCs.nodeGroups;
         clear heart_BCs
+
+        heart_BCs = load(fullfile("Heart_BCs", sprintf("%s_Heart_BC_frame_10.mat",sbj_name)));
+        heart_BC_face_indices = [heart_BC_face_indices; heart_BCs.nodeGroups];
     
         % Convert the given indices into the node coordinates
         heart_surface_nodes   = load(fullfile("Heart_Meshes", sprintf("%s_Heart_Mesh.mat",sbj_name))).heart_surface_nodes;
         heart_faces           = load(fullfile("Heart_Meshes", sprintf("%s_Heart_Mesh.mat",sbj_name))).heart_faces;
-        heart_BC_active_nodes = {heart_surface_nodes(heart_BC_active_indices,:)};
-        heart_BC_middle_nodes = {heart_surface_nodes(heart_BC_middle_indices,:)};
+
+        % Find the heart nodes that we're applying the BC on
+        n_hframes = size(heart_BC_face_indices, 1);
+        heart_BC_node_indices = cell(size(heart_BC_face_indices));
+        for hframe = 1:n_hframes
+            if flags.plot_heart == 1
+                figure;
+            end
+            for i_BC = 1:size(heart_BC_face_indices,2)
+                heart_BC_faces                     = heart_faces(heart_BC_face_indices{hframe,i_BC},:);
+                heart_BC_node_indices{hframe,i_BC} = unique(heart_BC_faces(:));
+                heart_BC_nodes                     = nodes(heart_BC_node_indices{hframe,i_BC},:);
     
-        % Find the heart mesh faces that make up the BCs
-        heart_active_connect = Align_Electrode_Faces(nodes, heart_faces, heart_BC_active_nodes, flags);
-        heart_middle_connect = Align_Electrode_Faces(nodes, heart_faces, heart_BC_middle_nodes, flags);
-    
-        % Append everything to the electrode BCs
-        E_connect = [E_connect, heart_active_connect, heart_middle_connect];
-        cur_pat   = [cur_pat; heart_BC_active_current*ones(length(heart_active_connect), K); heart_BC_middle_current*ones(length(heart_middle_connect), K)]; 
-    
-        % Update L/K to reflect the new BC
-        L = L + length(heart_active_connect) + length(heart_middle_connect);
+                if flags.plot_heart == 1
+                    subplot(1,size(heart_BC_face_indices,2),i_BC)
+                        hold on
+                        scatter3(heart_surface_nodes(:,1), heart_surface_nodes(:,2), heart_surface_nodes(:,3),'k')
+                        scatter3(heart_BC_nodes(:,1),      heart_BC_nodes(:,2),      heart_BC_nodes(:,3),'r','filled')
+                        if i_BC == round(median(1:size(heart_BC_face_indices,2)))
+                            title(sprintf("Heart Frame %d\n%.4f BC Condition", hframe, heart_BC_currents(i_BC)))
+                        else
+                            title(sprintf("\n%.4f BC Condition", heart_BC_currents(i_BC)))
+                        end
+                end
+            end
+        end
+    else
+        % Set empty conditions for no Dirichlet BCs
+        heart_BC_node_indices = {[]};
+        heart_BC_currents     = [];
+        n_hframes = 1;
     end
     
 % ----------------------------------------------------------------------- %
@@ -321,7 +343,9 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
             solver = EITFEM(fmesh);
         end
         init_time  = toc(init_start);
-        fprintf("      It took %.2f minutes to initialize solver\n", init_time/60)
+        if flags.verbose == 1
+            fprintf("      It took %.2f minutes to initialize solver\n", init_time/60)
+        end
                 
         % Set solving mode to injecting current and measuring voltages
         % Set the contact impedance - had 2.4 originally in 2D FEM, then 4.8, then 0.05
@@ -335,9 +359,6 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
         % FIXME: KH 1/26/26, this is only for babies on GE right now
         zeta       = round((0.116-0.079)/(290.67-339.62) * (perim_mm - 290.67) + 0.116,3);
         flags.zeta = zeta*ones(L,1);
-        if flags.heart_BCs == 1
-            flags.zeta(end-length(heart_active_connect)-length(heart_middle_connect)+1:end) = 0.116;
-        end
         solver.mode = 'current';
         solver.zeta = flags.zeta;
     end
@@ -397,105 +418,106 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
         % for ii = 1:length(zeta)
         %     solver.zeta = zeta(ii)*ones(L,1);
         %     flags.zeta  = solver.zeta;    
-        
-            if flags.solve_problem == 1
-                fprintf("   Solving Forward Problem\n")
-            
-                % Set the current pattern (IN AMPS)
-                solver.Iel = cur_pat;
-            
-                % Solve the voltage
-                solve_start          = tic;
-                if flags.do_parfor == 1
-                    [Umeas, Imeas, Uall] = MF_Simulation(fmesh, [], sigma, solver.zeta, solver, 'current', noise);
-                else
-                    [Umeas, Imeas, Uall] = MF_Simulation2(fmesh, [], sigma, solver.zeta, solver, 'current', noise);
-                end
-                solve_time           = toc(solve_start);
-                if flags.verbose == 1
-                    fprintf("      It took %.2f minutes to solve for voltages\n", solve_time/60)
-                end
-            
-                Umeas = Umeas * 1e3; % Convert V to mV
-                Uall  = Uall  * 1e3; % Convert V to mV
-                Umeas = reshape(Umeas, L, K);
-        
-                if noise(1) == 0 || noise(2) == 0
-                    Umeas_NoNoise = Umeas;
-                    Uall_NoNoise  = Uall;
-                end
-            
-                % Create the suffix for saving the file based on the settings chosen
-                save_suffix = Make_Save_Name(condition_name, i_permutation, solver.zeta, flags);
-        
-                % Create metadata to include with the saving
-                volt_metadata = Make_Metadata("Volt");
-                cond_metadata = Make_Metadata("Cond");
-            
-                % Check if the user isn't just saving to the results folder
-                if contains(sbj_save_path, fullfile("OOEIT_FEM_Driver","Results")) ~= 1
-                    cond_save_path = fullfile(sbj_save_path, flags.E_type, "conductivities", condition_name);
-                    volt_save_path = fullfile(sbj_save_path, flags.E_type, "voltages",        condition_name);
-                else
-                    cond_save_path = sbj_save_path;
-                    volt_save_path = sbj_save_path;
-                end
-
-                % Save the voltages and conductivties
-                volt_name = sprintf("%s-Volt%s.mat", sbj_name, save_suffix);
-                cond_name = sprintf("%s-Cond%s.mat", sbj_name, save_suffix);
-                if noise(1) == 0 || noise(2) == 0
-                    save(fullfile(volt_save_path, volt_name), "Umeas_NoNoise", "Uall_NoNoise", "cur_pat", "perim_mm", "noise", "flags", "volt_metadata", "-v7.3")
-                else
-                    save(fullfile(volt_save_path,volt_name), "Umeas", "Uall", "cur_pat", "perim_mm", "noise", "flags", "volt_metadata", "-v7.3")
-                end
-                save(fullfile(cond_save_path,cond_name), "sigma", "sigma_GT", "nodes", "E_connect", "flags", "cond_metadata", "-v7.3")
-            
-    % ----------------------------------------------------------------------- %
-    %%                                Plotting                                %
-    % ----------------------------------------------------------------------- %
-                % Plot voltages
-                if flags.plot_volts > 0
-                    figure()
-                    ax1 = subplot(1,2,1);
-                        p1 = scatter3(nodes(:,1), nodes(:,2), nodes(:,3), 10, real(Uall(1:size(nodes,1),flags.plot_volts)), 'filled');
-                        title(sprintf("Voltage: CP %d", flags.plot_volts))
-                        xlabel("x (mm)")
-                        ylabel("y (mm)")
-                        zlabel("z (mm)")
-                        c = colorbar;
-                        c.Label.String = "mV";
-                        c.Location     = 'southoutside';
+            for hframe = 1:n_hframes
+                if flags.solve_problem == 1
+                    fprintf("   Solving Forward Problem %d of %d\n", (i_permutation-1)*n_hframes + hframe, num_permutations*n_hframes)
                 
-                    ax2 = subplot(1,2,2);
-                        scatter3(nodes(:,1), nodes(:,2), nodes(:,3), 10, imag(Uall(1:size(nodes,1),flags.plot_volts)))
-                        title(sprintf("Imaginary Voltage: CP %d", flags.plot_volts))
-                        xlabel("x (mm)")
-                        ylabel("y (mm)")
-                        zlabel("z (mm)")
-                        c = colorbar;
-                        c.Label.String = "mV";
-                        c.Location     = 'southoutside';
+                    % Set the current pattern (IN AMPS)
+                    solver.Iel = cur_pat;
                 
-                    % Add a slider for x-axis min limit
-                    uicontrol('Style', 'slider', 'Min', min(nodes(:,1)), 'Max', max(nodes(:,1))-1, 'Value', 0, ...
-                              'Position', [210, 30, 150, 20], ...
-                              'Callback', @(src, event) update_xlim([ax1, ax2], src.Value, max(nodes(:,1))));
-            
-                    % Add a slider for y-axis min limit
-                    uicontrol('Style', 'slider', 'Min', min(nodes(:,2)), 'Max', max(nodes(:,2))-1, 'Value', 0, ...
-                              'Position', [210, 10, 150, 20], ...
-                              'Callback', @(src, event) update_ylim([ax1, ax2], src.Value, max(nodes(:,1))));
-                
-                    if flags.do_pauses == 1
-                        fprintf("      Press any key if correct\n")
-                        pause
+                    % Solve the voltage
+                    solve_start          = tic;
+                    if flags.do_parfor == 1
+                        [Umeas, Imeas, Uall] = MF_Simulation(fmesh, [], sigma, solver.zeta, heart_BC_node_indices, heart_BC_currents, solver, 'current', noise);
+                    else
+                        [Umeas, Imeas, Uall] = MF_Simulation2(fmesh, [], sigma, solver.zeta, heart_BC_node_indices, heart_BC_currents, solver, 'current', noise);
                     end
-                end
-            end
-        end
-    end
-end
+                    solve_time           = toc(solve_start);
+                    if flags.verbose == 1
+                        fprintf("      It took %.2f minutes to solve for voltages\n", solve_time/60)
+                    end
+                
+                    Umeas = Umeas * 1e3; % Convert V to mV
+                    Uall  = Uall  * 1e3; % Convert V to mV
+                    Umeas = reshape(Umeas, L, K);
+            
+                    if noise(1) == 0 || noise(2) == 0
+                        Umeas_NoNoise = Umeas;
+                        Uall_NoNoise  = Uall;
+                    end
+                
+                    % Create the suffix for saving the file based on the settings chosen
+                    save_suffix = Make_Save_Name(condition_name, i_permutation, solver.zeta, hframe, flags);
+            
+                    % Create metadata to include with the saving
+                    volt_metadata = Make_Metadata("Volt");
+                    cond_metadata = Make_Metadata("Cond");
+                
+                    % Check if the user isn't just saving to the results folder
+                    if contains(sbj_save_path, fullfile("OOEIT_FEM_Driver","Results")) ~= 1
+                        cond_save_path = fullfile(sbj_save_path, flags.E_type, "conductivities", condition_name);
+                        volt_save_path = fullfile(sbj_save_path, flags.E_type, "voltages",        condition_name);
+                    else
+                        cond_save_path = sbj_save_path;
+                        volt_save_path = sbj_save_path;
+                    end
+    
+                    % Save the voltages and conductivties
+                    volt_name = sprintf("%s-Volt%s.mat", sbj_name, save_suffix);
+                    cond_name = sprintf("%s-Cond%s.mat", sbj_name, save_suffix);
+                    if noise(1) == 0 || noise(2) == 0
+                        save(fullfile(volt_save_path, volt_name), "Umeas_NoNoise", "Uall_NoNoise", "cur_pat", "perim_mm", "noise", "flags", "volt_metadata", "-v7.3")
+                    else
+                        save(fullfile(volt_save_path,volt_name), "Umeas", "Uall", "cur_pat", "perim_mm", "noise", "flags", "volt_metadata", "-v7.3")
+                    end
+                    save(fullfile(cond_save_path,cond_name), "sigma", "sigma_GT", "nodes", "E_connect", "flags", "cond_metadata", "-v7.3")
+                
+        % ----------------------------------------------------------------------- %
+        %%                                Plotting                                %
+        % ----------------------------------------------------------------------- %
+                    % Plot voltages
+                    if flags.plot_volts > 0
+                        figure()
+                        ax1 = subplot(1,2,1);
+                            p1 = scatter3(nodes(:,1), nodes(:,2), nodes(:,3), 10, real(Uall(1:size(nodes,1),flags.plot_volts)), 'filled');
+                            title(sprintf("Voltage: CP %d", flags.plot_volts))
+                            xlabel("x (mm)")
+                            ylabel("y (mm)")
+                            zlabel("z (mm)")
+                            c = colorbar;
+                            c.Label.String = "mV";
+                            c.Location     = 'southoutside';
+                    
+                        ax2 = subplot(1,2,2);
+                            scatter3(nodes(:,1), nodes(:,2), nodes(:,3), 10, imag(Uall(1:size(nodes,1),flags.plot_volts)))
+                            title(sprintf("Imaginary Voltage: CP %d", flags.plot_volts))
+                            xlabel("x (mm)")
+                            ylabel("y (mm)")
+                            zlabel("z (mm)")
+                            c = colorbar;
+                            c.Label.String = "mV";
+                            c.Location     = 'southoutside';
+                    
+                        % Add a slider for x-axis min limit
+                        uicontrol('Style', 'slider', 'Min', min(nodes(:,1)), 'Max', max(nodes(:,1))-1, 'Value', 0, ...
+                                  'Position', [210, 30, 150, 20], ...
+                                  'Callback', @(src, event) update_xlim([ax1, ax2], src.Value, max(nodes(:,1))));
+                
+                        % Add a slider for y-axis min limit
+                        uicontrol('Style', 'slider', 'Min', min(nodes(:,2)), 'Max', max(nodes(:,2))-1, 'Value', 0, ...
+                                  'Position', [210, 10, 150, 20], ...
+                                  'Callback', @(src, event) update_ylim([ax1, ax2], src.Value, max(nodes(:,1))));
+                    
+                        if flags.do_pauses == 1
+                            fprintf("      Press any key if correct\n")
+                            pause
+                        end
+                    end % end plot_volts
+                end % end running a solve
+            end % end looping over heart frames
+        end % end looping over permutations
+    end % end looping through conditions
+end % end function as a whole
     
 % ----------------------------------------------------------------------- %
 %%                            Custom Functions                            %

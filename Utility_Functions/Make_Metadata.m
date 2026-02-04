@@ -67,6 +67,7 @@ function metadata = Make_Metadata(type)
     metadata.descriptions.flags.plot_GTs        = "Plot ground truth images.";
     metadata.descriptions.flags.plot_internal   = "Plotting of internal nodes.";
     metadata.descriptions.flags.plot_volts      = "Plotting of nodal voltages.";
+    metadata.descriptions.flags.plot_heart      = "Plot heart BCs.";
     metadata.descriptions.flags.fixed_range     = "Set GT plots to be a standard range.";
 
     metadata.descriptions.flags.CP_choice       = "Choice of current pattern for patches. 1 is the standard pattern, 2 is a 4x8 pattern for the patch.";
