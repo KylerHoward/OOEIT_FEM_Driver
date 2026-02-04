@@ -104,7 +104,7 @@ Editted: 10/10/24 - Kyler Howard
             obj.Uadded = 0;
         end % end constructor
         
-        function [elval, solVec] = SolveForward(self, sigma)
+        function [elval, solVec] = SolveForward(self, sigma, dirichlet_nodes, dirichlet_vals)
             %{
             Solve the potentials or currents for given sigma. The output is
             in matrix form, where each column corresponds to a single injection.
@@ -167,6 +167,19 @@ Editted: 10/10/24 - Kyler Howard
             
             self.A = A0 + self.S; % Combine parts to make the full FEM matrix
 
+            % Apply Dirichlet BCs
+            for i_BC = 1:length(dirichlet_vals)
+                % First zero out rows from Dirichlet
+                self.A(dirichlet_nodes{i_BC},:) = 0;
+    
+                % Set the diagonal as ones
+                dirichlet_indices         = sub2ind(size(self.A), dirichlet_nodes{i_BC}, dirichlet_nodes{i_BC});
+                self.A(dirichlet_indices) = 1;
+
+                % Set the right-hand-side to the desired voltage
+                self.b(dirichlet_nodes{i_BC},:) = dirichlet_vals(i_BC);
+            end
+
             % Solve FEM
             try
                 tol   = 1e-6;
@@ -184,7 +197,7 @@ Editted: 10/10/24 - Kyler Howard
 
         end % end solveForward
 
-        function [vec, m_all] = SolveForwardVec(self, est)
+        function [vec, m_all] = SolveForwardVec(self, est, dirichlet_nodes, dirichlet_vals)
             %{
             Solve the FEM with given sigma.
             output: vec = the currents or potentials in vector format
@@ -200,12 +213,12 @@ Editted: 10/10/24 - Kyler Howard
                     self.zeta = est.estimates{self.zInd}; % If we estimate zeta, put the value from estimate-object on self.zeta
                 end
                 if isempty(est.estimates{self.sigmaInd}) % Check if we want to estimate conductivity
-                    [vec, m_all] = self.SolveForward(self.sigma); % Here, we do not want to estimate conductivity, so default value self.sigma is used
+                    [vec, m_all] = self.SolveForward(self.sigma, dirichlet_nodes, dirichlet_vals); % Here, we do not want to estimate conductivity, so default value self.sigma is used
                 else
-                    [vec, m_all] = self.SolveForward(est.estimates{self.sigmaInd}); % We get the conductivity from the estimate
+                    [vec, m_all] = self.SolveForward(est.estimates{self.sigmaInd}, dirichlet_nodes, dirichlet_vals); % We get the conductivity from the estimate
                 end
             else
-                [vec, m_all] = self.SolveForward(est); % Estimate class is not used, so the estimate is just the conductivity
+                [vec, m_all] = self.SolveForward(est, dirichlet_nodes, dirichlet_vals); % Estimate class is not used, so the estimate is just the conductivity
             end
             vec = vec(:); % Vectorize the output
             if ~isempty(self.mIncl)

@@ -1,4 +1,4 @@
-function [Umeas, Imeas, Uall, Iall, Umeas_i, Imeas_i, e] = MF_Simulation(fm, sigma_i, sigma, z, fsolver, mode, err)
+function [Umeas, Imeas, Uall, Iall, Umeas_i, Imeas_i, e] = MF_Simulation(fm, sigma_i, sigma, z, dirichlet_nodes, dirichlet_vals, fsolver, mode, err)
 %{
 A simple simulation that will return synthetic data. meas_i refer to
 initial reference measurements, whereas Umeas and Imeas are the situation
@@ -64,7 +64,7 @@ Edited: Kyler Howard  1.22.2025
         end
 
         if strcmp(mode, 'potential')
-            Imeas_i = fsolver.SolveForwardVec(sigma_i);%these are the results
+            Imeas_i = fsolver.SolveForwardVec(sigma_i, dirichlet_nodes, dirichlet_vals);%these are the results
             Umeas_i = fsolver.Uel;
             %add noise and error:
             e_sys = randn(length(Imeas_i),1, 'like', Imeas_i)*e_systematic_abs*(max(Imeas_i)-min(Imeas_i));
@@ -73,7 +73,7 @@ Edited: Kyler Howard  1.22.2025
             Imeas_i = Imeas_i.*(1+randn(length(Imeas_i),1, 'like', Imeas_i)*noise_rel) + randn(length(Imeas_i),1, 'like', Imeas_i)*noise_abs*(max(Imeas_i)-min(Imeas_i));
 
         elseif strcmp(mode, 'current')
-            [Umeas_i, ~] = fsolver.SolveForwardVec(sigma_i);%these are the results
+            [Umeas_i, ~] = fsolver.SolveForwardVec(sigma_i, dirichlet_nodes, dirichlet_vals);%these are the results
             Imeas_i = fsolver.Iel;
             %add noise and error:
             e_sys = randn(length(Umeas_i),1, 'like', Umeas_i)*e_systematic_abs*(max(Umeas_i)-min(Umeas_i));
@@ -86,7 +86,7 @@ Edited: Kyler Howard  1.22.2025
         
     %The actual measurements:
     if strcmp(mode, 'potential')
-        [Imeas, Iall] = fsolver.SolveForwardVec(sigma);%these are the results
+        [Imeas, Iall] = fsolver.SolveForwardVec(sigma, dirichlet_nodes, dirichlet_vals);%these are the results
         Umeas = fsolver.Uel;
         %add noise and error:
         if ~exist('esys', 'var')%there have been no homogeneous measurements where these have already been calculated
@@ -97,7 +97,7 @@ Edited: Kyler Howard  1.22.2025
         Imeas = Imeas.*(1+randn(length(Imeas),1, 'like', Imeas)*noise_rel) + randn(length(Imeas),1, 'like', Imeas)*noise_abs*(max(Imeas)-min(Imeas));
 
     elseif strcmp(mode, 'current')
-        [Umeas, Uall] = fsolver.SolveForwardVec(sigma); %these are the results
+        [Umeas, Uall] = fsolver.SolveForwardVec(sigma, dirichlet_nodes, dirichlet_vals); %these are the results
         Imeas = fsolver.Iel;
         %add noise and error:
         if ~exist('esys', 'var')%there have been no homogeneous measurements where these have already been calculated

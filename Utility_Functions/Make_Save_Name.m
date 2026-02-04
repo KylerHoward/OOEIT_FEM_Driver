@@ -1,7 +1,19 @@
-function save_suffix = Make_Save_Name(condition_name, i_permutation, zeta, flags)
+function save_suffix = Make_Save_Name(condition_name, i_permutation, zeta, hframe, flags)
 
     save_suffix = "";
-    save_suffix = sprintf("%s-%s%d", save_suffix, condition_name, i_permutation);
+    if flags.do_conditions ~= 0
+        save_suffix = sprintf("%s-%s%d", save_suffix, condition_name, i_permutation);
+    end
+
+    % Deal with the heart BC flags
+    if flags.heart_BCs == 1
+        save_suffix = sprintf("%s-HeartBC_Frame%d", save_suffix, hframe);
+    end
+    if flags.inject_current == 0
+        save_suffix = sprintf("%s-NoInjection", save_suffix);
+    end
+
+    % Add in the contact impedance
     save_suffix = sprintf("%s-z%g", save_suffix, zeta(1));
 
     % Check Constant Body
@@ -20,14 +32,6 @@ function save_suffix = Make_Save_Name(condition_name, i_permutation, zeta, flags
         elseif flags.right_only == 1
             save_suffix = sprintf("%s-RightOnly", save_suffix);
         end
-    end
-
-    if flags.heart_BCs == 1
-        save_suffix = sprintf("%s-HeartBCs", save_suffix);
-    end
-
-    if flags.inject_current == 0
-        save_suffix = sprintf("%s-NoInjection", save_suffix);
     end
     
     % Electrode Settings

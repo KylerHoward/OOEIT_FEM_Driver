@@ -31,7 +31,7 @@ flags.inject_current  = 1; % Decide if you want to inject ANY current (1) or onl
 flags.heart_BCs       = 0; % Decide if you want to include heart BCs (1) or not (0)
 flags.save_heart_mesh = 0; % Decide if you want to generate and save a heart mesh (1) or not (0)
 flags.do_beeps        = 0; % Decide if you want the code to beep after each simulation (1) or not (0)
-flags.verbose         = 1; % Decide if you want to print status updates along the way (1) or not (0)
+flags.verbose         = 0; % Decide if you want to print status updates along the way (1) or not (0)
 
 % Condition & permutation settings
     % Conditions are a cell array, where each cell contains its own condition
@@ -74,6 +74,7 @@ flags.plot_conds      = 0; % Plotting of conductivities
 flags.plot_GTs        = 0; % Plot ground truth images
 flags.plot_internal   = 0; % Plotting of internal nodes
 flags.plot_volts      = 0; % Plotting of nodal voltages
+flags.plot_heart      = 1; % Plot heart BCs
 flags.fixed_range     = 1; % Set GT plots to be a standard range
 
 flags.CP_choice       = 1; % Choice of current pattern for patches

@@ -88,7 +88,7 @@ classdef EITFEM < handle
             obj.Uadded = 0;
         end %end constructor
         
-        function [elval, solVec] = SolveForward(self, sigma)
+        function [elval, solVec] = SolveForward(self, sigma, dirichlet_nodes, dirichlet_vals)
             %Solve the potentials or currents for given sigma. The output
             %is in matrix form, where each column corresponds to a single
             %injection.
@@ -150,15 +150,29 @@ classdef EITFEM < handle
             
             self.A = A0 + self.S; %Combine parts to make the full FEM matrix
 
-            % tic
-            % self.solVec = self.A\self.b;%Solve FEM
-            % toc
+            % Apply Dirichlet BCs
+            for i_BC = 1:length(dirichlet_vals)
+                % First zero out rows from Dirichlet
+                self.A(dirichlet_nodes{i_BC},:) = 0;
+    
+                % Set the diagonal as ones
+                dirichlet_indices         = sub2ind(size(self.A), dirichlet_nodes{i_BC}, dirichlet_nodes{i_BC});
+                self.A(dirichlet_indices) = 1;
 
-            tol   = 1e-6;
-            maxit = 200;
-            [L,U] = ilu(self.A,struct('type','nofill','droptol',1e-6));
-            for i = 1:size(self.b,2)
-                [self.solVec(:,i), ~] = gmres(self.A, self.b(:,i),[],tol,maxit,L,U);
+                % Set the right-hand-side to the desired voltage
+                self.b(dirichlet_nodes{i_BC},:) = dirichlet_vals(i_BC);
+            end
+
+            % Solve FEM
+            try
+                tol   = 1e-6;
+                maxit = 200;
+                [L,U] = ilu(self.A,struct('type','nofill','droptol',1e-6));
+                for i = 1:size(self.b,2)
+                    [self.solVec(:,i), ~] = gmres(self.A, self.b(:,i),[],tol,maxit,L,U);
+                end
+            catch
+                self.solVec = self.A\self.b;
             end
 
             solVec = self.solVec;
