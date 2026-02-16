@@ -103,6 +103,9 @@ function sigma_GT = Create_GT_Images(thickness, nodes, E_nodes, sigma, flags)
     
             c = colorbar("eastoutside");
             c.Label.String = "S/m";
+
+            % Make sure it is in DICOM format
+            set(gca, 'XDir','reverse')
         end
     end
 end

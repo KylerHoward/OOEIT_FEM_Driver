@@ -42,10 +42,19 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
     end
 
     % Load the mesh & split the structure
-    tetmesh      = load(fullfile(filepath,filename), "tetmesh").tetmesh;
-    connectivity = double(tetmesh.cell'); % indices of nodes making up an element
-    nodes        = double(tetmesh.node'); % xyz coordinates in mm
-    labels       = tetmesh.field';        % material id for each element
+    try % regular mesh from GMSH
+        tetmesh      = load(fullfile(filepath,filename), "tetmesh").tetmesh;
+        connectivity = double(tetmesh.cell.'); % indices of nodes making up an element
+        nodes        = double(tetmesh.node.'); % xyz coordinates in mm
+        labels       = tetmesh.field.';        % material id for each element
+    catch % Saved heart meshes
+        tetmesh      = load(fullfile(filepath,filename));
+        connectivity = double(tetmesh.connectivity); % indices of nodes making up an element
+        nodes        = double(tetmesh.nodes); % xyz coordinates in mm
+        labels       = tetmesh.labels;        % material id for each element
+
+        flags.are_bones = 0;
+    end
     clear tetmesh
     
     % Setting the Injection Current Pattern
@@ -60,7 +69,7 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
         
                 % Scale the current pattern
                 CP_scale        = load(fullfile("Current_Patterns", "GE_CP32_4x8.mat"), "CP32_4x8_IScale").CP32_4x8_IScale;
-                CP_scale        = repmat(CP_scale', 1, size(cur_pat,2));
+                CP_scale        = repmat(CP_scale.', 1, size(cur_pat,2));
                 cur_pat = CP_scale .* cur_pat;
                 
                 % Convert to be in Amps
@@ -74,7 +83,7 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
         
                 % Scale the current pattern
                 CP_scale        = load(fullfile("Current_Patterns", "clinical_belt_CP.mat"), "CPscale_belt_16x2").CPscale_belt_16x2;
-                CP_scale        = repmat(CP_scale', 1, size(cur_pat,2));
+                CP_scale        = repmat(CP_scale.', 1, size(cur_pat,2));
                 cur_pat = CP_scale .* cur_pat;
                 
                 % Convert to be in Amps
@@ -143,7 +152,7 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
     % Create a cell array with each individual organ mesh
     organ_connects = cell(length(unique(labels)),1);
     i = 1;
-    for label = unique(labels)'
+    for label = unique(labels).'
         organ_connects{i} = connectivity(labels==label, :);
         i = i + 1;
     end
@@ -202,7 +211,7 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
             title(sprintf("Carina: %.2f mm", sbj_info.carina))
             axis equal
         subplot(1,2,2)
-            pdeplot3D(nodes', organ_connects{lung}')
+            pdeplot3D(nodes.', organ_connects{lung}.')
     end
     
     if flags.save_heart_mesh == 1
@@ -270,49 +279,80 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
     if flags.heart_BCs == 1
         if flags.verbose == 1
             fprintf("   Creating heart Dirchlet boundary conditions\n")
+            heart_start_time = tic;
         end
-        heart_BCs = load(fullfile("Heart_BCs", sprintf("%s_Heart_BC_frame_5.mat",sbj_name)));
-        
-        heart_BC_currents     = heart_BCs.current_density*10^-3; % CONVERT mAMPS TO AMPS
-        heart_BC_face_indices = heart_BCs.nodeGroups;
-        clear heart_BCs
+        Diriclet_name = dir(fullfile("Heart_BCs", sprintf("%s_*Dirichlet*.mat",sbj_name))).name;
+        heart_BCs = load(fullfile("Heart_BCs", Diriclet_name));
 
-        heart_BCs = load(fullfile("Heart_BCs", sprintf("%s_Heart_BC_frame_10.mat",sbj_name)));
-        heart_BC_face_indices = [heart_BC_face_indices; heart_BCs.nodeGroups];
+        % Find Heart unit conversion
+        try
+            % Find the metadata substructure and go straigt to the units
+            heart_var_names = fieldnames(heart_BCs);
+            meta_idx = contains(lower(heart_var_names), 'metadata');
+            heart_metadata = heart_BCs.(heart_var_names{meta_idx}).units;
+            
+            % Find the unit used
+            meta_var_names = fieldnames(heart_metadata);
+            unit_idx = contains(lower(meta_var_names), 'values');
+            unit_name = heart_metadata.(meta_var_names{unit_idx});
+            if contains(unit_name, 'm')
+                heart_unit_convert = 1e-3;
+            elseif contains(unit_name, 'u') || contains(unit_name, 'µ')
+                heart_unit_convert = 1e-6;
+            else
+                heart_unit_convert = 1;
+            end
+        catch
+            heart_unit_convert = 1e-3;
+        end
+        
+        heart_BC_vals            = heart_BCs.heart_BC_values*heart_unit_convert; % Convert to standard units
+        heart_BC_surface_indices = heart_BCs.heart_BC_surface_indices;
+        clear heart_BCs
     
         % Convert the given indices into the node coordinates
         heart_surface_nodes   = load(fullfile("Heart_Meshes", sprintf("%s_Heart_Mesh.mat",sbj_name))).heart_surface_nodes;
-        heart_faces           = load(fullfile("Heart_Meshes", sprintf("%s_Heart_Mesh.mat",sbj_name))).heart_faces;
+        % heart_faces           = load(fullfile("Heart_Meshes", sprintf("%s_Heart_Mesh.mat",sbj_name))).heart_faces;
 
         % Find the heart nodes that we're applying the BC on
-        n_hframes = size(heart_BC_face_indices, 1);
-        heart_BC_node_indices = cell(size(heart_BC_face_indices));
+        n_hframes        = size(heart_BC_surface_indices, 1);
+        heart_BC_indices = cell(size(heart_BC_surface_indices));
+        if flags.plot_heart == 1
+            figure;
+            [nrows, ncols] = bestSubplotGrid(size(heart_BC_surface_indices,1));
+        end
+            
         for hframe = 1:n_hframes
-            if flags.plot_heart == 1
-                figure;
-            end
-            for i_BC = 1:size(heart_BC_face_indices,2)
-                heart_BC_faces                     = heart_faces(heart_BC_face_indices{hframe,i_BC},:);
-                heart_BC_node_indices{hframe,i_BC} = unique(heart_BC_faces(:));
-                heart_BC_nodes                     = nodes(heart_BC_node_indices{hframe,i_BC},:);
+            for i_BC = 1:size(heart_BC_surface_indices,2)
+                heart_BC_nodes = heart_surface_nodes(heart_BC_surface_indices{hframe,i_BC},:);
+
+                % Find the global nodes indicies for the heart BC
+                [~, heart_BC_indices{hframe,i_BC}] = intersect(nodes, heart_BC_nodes, 'rows', 'stable');
     
+                % Plot the boundary conditions
                 if flags.plot_heart == 1
-                    subplot(1,size(heart_BC_face_indices,2),i_BC)
+                    subplot(nrows,ncols,hframe)
                         hold on
-                        scatter3(heart_surface_nodes(:,1), heart_surface_nodes(:,2), heart_surface_nodes(:,3),'k')
-                        scatter3(heart_BC_nodes(:,1),      heart_BC_nodes(:,2),      heart_BC_nodes(:,3),'r','filled')
-                        if i_BC == round(median(1:size(heart_BC_face_indices,2)))
-                            title(sprintf("Heart Frame %d\n%.4f BC Condition", hframe, heart_BC_currents(i_BC)))
-                        else
-                            title(sprintf("\n%.4f BC Condition", heart_BC_currents(i_BC)))
+                        scatter3(heart_BC_nodes(:,1), heart_BC_nodes(:,2), heart_BC_nodes(:,3),[],heart_BC_vals(i_BC)*ones(size(heart_BC_nodes,1),1),'filled')
+                        title(sprintf("Heart BC\nFrame %d", hframe))
+                        clim([min(heart_BC_vals), max(heart_BC_vals)])
+                        colormap("turbo")
+                        if hframe == n_hframes  
+                            c = colorbar("eastoutside");
+                            c.Label.String = "Volts";
                         end
                 end
             end
         end
+
+        if flags.verbose == 1
+            heart_stop_time = toc(heart_start_time);
+            fprintf("      It took %.2f seconds to set heart Dirichlet conditions\n", heart_stop_time)
+        end
     else
         % Set empty conditions for no Dirichlet BCs
-        heart_BC_node_indices = {[]};
-        heart_BC_currents     = [];
+        heart_BC_indices = {[]};
+        heart_BC_vals  = [];
         n_hframes = 1;
     end
     
@@ -428,9 +468,9 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
                     % Solve the voltage
                     solve_start          = tic;
                     if flags.do_parfor == 1
-                        [Umeas, Imeas, Uall] = MF_Simulation(fmesh, [], sigma, solver.zeta, heart_BC_node_indices, heart_BC_currents, solver, 'current', noise);
+                        [Umeas, Imeas, Uall] = MF_Simulation(fmesh,  [], sigma, solver.zeta, heart_BC_indices(hframe,:), heart_BC_vals, solver, 'current', noise);
                     else
-                        [Umeas, Imeas, Uall] = MF_Simulation2(fmesh, [], sigma, solver.zeta, heart_BC_node_indices, heart_BC_currents, solver, 'current', noise);
+                        [Umeas, Imeas, Uall] = MF_Simulation2(fmesh, [], sigma, solver.zeta, heart_BC_indices(hframe,:), heart_BC_vals, solver, 'current', noise);
                     end
                     solve_time           = toc(solve_start);
                     if flags.verbose == 1
@@ -536,3 +576,25 @@ function update_ylim(axes, minVal, maxVal)
         ax.YLim = [minVal, maxVal];
     end
 end
+
+function [rows, cols] = bestSubplotGrid(N)
+    % Search all possible row counts
+    best = inf;
+    rows = 1;
+    cols = N;
+
+    for r = 1:ceil(sqrt(N))*2
+        c = ceil(N / r);
+        area = r * c;
+        aspect = max(r, c) / min(r, c);
+
+        score = aspect + 0.01 * (area - N);  % prioritize aspect ratio
+
+        if score < best
+            best = score;
+            rows = r;
+            cols = c;
+        end
+    end
+end
+
