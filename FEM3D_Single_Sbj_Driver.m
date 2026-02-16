@@ -7,7 +7,7 @@ Initial Version: 10/07/24 - Kyler Howard
 Current Version: 01/30/26 - Kyler Howard
 %}
 
-close all
+% close all
 clearvars -except msh_path old_msh_path save_path old_save_path
 clc
 pause('on')

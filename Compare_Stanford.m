@@ -9,7 +9,7 @@ load: subj011 - Structure containing voltage and current pattern for subject 011
 
 clear
 % clc
-% close all
+close all
 
 num_sims       = 2;
 do_pauses      = 0;
@@ -17,11 +17,11 @@ mean_shift     = 1;
 show_clinical  = 1;
 show_means     = 0;
 clinical_frame = [111,117]; % Sbj005
-clinical_frame = [1305,1310]; % Sbj002
-clinical_frame = [1280,1287]; % Sbj003
+% clinical_frame = [1305,1310]; % Sbj002
+% clinical_frame = [1280,1287]; % Sbj003
 % clinical_frame = [1217,1221]; % Sbj004
 % clinical_frame = 1287;
-remove_elec    = 1;
+remove_elec    = 0;
 bad_elecs      = [4,5,12];
 insp_exp_plot  = 1; % MUST HAVE CLINICAL_FRAMES IN ORDER OF [INSP, EXP] AND ONLY TWO!
 
@@ -30,8 +30,8 @@ sbj_path = "C:\Users\kyler\OneDrive\School\Colorado State\Research\Dr. Mueller\F
 % sbj_file = "Sbj42_4x8_patch_circle_2025_02_14_15_10_34_0001";
 % sbj_file = "Subj011_2019_09_06_15_29_05_0002";
 sbj_file = "ETT_005_circular2x16_11_34_40_0001";
-sbj_file = "ETT_002_circular2x16_12_19_48_0000";
-sbj_file = "ETT_003_circular4x8_11_41_35_0003";
+% sbj_file = "ETT_002_circular2x16_12_19_48_0000";
+% sbj_file = "ETT_003_circular4x8_11_41_35_0003";
 % sbj_file = "ETT_004_circular4x8_13_13_57_0006";
 sbj_data = load(fullfile(sbj_path, sbj_file));
 parts    = split(sbj_file,"_");
@@ -59,13 +59,19 @@ for i = 1:num_sims
     end
 
     parts{i} = split(load_name{i}, "_");
-    
-    % Data validation
-    while contains(parts{i}{2}, "Volt") ~= 1
-        load_name{i} = uigetfile(load_loc{i}, "Wrong File. Open Volt File");
-        parts{i} = split(load_name{i}, "_");
+    if size(parts{i},1) == 1
+        parts{i} = split(load_name{i}, "-");
     end
 
+    % Data validation
+    while contains(parts{i}{1}, "Volt") ~= 1 && contains(parts{i}{2}, "Volt") ~= 1
+        load_name{i} = uigetfile(load_loc{i}, "Wrong File. Open Volt File");
+        parts{i} = split(load_name{i}, "_");
+        if size(parts{i},1) == 1
+            parts{i} = split(load_name{i}, "-");
+        end
+    end
+    
     % Extract simulation name
     sim_name{i} = string(parts{i}{1});
 
