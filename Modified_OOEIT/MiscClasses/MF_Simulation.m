@@ -67,19 +67,19 @@ Edited: Kyler Howard  1.22.2025
             Imeas_i = fsolver.SolveForwardVec(sigma_i, dirichlet_nodes, dirichlet_vals);%these are the results
             Umeas_i = fsolver.Uel;
             %add noise and error:
-            e_sys = randn(length(Imeas_i),1, 'like', Imeas_i)*e_systematic_abs*(max(Imeas_i)-min(Imeas_i));
-            e_sysrel = randn(length(Imeas_i),1, 'like', Imeas_i)*e_systematic_rel;
+            e_sys = (randn(length(Imeas_i),1) + randn(length(Imeas_i),1)*1i)*e_systematic_abs*(max(Imeas_i)-min(Imeas_i));
+            e_sysrel = (randn(length(Imeas_i),1) + randn(length(Imeas_i),1)*1i)*e_systematic_rel;
             Imeas_i = Imeas_i.*(1+e_sysrel) + e_sys;
-            Imeas_i = Imeas_i.*(1+randn(length(Imeas_i),1, 'like', Imeas_i)*noise_rel) + randn(length(Imeas_i),1, 'like', Imeas_i)*noise_abs*(max(Imeas_i)-min(Imeas_i));
+            Imeas_i = Imeas_i.*(1+(randn(length(Imeas_i),1) + randn(length(Imeas_i),1)*1i)*noise_rel) + (randn(length(Imeas_i),1) + randn(length(Imeas_i),1)*1i)*noise_abs*(max(Imeas_i)-min(Imeas_i));
 
         elseif strcmp(mode, 'current')
             [Umeas_i, ~] = fsolver.SolveForwardVec(sigma_i, dirichlet_nodes, dirichlet_vals);%these are the results
             Imeas_i = fsolver.Iel;
             %add noise and error:
-            e_sys = randn(length(Umeas_i),1, 'like', Umeas_i)*e_systematic_abs*(max(Umeas_i)-min(Umeas_i));
-            e_sysrel = randn(length(Umeas_i),1, 'like', Umeas_i)*e_systematic_rel;
+            e_sys = (randn(length(Umeas_i),1) + randn(length(Umeas_i),1)*1i)*e_systematic_abs*(max(Umeas_i)-min(Umeas_i));
+            e_sysrel = (randn(length(Umeas_i),1) + randn(length(Umeas_i),1)*1i)*e_systematic_rel;
             Umeas_i = Umeas_i.*(1+e_sysrel) + e_sys;
-            Umeas_i = Umeas_i.*(1+randn(length(Umeas_i),1, 'like', Umeas_i)*noise_rel) + randn(length(Umeas_i),1, 'like', Umeas_i)*noise_abs*(max(Umeas_i)-min(Umeas_i));
+            Umeas_i = Umeas_i.*(1+(randn(length(Umeas_i),1) + randn(length(Umeas_i),1)*1i)*noise_rel) + (randn(length(Umeas_i),1) + randn(length(Umeas_i),1)*1i)*noise_abs*(max(Umeas_i)-min(Umeas_i));
         end
 
     end %end reference measurements
@@ -90,27 +90,27 @@ Edited: Kyler Howard  1.22.2025
         Umeas = fsolver.Uel;
         %add noise and error:
         if ~exist('esys', 'var')%there have been no homogeneous measurements where these have already been calculated
-            e_sys = randn(length(Imeas),1, 'like', Imeas)*e_systematic_abs*(max(Imeas)-min(Imeas));
-            e_sysrel = randn(length(Imeas),1, 'like', Imeas)*e_systematic_rel;
+            e_sys = (randn(length(Imeas),1) + randn(length(Imeas),1)*1i)*e_systematic_abs*(max(Imeas)-min(Imeas));
+            e_sysrel = (randn(length(Imeas),1) + randn(length(Imeas),1)*1i)*e_systematic_rel;
         end%If previous esys and esysrel exist use them
         Imeas = Imeas.*(1+e_sysrel) + e_sys;
-        Imeas = Imeas.*(1+randn(length(Imeas),1, 'like', Imeas)*noise_rel) + randn(length(Imeas),1, 'like', Imeas)*noise_abs*(max(Imeas)-min(Imeas));
+        Imeas = Imeas.*(1+(randn(length(Imeas),1) + randn(length(Imeas),1)*1i)*noise_rel) + (randn(length(Imeas),1) + randn(length(Imeas),1)*1i)*noise_abs*(max(Imeas)-min(Imeas));
 
     elseif strcmp(mode, 'current')
         [Umeas, Uall] = fsolver.SolveForwardVec(sigma, dirichlet_nodes, dirichlet_vals); %these are the results
         Imeas = fsolver.Iel;
         %add noise and error:
         if ~exist('esys', 'var')%there have been no homogeneous measurements where these have already been calculated
-            e_sys    = randn(length(Umeas),1, 'like', Umeas)*e_systematic_abs*(max(Umeas)-min(Umeas));
-            e_sysrel = randn(length(Umeas),1, 'like', Umeas)*e_systematic_rel;
+            e_sys    = (randn(length(Umeas),1) + randn(length(Umeas),1)*1i)*e_systematic_abs*(max(Umeas)-min(Umeas));
+            e_sysrel = (randn(length(Umeas),1) + randn(length(Umeas),1)*1i)*e_systematic_rel;
 
-            e_sys_all    = randn(size(Uall), 'like', Uall)*e_systematic_abs.*(max(Uall)-min(Uall));
-            e_sysrel_all = randn(size(Uall), 'like', Uall)*e_systematic_rel;
+            e_sys_all    = (randn(size(Uall)) + randn(size(Uall))*1i)*e_systematic_abs.*(max(Uall)-min(Uall));
+            e_sysrel_all = (randn(size(Uall)) + randn(size(Uall))*1i)*e_systematic_rel;
         end%If previous esys and esysrel exist use them
         Umeas = Umeas.*(1 + e_sysrel) + e_sys;
-        Umeas = Umeas.*(1 + randn(length(Umeas),1, 'like', Umeas)*noise_rel) + randn(length(Umeas),1, 'like', Umeas)*noise_abs*(max(Umeas)-min(Umeas));
+        Umeas = Umeas.*(1 + (randn(length(Umeas),1) + randn(length(Umeas),1)*1i)*noise_rel) + (randn(length(Umeas),1) + randn(length(Umeas),1)*1i)*noise_abs*(max(Umeas)-min(Umeas));
         Uall  = Uall.*(1+e_sysrel_all) + e_sys_all;
-        Uall  = Uall.*(1+randn(size(Uall), 'like', Uall)*noise_rel) + randn(size(Uall), 'like', Uall)*noise_abs.*(max(Uall)-min(Uall));
+        Uall  = Uall.*(1+(randn(size(Uall)) + randn(size(Uall))*1i)*noise_rel) + (randn(size(Uall)) + randn(size(Uall))*1i)*noise_abs.*(max(Uall)-min(Uall));
     end
     
     %return also the systematic error:

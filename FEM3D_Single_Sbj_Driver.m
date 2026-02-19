@@ -7,7 +7,8 @@ Initial Version: 10/07/24 - Kyler Howard
 Current Version: 01/30/26 - Kyler Howard
 %}
 
-% close all
+all_fig = findall(0, 'type', 'figure');
+close(all_fig)
 clearvars -except msh_path old_msh_path save_path old_save_path
 clc
 pause('on')
@@ -22,14 +23,22 @@ addpath(fullfile("Utility_Functions"))
 % ----------------------------------------------------------------------- %
 % User settings
 flags.do_pauses       = 0; % Decide to include pauses to check things or not
-flags.solve_problem   = 1; % Decide if you want to setup (0), or fully solve (1)
+flags.solve_problem   = 0; % Decide if you want to setup (0), or fully solve (1)
 flags.use_GE          = 1; % Decide if you want to use GE (1) or ACT5 (0) current patterns/conductivities
 flags.do_parfor       = 1; % Decide if you want to paralize (1) or not (0)
-flags.inject_current  = 0; % Decide if you want to inject ANY current (1) or only measure voltages (0)
-flags.heart_BCs       = 1; % Decide if you want to include heart BCs (1) or not (0)
+flags.inject_current  = 1; % Decide if you want to inject ANY current (1) or only measure voltages (0)
+flags.heart_BCs       = 0; % Decide if you want to include heart BCs (1) or not (0)
 flags.save_heart_mesh = 0; % Decide if you want to generate and save a heart mesh (1) or not (0)
-flags.do_beeps        = 0; % Decide if you want the code to beep after each simulation (1) or not (0)
+flags.do_beeps        = 1; % Decide if you want the code to beep after each simulation (1) or not (0)
 flags.verbose         = 1; % Decide if you want to print status updates along the way (1) or not (0)
+
+% Video settings
+flags.make_video  = 0;              % Decide if you want to make a video (1), or a single frame (0)
+flags.breath_rate = 44;             % Breath rate in breaths per minute
+flags.heart_rate  = 120;            % heart  rate in beats   per minute
+flags.fps         = 28;             % Frame rate to reconstruct the video with
+flags.insp_range  = [0.375, 0.625]; % Min and max inspiration percentages
+% flags.insp_range  = [0, 1.5]; % Min and max inspiration percentages
 
 % Condition & permutation settings
     % Conditions are a cell array, where each cell contains its own condition
@@ -55,7 +64,8 @@ flags.permutations = {{2,  0.025, 0.000};... Max Baby Inspiration
 flags.set_complex       = 0; % Choice of complex (1) or real (0) conductivities
 flags.const_body        = 0; % Decide if you want a solid/constant body (1) or not (0)
 flags.do_conditions     = 0; % Decide if you want to run multiple conditions (1), or just the programed condition below (0)
-    flags.max_inspiration   = 0.5; % Decide if the lungs should be at inspiration (1), expiration (0), or somewhere in-between
+    flags.max_inspiration   = 0.5; % Decide if the lungs should be at inspiration (1), expiration (0), or somewhere in-between. Also controls esoph in esoph_intubate.
+    flags.cardiac_cycle     = 1;   % Decide if the heart should be at diastole (1), systole (0), or somewhere in-between
     flags.lung_range        = 0.25; % Decide what percentage of inspiration range you are okay with. Default is 0.25/25%
     flags.esoph_range       = 0.125; % Decide what percentage of inspiration range for the lungs for esoph intubation
     flags.equal_vent        = 1; % Decide if you want equal ventilation (1) or split (0)
@@ -66,14 +76,16 @@ flags.permute_conds     = 0; % Decide if you want random conds (1) or not (0)
 
 % Plot settings
 flags.plot_slices     = 0; % Plot individual slices when going slice by slice
-flags.plot_trachea    = 1; % Plotting of carina height & trachea orientation
+flags.plot_trachea    = 0; % Plotting of carina height & trachea orientation
 flags.plot_electrodes = 1; % Plotting of electrode consturction
 flags.plot_conds      = 0; % Plotting of conductivities
 flags.plot_GTs        = 1; % Plot ground truth images
 flags.plot_internal   = 0; % Plotting of internal nodes
 flags.plot_volts      = 1; % Plotting of nodal voltages
 flags.plot_heart      = 1; % Plot heart BCs
+flags.plot_breath     = 1; % Plot the breathing and cardiac curves
 flags.fixed_range     = 1; % Set GT plots to be a standard range
+
 
 flags.CP_choice       = 1; % Choice of current pattern for patches
     % 1: Standard pattern

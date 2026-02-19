@@ -1,4 +1,4 @@
-function save_suffix = Make_Save_Name(condition_name, i_permutation, zeta, hframe, flags)
+function save_suffix = Make_Save_Name(condition_name, i_permutation, zeta, flags)
 
     save_suffix = "";
     if flags.do_conditions ~= 0
@@ -7,7 +7,7 @@ function save_suffix = Make_Save_Name(condition_name, i_permutation, zeta, hfram
 
     % Deal with the heart BC flags
     if flags.heart_BCs == 1
-        save_suffix = sprintf("%s-HeartBC_Frame%d", save_suffix, hframe);
+        save_suffix = sprintf("%s-HeartBCs%d", save_suffix);
     end
     if flags.inject_current == 0
         save_suffix = sprintf("%s-NoInjection", save_suffix);
@@ -21,12 +21,16 @@ function save_suffix = Make_Save_Name(condition_name, i_permutation, zeta, hfram
         save_suffix = sprintf("%s-SolidBody", save_suffix);
     elseif flags.do_conditions == 0
     % Otherwise, custom settings
-        if flags.esoph_intubate == 1
-            save_suffix = sprintf("%s-EsophInt", save_suffix);
+        if flags.make_video == 1
+            save_suffix = sprintf("%s-BreathCycle", save_suffix);
+        else
+            if flags.esoph_intubate == 1
+                save_suffix = sprintf("%s-EsophInt", save_suffix);
+            end
+    
+            save_suffix = sprintf("%s-%.2fInsp", save_suffix, flags.max_inspiration);
         end
-
-        save_suffix = sprintf("%s-%.2fInsp", save_suffix, flags.max_inspiration);
-
+        
         if flags.left_only == 1
             save_suffix = sprintf("%s-LeftOnly", save_suffix);
         elseif flags.right_only == 1

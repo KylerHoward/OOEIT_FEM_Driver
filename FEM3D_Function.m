@@ -317,32 +317,61 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
         % Find the heart nodes that we're applying the BC on
         n_hframes        = size(heart_BC_surface_indices, 1);
         heart_BC_indices = cell(size(heart_BC_surface_indices));
-        if flags.plot_heart == 1
-            figure;
-            [nrows, ncols] = bestSubplotGrid(size(heart_BC_surface_indices,1));
-        end
             
         for hframe = 1:n_hframes
             for i_BC = 1:size(heart_BC_surface_indices,2)
                 heart_BC_nodes = heart_surface_nodes(heart_BC_surface_indices{hframe,i_BC},:);
-
+                
                 % Find the global nodes indicies for the heart BC
                 [~, heart_BC_indices{hframe,i_BC}] = intersect(nodes, heart_BC_nodes, 'rows', 'stable');
-    
-                % Plot the boundary conditions
-                if flags.plot_heart == 1
-                    subplot(nrows,ncols,hframe)
-                        hold on
-                        scatter3(heart_BC_nodes(:,1), heart_BC_nodes(:,2), heart_BC_nodes(:,3),[],heart_BC_vals(i_BC)*ones(size(heart_BC_nodes,1),1),'filled')
-                        title(sprintf("Heart BC\nFrame %d", hframe))
-                        clim([min(heart_BC_vals), max(heart_BC_vals)])
-                        colormap("turbo")
-                        if hframe == n_hframes  
-                            c = colorbar("eastoutside");
-                            c.Label.String = "Volts";
-                        end
-                end
             end
+        end
+        if flags.plot_heart == 1
+            % Set figure settings
+            fig = uifigure('color','w','Position',[573,337.67,560,470]);
+            % --- Grid Layout ---
+            % Layout:
+            %   Row 1: plots (1 or 2)
+            %   Row 2: sliders (3 sliders stacked) autofitted
+            mainGrid = uigridlayout(fig,[2 1]);
+            mainGrid.RowHeight = {'1x', 'fit'};
+            mainGrid.ColumnWidth = {'1x'};
+    
+            plotGrid = uigridlayout(mainGrid,[1 1]);
+            ax1 = uiaxes(plotGrid);
+            hold(ax1, 'on')
+            start_hframe = 5;
+            
+            % Plot 1 for Frame 1
+            s1 = cell(1,size(heart_BC_surface_indices,2));
+            for i_BC = 1:size(heart_BC_surface_indices,2)
+                heart_BC_nodes = heart_surface_nodes(heart_BC_surface_indices{start_hframe,i_BC},:);
+                s1{i_BC} = scatter3(ax1, heart_BC_nodes(:,1), heart_BC_nodes(:,2), heart_BC_nodes(:,3),[],heart_BC_vals(i_BC)*ones(size(heart_BC_nodes,1),1),'filled');
+            end
+            title(ax1, sprintf("Heart BC\nFrame %d", 1))
+            xlabel(ax1, "X (mm)")
+            ylabel(ax1, "Y (mm)")
+            zlabel(ax1, "Z (mm)")
+            axis(ax1, 'equal')
+            clim(ax1, [min(heart_BC_vals), max(heart_BC_vals)])
+            colormap(ax1, "turbo")
+            c = colorbar(ax1, "eastoutside");
+            c.Label.String = "Volts";
+
+            % --- Frame Slider Block --- 
+            frameBlock = uigridlayout(mainGrid,[2 1]); 
+            frameBlock.RowHeight = {15,30};
+            
+            uilabel(frameBlock, ... 
+                    'Text','Frame Index', ... 
+                    'HorizontalAlignment','center', ... 
+                    'FontWeight','bold');
+            uislider(frameBlock, ...
+                     'Limits',[1 n_hframes], ...
+                     'Value',start_hframe, ...
+                     'MajorTicks',1:n_hframes, ...
+                     'MinorTicks',[], ...
+                     'ValueChangedFcn',@(src,evt) updateHeartFrame(ax1, src.Value, heart_BC_vals, heart_surface_nodes, heart_BC_surface_indices));
         end
 
         if flags.verbose == 1
@@ -404,7 +433,7 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
     end
     
 % ----------------------------------------------------------------------- %
-%%                         Assign Conductivities                          %
+%%                               Setup Loops                              %
 % ----------------------------------------------------------------------- %
     if flags.do_conditions == 1
         num_conditions = numel(flags.conditions);
@@ -436,65 +465,97 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
 
         for i_permutation = 1:num_permutations
             
-            if flags.verbose == 1
-                fprintf("   Assigning Conductivities\n")
-            end
-        
-            % Creating the conductivity vector at the nodes (IN SIEMENS PER METER)
-            sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, flags);
-        
-% ----------------------------------------------------------------------- %
-%%                       Create Ground Truth Images                       %
-% ----------------------------------------------------------------------- %
-            % Plot the ground truth images at each row
-            GT_Thickness = 5; %mm
-            sigma_GT = Create_GT_Images(GT_Thickness, nodes, E_nodes, sigma, flags);
-        
-% ----------------------------------------------------------------------- %
-%%                                 Solve                                  %
-% ----------------------------------------------------------------------- %
-        % DELETE ME: TESTING CONTACT IMPEDANCES
-        % zeta = [0.041];
-        % for ii = 1:length(zeta)
-        %     solver.zeta = zeta(ii)*ones(L,1);
-        %     flags.zeta  = solver.zeta;    
-            
-            % Initialize Umeas and Uall
-            Umeas = zeros(L,             K, n_hframes);
-            Uall  = zeros(size(nodes,1), K, n_hframes);
-            
-            for hframe = 1:n_hframes
-                if flags.solve_problem == 1
-                    fprintf("   Solving Forward Problem %d of %d\n", (i_permutation-1)*n_hframes + hframe, num_permutations*n_hframes)
-                
-                    % Set the current pattern (IN AMPS)
-                    solver.Iel = cur_pat;
-                
-                    % Solve the voltage
-                    solve_start          = tic;
-                    if flags.do_parfor == 1
-                        [Umeas_frame, Imeas_frame, Uall_frame] = MF_Simulation(fmesh,  [], sigma, solver.zeta, heart_BC_indices(hframe,:), heart_BC_vals, solver, 'current', noise);
-                    else
-                        [Umeas_frame, Imeas_frame, Uall_frame] = MF_Simulation2(fmesh, [], sigma, solver.zeta, heart_BC_indices(hframe,:), heart_BC_vals, solver, 'current', noise);
-                    end
-                    solve_time           = toc(solve_start);
-                    if flags.verbose == 1
-                        fprintf("      It took %.2f minutes to solve for voltages\n", solve_time/60)
-                    end
-                
-                    Umeas_frame = Umeas_frame * 1e3; % Convert V to mV
-                    Uall_frame  = Uall_frame  * 1e3; % Convert V to mV
-                    Umeas(:,:,hframe) = reshape(Umeas_frame, L, K);
-                    Uall(:,:,hframe)  = Uall_frame(1:size(nodes,1),:);
-                end % end running a solve
-            end % end looping over heart frames
-                
-% ----------------------------------------------------------------------- %
-%%                                Plotting                                %
-% ----------------------------------------------------------------------- %
-                    
+            if flags.make_video == 1
+                % Find how many frames we are simulating
+                breaths_per_sec = 1 / (flags.breath_rate/60);
+                n_bframes = ceil(breaths_per_sec * flags.fps);
 
-            % Plot voltages
+                % Create cosine curve for ventilation
+                cosA = range(flags.insp_range)/2;
+                cosB = 2*pi / n_bframes;
+                cosC = n_bframes / 2; 
+                cosD = mean(flags.insp_range);
+
+                flags.breath_curve = cosA * cos(cosB *((1:n_bframes) - cosC)) + cosD; 
+
+                % Create cardiac cycle based on literature
+                beats_per_sec = 1 / (flags.heart_rate/60);
+                heart_period = ceil(beats_per_sec * flags.fps);
+                flags.heart_curve = Make_Cardiac_Curve(heart_period, n_bframes);
+
+                if flags.plot_breath == 1
+                    figure
+                        hold on
+                        plot(1:n_bframes, flags.breath_curve)
+                        plot(1:n_bframes, flags.heart_curve)
+                        legend("Breath Curve", "Heart Curve")
+                end
+            else
+                % Set the default values
+                n_bframes = 1;
+                flags.breath_curve = flags.max_inspiration;
+                flags.heart_curve  = flags.cardiac_cycle;
+            end
+
+% ----------------------------------------------------------------------- %
+%%                         Assign Conductivities                          %
+% ----------------------------------------------------------------------- %
+            % Initialize Umeas and Uall
+            sigma = zeros(size(nodes,1), n_bframes);
+            Umeas = zeros(L,             K, n_hframes*n_bframes);
+            Uall  = zeros(size(nodes,1), K, n_hframes*n_bframes);
+            for bframe = 1:n_bframes
+                % Extract which point on the breath curve we want to simulate
+                flags.max_inspiration = flags.breath_curve(bframe);
+                flags.cardiac_cycle   = flags.heart_curve(bframe);
+
+                if flags.verbose == 1
+                    fprintf("   Assigning Conductivities\n")
+                end
+            
+                % Creating the conductivity vector at the nodes (IN SIEMENS PER METER)
+                sigma(:,bframe) = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, flags);
+            
+    % ----------------------------------------------------------------------- %
+    %%                                 Solve                                  %
+    % ----------------------------------------------------------------------- %
+                % DELETE ME: TESTING CONTACT IMPEDANCES
+                % zeta = [0.041];
+                % for ii = 1:length(zeta)
+                %     solver.zeta = zeta(ii)*ones(L,1);
+                %     flags.zeta  = solver.zeta;    
+                
+                for hframe = 1:n_hframes
+                    if flags.solve_problem == 1
+                        fprintf("   Solving Forward Problem %d of %d\n", (i_permutation-1)*n_hframes*n_bframes + (bframe-1)*n_hframes + hframe, num_permutations*n_hframes*n_bframes)
+                    
+                        % Set the current pattern (IN AMPS)
+                        solver.Iel = cur_pat;
+                    
+                        % Solve the voltage
+                        solve_start          = tic;
+                        if flags.do_parfor == 1
+                            [Umeas_frame, Imeas_frame, Uall_frame] = MF_Simulation(fmesh,  [], sigma(:,bframe), solver.zeta, heart_BC_indices(hframe,:), heart_BC_vals, solver, 'current', noise);
+                        else
+                            [Umeas_frame, Imeas_frame, Uall_frame] = MF_Simulation2(fmesh, [], sigma(:,bframe), solver.zeta, heart_BC_indices(hframe,:), heart_BC_vals, solver, 'current', noise);
+                        end
+                        solve_time           = toc(solve_start);
+                        if flags.verbose == 1
+                            fprintf("      It took %.2f minutes to solve for voltages\n", solve_time/60)
+                        end
+                    
+                        Umeas_frame = Umeas_frame * 1e3; % Convert V to mV
+                        Uall_frame  = Uall_frame  * 1e3; % Convert V to mV
+                        Umeas(:,:,(bframe-1)*n_hframes + hframe) = reshape(Umeas_frame, L, K);
+                        Uall(:,:,(bframe-1)*n_hframes + hframe)  = Uall_frame(1:size(nodes,1),:);
+                    end % end running a solve
+                end % end looping over heart frames
+            end % end looping over each video
+                    
+    % ----------------------------------------------------------------------- %
+    %%                                Plotting                                %
+    % ----------------------------------------------------------------------- %
+            % Plot global nodal voltages
             if flags.solve_problem == 1 && flags.plot_volts > 0
                 Plot_Voltages(nodes, Uall, flags)   
             
@@ -503,6 +564,10 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
                     pause
                 end
             end
+            
+            % Plot the ground truth images at each row
+            GT_Thickness = 5; %mm
+            sigma_GT = Create_GT_Images(GT_Thickness, nodes, E_nodes, sigma, flags);
 % ----------------------------------------------------------------------- %
 %%                               Save Data                                %
 % ----------------------------------------------------------------------- %
@@ -548,60 +613,28 @@ end % end function as a whole
 %%                            Custom Functions                            %
 % ----------------------------------------------------------------------- %
 
-function update_xlim(axes, minVal, maxVal)
-    % Set new x-axis limits based on slider value
-    for ax = axes
-        ax.XLim = [minVal, maxVal];
-    end
-end
+function updateHeartFrame(ax1, framenum, heart_BC_vals, heart_surface_nodes, heart_BC_surface_indices)
+    plotframe = round(framenum);
+    cla(ax1)
+    hold(ax1,'on')
 
-function update_ylim(axes, minVal, maxVal)
-    % Set new y-axis limits based on slider value
-    for ax = axes
-        ax.YLim = [minVal, maxVal];
+    % Update plot 1
+    s1 = cell(1,size(heart_BC_surface_indices,2));
+    for i_BC = 1:size(heart_BC_surface_indices,2)
+        heart_BC_nodes = heart_surface_nodes(heart_BC_surface_indices{plotframe,i_BC},:);
+        colordata = heart_BC_vals(i_BC)*ones(size(heart_BC_nodes,1),1);
+        s1{i_BC} = scatter3(ax1, heart_BC_nodes(:,1), heart_BC_nodes(:,2), heart_BC_nodes(:,3),[],colordata,'filled');
     end
-end
+    title(ax1, sprintf("Heart BC\nFrame %d", 1))
+    xlabel(ax1, "X (mm)")
+    ylabel(ax1, "Y (mm)")
+    zlabel(ax1, "Z (mm)")
+    axis(ax1, 'equal')
+    clim(ax1, [min(heart_BC_vals), max(heart_BC_vals)])
+    colormap(ax1, "turbo")
+    c = colorbar(ax1, "eastoutside");
+    c.Label.String = "Volts";
 
-function update_frame(axes)
-    ax1 = subplot(1,2,1);
-        p1 = scatter3(nodes(:,1), nodes(:,2), nodes(:,3), 10, real(Uall(:,flags.plot_volts)), 'filled');
-        title(sprintf("Voltage: CP %d", flags.plot_volts))
-        xlabel("x (mm)")
-        ylabel("y (mm)")
-        zlabel("z (mm)")
-        c = colorbar;
-        c.Label.String = "mV";
-        c.Location     = 'southoutside';
     
-    ax2 = subplot(1,2,2);
-        scatter3(nodes(:,1), nodes(:,2), nodes(:,3), 10, imag(Uall(:,flags.plot_volts)))
-        title(sprintf("Imaginary Voltage: CP %d", flags.plot_volts))
-        xlabel("x (mm)")
-        ylabel("y (mm)")
-        zlabel("z (mm)")
-        c = colorbar;
-        c.Label.String = "mV";
-        c.Location     = 'southoutside';
+    title(ax1, sprintf("Heart BC\nFrame %d", plotframe))
 end
-
-function [rows, cols] = bestSubplotGrid(N)
-    % Search all possible row counts
-    best = inf;
-    rows = 1;
-    cols = N;
-
-    for r = 1:ceil(sqrt(N))*2
-        c = ceil(N / r);
-        area = r * c;
-        aspect = max(r, c) / min(r, c);
-
-        score = aspect + 0.01 * (area - N);  % prioritize aspect ratio
-
-        if score < best
-            best = score;
-            rows = r;
-            cols = c;
-        end
-    end
-end
-
