@@ -51,6 +51,8 @@ flags.conditions   = {{0.625, 1, 0, 0, 0, "Max_Insp"};...       Max Baby Inspira
                       {0.500, 0, 0, 1, 0, "Left_Intubate"};...  Left Bronchus Intubation
                       {0.500, 0, 1, 0, 0, "Right_Intubate"};... Right Bronchus Intubation
                       {0.000, 1, 0, 0, 1, "Esoph_Intubate"}}; % Esophageal Intubation
+flags.conditions   = {{0.500, 0, 0, 1, 0, "Left_Intubate"};...  Left Bronchus Intubation
+                      {0.500, 0, 1, 0, 0, "Right_Intubate"}}; % Right Bronchus Intubation
     % Permutations are a cell array, where each cell contains its own permutation settings
     % Perumutation is {num_perm, lung_range, esoph_range}
 flags.permutations = {{2,  0.025, 0.000};... Max Baby Inspiration
@@ -60,6 +62,8 @@ flags.permutations = {{2,  0.025, 0.000};... Max Baby Inspiration
                       {5,  0.125, 0.000};... Left Bronchus Intubation
                       {5,  0.125, 0.000};... Right Bronchus Intubation
                       {5,  0.000, 0.125}}; % Esophageal Intubation
+flags.permutations = {{5,  0.125, 0.000};... Left Bronchus Intubation
+                      {5,  0.125, 0.000}}; % Esophageal Intubation
 
 % Conductivity Settings
 flags.set_complex       = 0; % Choice of complex (1) or real (0) conductivities
