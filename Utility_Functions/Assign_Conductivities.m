@@ -20,7 +20,11 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
         trachea_cond     = 0.311;  trachea_cond_range     = 0.0086;  % 0.15,  0.0
         soft_tissue_cond = 0.4;    soft_tissue_cond_range = 0.023;   % 0.3,   0.0       % 0.4, 0.023
         bone_cond        = 0.0204; bone_cond_range        = 0.0003;  % 0.05,  0.02
-        heart_cond       = 0.66;   heart_cond_range       = 0.1;     % 0.4,   0.1
+        % heart_cond       = 0.66;   heart_cond_range       = 0.1;     % 0.4,   0.1
+        % KH: Updated 2/18/26 based on TFC and the cardiac cycle
+        % heart_cond       = (50+70*flags.cardiac_cycle)/120*0.6 + (70*flags.cardiac_cycle)/120*0.153;
+        heart_cond       = flags.cardiac_cycle*.2 + .55; % Updated to range from 0.55 - 0.75
+        heart_cond_range = 0.05;
         % lung_cond        = 0.168;   lung_cond_range        = 0.075;    % 0.175, 0.125
         % KH: Updated 2/13/25 based on TFC
         lung_m           = -0.1498;
@@ -28,7 +32,8 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
         lung_cond        = lung_m * flags.max_inspiration + lung_b;  % Linear range between max/min
         lung_cond_range  = abs((lung_m * 0 + lung_b) - (lung_m * flags.lung_range + lung_b)); 
         if flags.esoph_intubate == 1
-            esophagus_cond   = 0.168;  esophagus_cond_range   = abs((lung_m * 0 + lung_b) - (lung_m * flags.esoph_range + lung_b));   % 0.164, 0.054
+            esophagus_cond   = lung_m * flags.max_inspiration + lung_b;  
+            esophagus_cond_range   = abs((lung_m * 0 + lung_b) - (lung_m * flags.esoph_range + lung_b));   % 0.164, 0.054
             lung_cond        = 0.243;  lung_cond_range = 0;
         else
             esophagus_cond   = 0.530;  esophagus_cond_range   = 0.054;   % 0.164, 0.054
@@ -127,12 +132,7 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
                           1i*(heart_susc + heart_susc_range*heart_susc_pm);
 
         % Ensure each real value is positive
-        left_lung_val = make_real_positive(left_lung_val);
-        right_lung_val = make_real_positive(right_lung_val);
-        right_lung_val = make_real_positive(right_lung_val);
-        right_lung_val = make_real_positive(right_lung_val);
-        right_lung_val = make_real_positive(right_lung_val);
-        right_lung_val = make_real_positive(right_lung_val);
+        left_lung_val  = make_real_positive(left_lung_val);
         right_lung_val = make_real_positive(right_lung_val);
     else
         % Set complex conductivity values
@@ -192,11 +192,11 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
         [clusters, centroids] = kmeans(lung_nodes(:, [1,2]), 2, 'Distance','cityblock');
         
         % Left and right are flipped
-        if centroids(1,1) < centroids(2,1)
+        if centroids(1,1) > centroids(2,1)
             clusters(clusters==1) = 3;
             clusters(clusters==2) = 1;
             clusters(clusters==3) = 2;
-        
+
             centroids(3,:) = centroids(1,:);
             centroids(1,:) = centroids(2,:);
             centroids(2,:) = centroids(3,:);
@@ -225,7 +225,7 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
             xlabel('x')
             ylabel('y')
             zlabel('z')
-            legend("Left (1)", "Right (2)", location='southoutside')
+            legend("Left (1)", "Right (2)", 'location', 'southoutside')
             title('xy projected - cityblock distance')
     end
 

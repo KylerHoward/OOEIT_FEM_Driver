@@ -45,13 +45,20 @@ function metadata = Make_Metadata(type)
     metadata.descriptions.flags.do_beeps        = "Decide if you want the code to beep after each simulation (1) or not (0).";
     metadata.descriptions.flags.verbose         = "Decide if you want to print status updates along the way (1) or not (0).";
 
+    metadata.descriptions.flags.make_video      = "Decide if you want to make a video (1), or a single frame (0).";
+    metadata.descriptions.flags.breath_rate     = "Breath rate in breaths per minute.";
+    metadata.descriptions.flags.heart_rate      = "heart  rate in beats   per minute.";
+    metadata.descriptions.flags.fps             = "Frame rate to reconstruct the video with.";
+    metadata.descriptions.flags.insp_range      = "Min and max inspiration percentages.";
+
     metadata.descriptions.flags.conditions      = "Cell array, where each cell contains its own condition in the order of {max_inspiration, equal_vent, left_only, right_only, esoph_intubate, condition_name}.";
     metadata.descriptions.flags.permutations    = "Cell array, where each cell contains its own permutation settings in the order of {num_perm, lung_range, esoph_range}.";
     
     metadata.descriptions.flags.set_complex     = "Choice of complex (1) or real (0) conductivities. Default is 1.";
     metadata.descriptions.flags.const_body      = "Decide if you want a solid/constant body (1) or not (0). Default is 0.";
     metadata.descriptions.flags.do_conditions   = "Decide if you want to run multiple conditions (1), or just the programed condition below (0).";
-    metadata.descriptions.flags.max_inspiration = "Decide if the lungs should be at inspiration (1), expiration (0), or somewhere in-between. Default is 0.5.";
+    metadata.descriptions.flags.max_inspiration = "Decide if the lungs should be at inspiration (1), expiration (0), or somewhere in-between. Default is 0.5. Also controls esoph in esoph_intubate.";
+    metadata.descriptions.flags.cardiac_cycle   = "Decide if the heart should be at diastole (1), systole (0), or somewhere in-between.";
     metadata.descriptions.flags.lung_range      = "Decide what percentage of inspiration range you are okay with. Default is 0.25/25.";
     metadata.descriptions.flags.esoph_range     = "Decide what percentage of inspiration range for the lungs for esoph intubation.";
     metadata.descriptions.flags.equal_vent      = "Decide if you want equal ventilation (1) or split (0).";
@@ -68,6 +75,7 @@ function metadata = Make_Metadata(type)
     metadata.descriptions.flags.plot_internal   = "Plotting of internal nodes.";
     metadata.descriptions.flags.plot_volts      = "Plotting of nodal voltages.";
     metadata.descriptions.flags.plot_heart      = "Plot heart BCs.";
+    metadata.descriptions.flags.plot_breath     = "Plot the breathing and cardiac curves.";
     metadata.descriptions.flags.fixed_range     = "Set GT plots to be a standard range.";
 
     metadata.descriptions.flags.CP_choice       = "Choice of current pattern for patches. 1 is the standard pattern, 2 is a 4x8 pattern for the patch.";
@@ -75,23 +83,31 @@ function metadata = Make_Metadata(type)
     metadata.descriptions.flags.E_type          = "Choice between 'patch' and 'belt'.";
     metadata.descriptions.flags.E_shape         = "Choice between 'circle' and 'rectangle'.";
     metadata.descriptions.flags.E_dia           = "Diameter of electrode (for circle electrodes).";
+    metadata.descriptions.flags.E_rad           = "Radius of electrodes (for circular electrodes).";
     metadata.descriptions.flags.E_width         = "Width  of electrode (for rectangle electrodes).";
     metadata.descriptions.flags.E_height        = "Height of electrode (for rectangle electrodes).";
+    metadata.descriptions.flags.E_area          = "Area of electrodes.";
     metadata.descriptions.flags.gap_width       = "Gap between electrodes horizontally (edge-edge) (for patch electrodes).";
     metadata.descriptions.flags.gap_height      = "Gap between electrodes vertically (edge-edge) (for patch electrodes).";
     metadata.descriptions.flags.E_count         = "Number of electrodes per row (for belt), or matrix of how many rows and columns (for patch).";
     
+    metadata.descriptions.flags.are_bones       = "Flag if the mesh has bones (1) or not (0).";
     metadata.descriptions.flags.zeta            = "Contact impedance on every boundary condition. Saved as Lx1.";
+    metadata.descriptions.flags.breath_curve    = "Vector from 0:1 of max_inspiration values throughout a simulated 'video'.";
+    metadata.descriptions.flags.heart_curve     = "Vector from 0:1 of cardiac_cycle values throughout a simulated 'video'.";
 
     % Set flag units
-    metadata.units.flags.zeta       = "Ω m²";
-    metadata.units.flags.E_dia      = "mm";
-    metadata.units.flags.E_rad      = "mm";
-    metadata.units.flags.E_width    = "mm";
-    metadata.units.flags.E_height   = "mm";
-    metadata.units.flags.gap_width  = "mm";
-    metadata.units.flags.gap_height = "mm";
-    metadata.units.flags.E_area     = "mm²";
+    metadata.units.flags.zeta        = "Ω m²";
+    metadata.units.flags.E_dia       = "mm";
+    metadata.units.flags.E_rad       = "mm";
+    metadata.units.flags.E_width     = "mm";
+    metadata.units.flags.E_height    = "mm";
+    metadata.units.flags.gap_width   = "mm";
+    metadata.units.flags.gap_height  = "mm";
+    metadata.units.flags.E_area      = "mm²";
+    metadata.units.flags.breath_rate = "breath/min";
+    metadata.units.flags.heart_rate  = "beat/min";
+    metadata.units.flags.fps         = "frame/s";
 
     % Store computer info
     metadata.computer_info.computer_type  = computer;
