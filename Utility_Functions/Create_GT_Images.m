@@ -8,7 +8,12 @@ function sigma_GT = Create_GT_Images(thickness, nodes, E_nodes, sigma, flags)
     param: E_nodes   - Cell array containing the nodes in each electrode
     param: sigam     - Conductivity value at each node
     param: flags     - Settings used to run the simulation
+
+    return: sigma_GT - Cell array with the nodal indices for each ground truth row
     %}
+
+    % set a starting frame
+    frame = 1;
 
     % Find the z heights of each electrode and sort them by rows
     E_heights = cellfun(@(x) mean(x(:,3)), E_nodes);
@@ -32,31 +37,24 @@ function sigma_GT = Create_GT_Images(thickness, nodes, E_nodes, sigma, flags)
     % Find what global nodes are in each image
     for row = 1:length(E_heights)
         plane = (nodes(:,3) > E_heights(row) - thickness/2) & (nodes(:,3) < E_heights(row) + thickness/2);
-        plane = plane & sigma~=0;
+        plane = plane & sigma(:,frame)~=0;
     
         sigma_GT{row} = plane;
     end
        
     % Create the image
-    if flags.plot_GTs == 1
-        % Determine how many columns to plot
-        if flags.set_complex == 1
-            num_col = 2;
-        else
-            num_col = 1;
-        end
-    
+    if flags.plot_GTs == 1    
         % Initialize
         shift = 0;
         rowStart = 1;
         plane_nodes = zeros(sum(cellfun(@sum, sigma_GT)),2);
-        plane_sigma = zeros(sum(cellfun(@sum, sigma_GT)),1);
+        plane_sigma = zeros(sum(cellfun(@sum, sigma_GT)),size(sigma,2));
         for k = 1:length(E_heights)
             % Current matrices
             nodemat = [nodes(sigma_GT{k},1), nodes(sigma_GT{k},2)];
-            sigmat  = sigma(sigma_GT{k});
             nrows   = size(nodemat,1);
-            PN = nodemat;
+            sigmat  = sigma(sigma_GT{k},:);
+            PN      = nodemat;
     
             % Apply shift to second column
             PN(:,2) = PN(:,2) - shift;
@@ -70,42 +68,138 @@ function sigma_GT = Create_GT_Images(thickness, nodes, E_nodes, sigma, flags)
             rowStart = rowStart + nrows;
         end
     
-        figure('color','w','Position',[573,337.67,700,420]);
-        for col = 1:num_col
-            subplot(1,num_col,col)
-            
-            if col == 1
-                scatter(plane_nodes(:,1), plane_nodes(:,2), 10, real(plane_sigma), 'filled')
-            else
-                scatter(plane_nodes(:,1), plane_nodes(:,2), 10, imag(plane_sigma), 'filled')
+        % Set figure settings
+        fig = uifigure('color','w','Position',[573,337.67,700,420]);
+        % --- Grid Layout ---
+        % Layout:
+        %   Row 1: plots (1 or 2)
+        %   Row 2: sliders (3 sliders stacked) autofitted
+        mainGrid = uigridlayout(fig,[2 1]);
+        mainGrid.RowHeight = {'1x', 'fit'};
+        mainGrid.ColumnWidth = {'1x'};
+
+        % --- Plot Panel ---
+        if flags.set_complex
+            plotGrid = uigridlayout(mainGrid,[1 2]);
+            plotGrid.ColumnWidth = {'1x','1x'};
+        else
+            plotGrid = uigridlayout(mainGrid,[1 1]);
+        end
+
+        % --- Axes Creation ---
+        if flags.set_complex
+            ax1 = uiaxes(plotGrid);
+            ax2 = uiaxes(plotGrid);
+        else
+            ax1 = uiaxes(plotGrid);
+            ax2 = [];
+        end
+        
+        % Plot 1
+        s1 = scatter(ax1, plane_nodes(:,1), plane_nodes(:,2), 10, real(plane_sigma(:,frame)), 'filled');
+        title(ax1, sprintf("Frame %d Ground Truth\nConductivity", frame))
+        axis(ax1, 'equal', 'off')
+        set(ax1, 'XDir', 'reverse') % set in DICOM standard
+        colormap("jet")
+        if flags.fixed_range == 1
+            try
+                clim(ax1, [0, 0.8])
+            catch
+                caxis(ax1, [0, 0.8])
             end
-    
-            % Flip the x axis horizontally to be in DICOM standard
-            % set(gca, 'XDir', 'reverse'); % KH: it already was I think
-            axis equal off
-    
+        else
+            try
+                clim(ax1, [min(real(plane_sigma(:,frame))), max(real(plane_sigma(:,frame)))])
+            catch
+                caxis(ax1, [min(real(plane_sigma(:,frame))), max(real(plane_sigma(:,frame)))])
+            end
+        end
+        c = colorbar(ax1, "eastoutside");
+        c.Label.String = "S/m";
+        
+        % Plot 2 (if complex)
+        if flags.set_complex
+            s2 = scatter(ax2, plane_nodes(:,1), plane_nodes(:,2), 10, imag(plane_sigma(:,frame)), 'filled');
+            title(ax2, sprintf("Frame %d Ground Truth\nSusceptivity", frame))
+            axis(ax2, 'equal', 'off')
+            set(ax2, 'XDir', 'reverse') % set in DICOM standard
             colormap("jet")
             if flags.fixed_range == 1
-                clim([0, 0.8])
+                try
+                    clim(ax2, [0, 0.8])
+                catch
+                    caxis(ax2, [0, 0.8])
+                end
             else
-                if col == 1
-                    clim([min(real(plane_sigma)), max(real(plane_sigma))])
-                else
-                    clim([min(imag(plane_sigma)), max(imag(plane_sigma))])
+                try
+                    clim(ax2, [min(imag(plane_sigma(:,frame))), max(imag(plane_sigma(:,frame)))])
+                catch
+                    caxis(ax2, [min(imag(plane_sigma(:,frame))), max(imag(plane_sigma(:,frame)))])
                 end
             end
-        
-            if col == 1
-                title(sprintf("Ground Truth\nConductivity"))
-            else
-                title(sprintf("Ground Truth\nSusceptivity"))
-            end
-    
-            c = colorbar("eastoutside");
+            c = colorbar(ax2, "eastoutside");
             c.Label.String = "S/m";
-
-            % Make sure it is in DICOM format
-            set(gca, 'XDir','reverse')
+        else
+            s2 = [];
         end
+        
+        % --- Frame Slider Block --- 
+        frameBlock = uigridlayout(mainGrid,[2 1]); 
+        frameBlock.RowHeight = {15,30};
+        
+        uilabel(frameBlock, ... 
+                'Text','Frame Index', ... 
+                'HorizontalAlignment','center', ... 
+                'FontWeight','bold');
+        uislider(frameBlock, ...
+                 'Limits',[0.9 size(sigma,2)], ...
+                 'Value',1, ...
+                 'MajorTicks',1:size(sigma,2), ...
+                 'MinorTicks',[],...
+                 'ValueChangedFcn',@(src,evt) updateFrame(ax1, ax2, s1, s2, src.Value, plane_sigma, flags));
+    end % end plotting
+
+% --- Callback Functions ---
+function updateFrame(ax1, ax2, s1, s2, framenum, colordata, flags)
+        plotframe = round(framenum);
+
+        % Update plot 1
+        s1.CData = real(colordata(:,plotframe));
+        title(ax1, sprintf("Frame %d Ground Truth\nConductivity", plotframe))
+        if flags.fixed_range == 1
+            try
+                clim(ax1,[0, 0.8])
+            catch
+                caxis(ax1,[0, 0.8])
+            end
+        else
+            try
+                clim(ax1,[min(real(colordata(:,plotframe))), max(real(colordata(:,plotframe)))])
+            catch
+                caxis(ax1,[min(real(colordata(:,plotframe))), max(real(colordata(:,plotframe)))])
+            end
+        end
+
+        % Update plot 2
+        if flags.set_complex
+            s2.CData = imag(colordata(:,plotframe));
+            title(ax2, sprintf("Frame %d Ground Truth\nSusceptivity", plotframe))
+            if flags.fixed_range == 1
+                try
+                    clim(ax2,[0, 0.8])
+                catch
+                    caxis(ax2,[0, 0.8])
+                end
+            else
+                try
+                    clim(ax2,[min(imag(colordata(:,plotframe))), max(imag(colordata(:,plotframe)))])
+                catch
+                    caxis(ax2,[min(imag(colordata(:,plotframe))), max(imag(colordata(:,plotframe)))])
+                end
+            end
+        end
+
+        
     end
+
 end
