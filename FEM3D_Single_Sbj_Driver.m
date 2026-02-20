@@ -130,15 +130,15 @@ end
 if exist("msh_path", "var") && ischar(msh_path)
     % Use the previous mesh path
     old_msh_path = msh_path;
-    %[msh_name, msh_path] = uigetfile(msh_path, "Select Mesh File");
-    msh_path = fullfile(pwd, '../../Segmentations/New_Mexico_Lungmap_Babies/CTs/R1044');
-    msh_name = 'R1044_Mesh_NoBones_Eroded.mat';
+    [msh_name, msh_path] = uigetfile(msh_path, "Select Mesh File");
 elseif exist("msh_path", "var") && exist("old_msh_path", "var")
     % User hit cancel. Use mesh path from two attempts ago
     [msh_name, msh_path] = uigetfile(old_msh_path, "Select Mesh File");
 else
     % First time running this
-    [msh_name, msh_path] = uigetfile(pwd,"Select Mesh File");
+    %[msh_name, msh_path] = uigetfile(pwd,"Select Mesh File");
+    msh_path = fullfile(pwd, '../../Segmentations/New_Mexico_Lungmap_Babies/CTs/R1044');
+    msh_name = 'R1044_Mesh_NoBones_Eroded.mat';
 end
 
 % Some user validation
@@ -172,14 +172,14 @@ if flags.solve_problem == 1
     if exist("save_path", "var") && ischar(save_path)
         % Use the previous mesh path
         old_save_path = save_path;
-        %[save_path] = uigetdir(save_path, "Select Parent Folder to Save Files In");
-        save_path = fullfile(pwd,'Results');
+        [save_path] = uigetdir(save_path, "Select Parent Folder to Save Files In");
     elseif exist("save_path", "var") && exist("old_save_path", "var")
         % User hit cancel. Use mesh path from two attempts ago
         [save_path] = uigetdir(old_save_path, "Select Parent Folder to Save Files In");
     else
         % First time running this
-        [save_path] = uigetdir(msh_path, "Select Parent Folder to Save Files In");
+        %[save_path] = uigetdir(msh_path, "Select Parent Folder to Save Files In");
+        save_path = fullfile(pwd,'Results');
     end
     
     % Some user validation
