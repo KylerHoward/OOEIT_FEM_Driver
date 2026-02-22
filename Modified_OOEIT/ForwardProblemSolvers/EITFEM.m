@@ -180,7 +180,7 @@ classdef EITFEM < handle
 
         end % end solveForward
 
-        function [vec, m_all] = SolveForwardVec(self, est)
+        function [vec, m_all] = SolveForwardVec(self, est, dirichlet_nodes, dirichlet_vals)
             %Solve the FEM with given sigma.
             %output: vec = the currents or potentials in vector format
             %              computed using FEM
@@ -194,12 +194,12 @@ classdef EITFEM < handle
                     self.zeta = est.estimates{self.zInd};%If we estimate zeta, put the value from estimate-object on self.zeta
                 end
                 if isempty(est.estimates{self.sigmaInd})%Check if we want to estimate conductivity
-                    [vec, m_all] = self.SolveForward(self.sigma);%Here, we do not want to estimate conductivity, so default value self.sigma is used
+                    [vec, m_all] = self.SolveForward(self.sigma, dirichlet_nodes, dirichlet_vals);%Here, we do not want to estimate conductivity, so default value self.sigma is used
                 else
-                    [vec, m_all] = self.SolveForward(est.estimates{self.sigmaInd});%We get the conductivity from the estimate
+                    [vec, m_all] = self.SolveForward(est.estimates{self.sigmaInd}, dirichlet_nodes, dirichlet_vals);%We get the conductivity from the estimate
                 end
             else
-                [vec, m_all] = self.SolveForward(est);%Estimate class is not used, so the estimate is just the conductivity
+                [vec, m_all] = self.SolveForward(est, dirichlet_nodes, dirichlet_vals);%Estimate class is not used, so the estimate is just the conductivity
             end
             vec = vec(:);%Vectorize the output
             if ~isempty(self.mIncl)
