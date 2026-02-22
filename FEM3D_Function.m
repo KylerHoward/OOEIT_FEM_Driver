@@ -504,7 +504,8 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
             sigma = zeros(size(nodes,1), n_bframes);
             Umeas = zeros(L,             K, n_hframes*n_bframes);
             Uall  = zeros(size(nodes,1), K, n_hframes*n_bframes);
-            for bframe = 1:n_bframes
+            % KH: Testing making this a parfor. Probably will need to check for computer availability?
+            parfor bframe = 1:n_bframes
                 % Extract which point on the breath curve we want to simulate
                 flags.max_inspiration = flags.breath_curve(bframe);
                 flags.cardiac_cycle   = flags.heart_curve(bframe);
