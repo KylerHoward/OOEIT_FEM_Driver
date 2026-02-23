@@ -289,9 +289,9 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
     end
 
     cond_time = toc;
-    if flags.verbose == 1
-        fprintf("      It took %.2f seconds to assign values\n", cond_time)
-    end
+    % if flags.verbose == 1
+    %     fprintf("      It took %.2f seconds to assign values\n", cond_time)
+    % end
 
 %% ----------------------------- Plotting ------------------------------- %
     if flags.plot_conds == 1

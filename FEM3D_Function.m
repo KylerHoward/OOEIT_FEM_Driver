@@ -504,18 +504,25 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
             sigma = zeros(size(nodes,1), n_bframes);
             Umeas = zeros(L,             K, n_hframes*n_bframes);
             Uall  = zeros(size(nodes,1), K, n_hframes*n_bframes);
+            Umeas_cell = cell(n_bframes, 1);
+            Uall_cell  = cell(n_bframes, 1);
+
             % KH: Testing making this a parfor. Probably will need to check for computer availability?
             parfor bframe = 1:n_bframes
-                % Extract which point on the breath curve we want to simulate
-                flags.max_inspiration = flags.breath_curve(bframe);
-                flags.cardiac_cycle   = flags.heart_curve(bframe);
+                % Create local copies of the flags and the solver
+                flags_local  = flags;
+                solver_local = solver
 
-                if flags.verbose == 1
+                % Extract which point on the breath curve we want to simulate on a local copy of the flags
+                flags_local.max_inspiration = flags.breath_curve(bframe);
+                flags_local.cardiac_cycle   = flags.heart_curve(bframe);
+
+                if flags_local.verbose == 1
                     fprintf("   Assigning Conductivities\n")
                 end
             
                 % Creating the conductivity vector at the nodes (IN SIEMENS PER METER)
-                sigma(:,bframe) = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, flags);
+                sigma(:,bframe) = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, flags_local);
             
     % ----------------------------------------------------------------------- %
     %%                                 Solve                                  %
@@ -526,32 +533,49 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
                 %     solver.zeta = zeta(ii)*ones(L,1);
                 %     flags.zeta  = solver.zeta;    
                 
+                % Make a local version for each core
+                Umeas_local = zeros(L, K, n_hframes);
+                Uall_local  = zeros(size(nodes,1), K, n_hframes);
+
                 for hframe = 1:n_hframes
-                    if flags.solve_problem == 1
+                    if flags_local.solve_problem == 1
                         fprintf("   Solving Forward Problem %d of %d\n", (i_permutation-1)*n_hframes*n_bframes + (bframe-1)*n_hframes + hframe, num_permutations*n_hframes*n_bframes)
                     
                         % Set the current pattern (IN AMPS)
-                        solver.Iel = cur_pat;
+                        solver_local.Iel = cur_pat;
                     
                         % Solve the voltage
                         solve_start          = tic;
-                        if flags.do_parfor == 1
-                            [Umeas_frame, Imeas_frame, Uall_frame] = MF_Simulation(fmesh,  [], sigma(:,bframe), solver.zeta, heart_BC_indices(hframe,:), heart_BC_vals, solver, 'current', noise);
+                        if flags_local.do_parfor == 1
+                            [Umeas_frame, Imeas_frame, Uall_frame] = MF_Simulation(fmesh,  [], sigma(:,bframe), solver_local.zeta, heart_BC_indices(hframe,:), heart_BC_vals, solver, 'current', noise);
                         else
-                            [Umeas_frame, Imeas_frame, Uall_frame] = MF_Simulation2(fmesh, [], sigma(:,bframe), solver.zeta, heart_BC_indices(hframe,:), heart_BC_vals, solver, 'current', noise);
+                            [Umeas_frame, Imeas_frame, Uall_frame] = MF_Simulation2(fmesh, [], sigma(:,bframe), solver_local.zeta, heart_BC_indices(hframe,:), heart_BC_vals, solver, 'current', noise);
                         end
                         solve_time           = toc(solve_start);
-                        if flags.verbose == 1
+                        if flags_local.verbose == 1
                             fprintf("      It took %.2f minutes to solve for voltages\n", solve_time/60)
                         end
                     
                         Umeas_frame = Umeas_frame * 1e3; % Convert V to mV
                         Uall_frame  = Uall_frame  * 1e3; % Convert V to mV
-                        Umeas(:,:,(bframe-1)*n_hframes + hframe) = reshape(Umeas_frame, L, K);
-                        Uall(:,:,(bframe-1)*n_hframes + hframe)  = Uall_frame(1:size(nodes,1),:);
+
+                        % Save the local frame
+                        Umeas_local(:,:,hframe) = reshape(Umeas_frame, L, K); 
+                        Uall_local(:,:,hframe) = Uall_frame(1:size(nodes,1),:);
+                        % Umeas(:,:,(bframe-1)*n_hframes + hframe) = reshape(Umeas_frame, L, K);
+                        % Uall(:,:,(bframe-1)*n_hframes + hframe)  = Uall_frame(1:size(nodes,1),:);
                     end % end running a solve
                 end % end looping over heart frames
+
+                % Combine all the heart solutions into a cell array
+                Umeas_cell{bframe} = Umeas_local; 
+                Uall_cell{bframe} = Uall_local;
+
             end % end looping over each video
+
+            % Finally combine all results
+            Umeas = cat(3, Umeas_cell{:});
+            Uall  = cat(3, Uall_cell{:});
                     
     % ----------------------------------------------------------------------- %
     %%                                Plotting                                %
