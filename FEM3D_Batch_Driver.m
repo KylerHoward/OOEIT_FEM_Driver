@@ -25,14 +25,14 @@ total_start_time = tic();
 % ----------------------------------------------------------------------- %
 % User settings
 flags.do_pauses       = 0; % Decide to include pauses to check things or not
-flags.solve_problem   = 0; % Decide if you want to setup (0), or fully solve (1)
+flags.solve_problem   = 1; % Decide if you want to setup (0), or fully solve (1)
 flags.use_GE          = 1; % Decide if you want to use GE (1) or ACT5 (0) current patterns/conductivities
 flags.do_parfor       = 1; % Decide if you want to paralize (1) or not (0)
 flags.inject_current  = 1; % Decide if you want to inject ANY current (1) or only measure voltages (0)
 flags.heart_BCs       = 0; % Decide if you want to include heart BCs (1) or not (0)
 flags.save_heart_mesh = 0; % Decide if you want to generate and save a heart mesh (1) or not (0)
 flags.do_beeps        = 1; % Decide if you want the code to beep after each simulation (1) or not (0)
-flags.verbose         = 1; % Decide if you want to print status updates along the way (1) or not (0)
+flags.verbose         = 0; % Decide if you want to print status updates along the way (1) or not (0)
 
 % Video settings
 flags.make_video  = 0;              % Decide if you want to make a video (1), or a single frame (0)
@@ -68,7 +68,7 @@ flags.permutations = {{5,  0.125, 0.000};... Left Bronchus Intubation
 % Conductivity Settings
 flags.set_complex       = 0; % Choice of complex (1) or real (0) conductivities
 flags.const_body        = 0; % Decide if you want a solid/constant body (1) or not (0)
-flags.do_conditions     = 0; % Decide if you want to run multiple conditions (1), or just the programed condition below (0)
+flags.do_conditions     = 1; % Decide if you want to run multiple conditions (1), or just the programed condition below (0)
     flags.max_inspiration   = 0.5; % Decide if the lungs should be at inspiration (1), expiration (0), or somewhere in-between. Also controls esoph in esoph_intubate.
     flags.cardiac_cycle     = 1;   % Decide if the heart should be at diastole (1), systole (0), or somewhere in-between
     flags.lung_range        = 0.25; % Decide what percentage of inspiration range you are okay with. Default is 0.25/25%
@@ -77,19 +77,19 @@ flags.do_conditions     = 0; % Decide if you want to run multiple conditions (1)
     flags.left_only         = 0; % Decide if you want only ventilation on the left side (1) or not (0)
     flags.right_only        = 0; % Decide if you want only ventilation on the right side (1) or not (0)
     flags.esoph_intubate    = 0; % Decide if the esophagus is intubated (1) or not (0)
-flags.permute_conds     = 0; % Decide if you want random conds (1) or not (0)
+flags.permute_conds     = 1; % Decide if you want random conds (1) or not (0)
 
 % Plot settings
 flags.plot_slices     = 0; % Plot individual slices when going slice by slice
 flags.plot_trachea    = 0; % Plotting of carina height & trachea orientation
-flags.plot_electrodes = 1; % Plotting of electrode consturction
+flags.plot_electrodes = 0; % Plotting of electrode consturction
 flags.plot_conds      = 0; % Plotting of conductivities
-flags.plot_GTs        = 1; % Plot ground truth images
+flags.plot_GTs        = 0; % Plot ground truth images
 flags.plot_internal   = 0; % Plotting of internal nodes
-flags.plot_volts      = 1; % Plotting of nodal voltages
-flags.plot_heart      = 1; % Plot heart BCs
-flags.plot_breath     = 1; % Plot the breathing and cardiac curves
-flags.fixed_range     = 1; % Set GT plots to be a standard range
+flags.plot_volts      = 0; % Plotting of nodal voltages
+flags.plot_heart      = 0; % Plot heart BCs
+flags.plot_breath     = 0; % Plot the breathing and cardiac curves
+flags.fixed_range     = 0; % Set GT plots to be a standard range
 
 flags.CP_choice       = 1; % Choice of current pattern for patches
     % 1: Standard pattern
@@ -183,7 +183,7 @@ end
 dataset_contents = dir(dataset_path);
 sbjs_solved = 0;
 num_solves  = 0;
-for sbj_i = 86:108%size(dataset_contents, 1)
+for sbj_i = 3:size(dataset_contents, 1)
     % Get the subject name, mesh path, and mesh name from the folder
     sbj_name = dataset_contents(sbj_i).name;
     msh_path = fullfile(dataset_path, sbj_name);
