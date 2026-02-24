@@ -10,7 +10,7 @@ Current Version: 01/30/26 - Kyler Howard
 
 all_fig = findall(0, 'type', 'figure');
 close(all_fig)
-clearvars -except dataset_path old_dataset_path save_path old_save_path
+clearvars -except dataset_path old_dataset_path save_path old_save_path node_i
 clc
 pause('on')
 
