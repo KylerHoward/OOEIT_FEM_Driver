@@ -180,7 +180,7 @@ dataset_contents = dataset_contents(3:end); % Remove . and ..
 sbjs_solved = 0;
 num_solves  = 0;
 % for sbj_i = 1:size(dataset_contents, 1)
-for sbj_i = 1+10*(node_i-1) : 10 + 10*(node_i-1)
+for sbj_i = 1+12*(node_i-1) : 10 + 12*(node_i-1)
     if sbj_i > size(dataset_contents,1)
         return
     end
