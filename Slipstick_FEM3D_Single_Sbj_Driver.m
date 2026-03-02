@@ -135,7 +135,7 @@ else
     % First time running this
     % [msh_name, msh_path] = uigetfile(pwd,"Select Mesh File");
     msh_path = fullfile(pwd, sprintf('../CTs/%s', input_name));
-    msh_name = fullfile(pwd, sprintf('../CTs/%s_Mesh_NoBones_Eroded.mat', input_name));
+    msh_name = sprintf('%s_Mesh_NoBones_Eroded.mat', input_name);
 end
 
 % Some user validation
