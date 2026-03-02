@@ -134,7 +134,8 @@ elseif exist("msh_path", "var") && exist("old_msh_path", "var")
 else
     % First time running this
     % [msh_name, msh_path] = uigetfile(pwd,"Select Mesh File");
-    dataset_path = fullfile(pwd, sprintf('../CTs/%s', input_name));
+    msh_path = fullfile(pwd, sprintf('../CTs/%s', input_name));
+    msh_name = fullfile(pwd, sprintf('../CTs/%s_Mesh_NoBones_Eroded.mat', input_name));
 end
 
 % Some user validation
