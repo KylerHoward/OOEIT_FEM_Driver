@@ -10,7 +10,7 @@ Current Version: 01/30/26 - Kyler Howard
 
 all_fig = findall(0, 'type', 'figure');
 close(all_fig)
-clearvars -except msh_path old_msh_path save_path old_save_path
+clearvars -except msh_path old_msh_path save_path old_save_path input_name
 clc
 pause('on')
 
