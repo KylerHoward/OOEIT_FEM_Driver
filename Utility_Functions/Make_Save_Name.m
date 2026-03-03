@@ -2,7 +2,11 @@ function save_suffix = Make_Save_Name(condition_name, i_permutation, zeta, flags
 
     save_suffix = "";
     if flags.do_conditions ~= 0
-        save_suffix = sprintf("%s-%s%d", save_suffix, condition_name, i_permutation);
+        if flags.make_video == 1
+            save_suffix = sprintf("%s-%s_Video%d", save_suffix, condition_name, i_permutation);
+        else
+            save_suffix = sprintf("%s-%s_Frame%d", save_suffix, condition_name, i_permutation);
+        end
     end
 
     % Deal with the heart BC flags

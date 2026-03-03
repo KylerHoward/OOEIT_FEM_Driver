@@ -8,7 +8,7 @@ Current Version: 01/30/26 - Kyler Howard
 %}
 
 all_fig = findall(0, 'type', 'figure');
-close(all_fig)
+% close(all_fig)
 clearvars -except msh_path old_msh_path save_path old_save_path
 clc
 pause('on')
@@ -33,7 +33,7 @@ flags.do_beeps        = 1; % Decide if you want the code to beep after each simu
 flags.verbose         = 1; % Decide if you want to print status updates along the way (1) or not (0)
 
 % Video settings
-flags.make_video  = 1;              % Decide if you want to make a video (1), or a single frame (0)
+flags.make_video  = 0;              % Decide if you want to make a video (1), or a single frame (0)
 flags.breath_rate = 44;             % Breath rate in breaths per minute
 flags.heart_rate  = 120;            % heart  rate in beats   per minute
 flags.fps         = 28;             % Frame rate to reconstruct the video with
@@ -50,6 +50,9 @@ flags.conditions   = {{0.625, 1, 0, 0, 0, "Max_Insp"};...       Max Baby Inspira
                       {0.500, 0, 0, 1, 0, "Left_Intubate"};...  Left Bronchus Intubation
                       {0.500, 0, 1, 0, 0, "Right_Intubate"};... Right Bronchus Intubation
                       {0.000, 1, 0, 0, 1, "Esoph_Intubate"}}; % Esophageal Intubation
+flags.conditions   = {{0.500, 0, 0, 1, 0, "Left_Intubate"};...  Left Bronchus Intubation
+                      {0.500, 0, 1, 0, 0, "Right_Intubate"};... Right Bronchus Intubation
+                      {0.000, 1, 0, 0, 1, "Esoph_Intubate"}}; % Esophageal Intubation
     % Permutations are a cell array, where each cell contains its own permutation settings
     % Perumutation is {num_perm, lung_range, esoph_range}
 flags.permutations = {{2,  0.025, 0.000};... Max Baby Inspiration
@@ -59,11 +62,14 @@ flags.permutations = {{2,  0.025, 0.000};... Max Baby Inspiration
                       {5,  0.125, 0.000};... Left Bronchus Intubation
                       {5,  0.125, 0.000};... Right Bronchus Intubation
                       {5,  0.000, 0.125}}; % Esophageal Intubation
+flags.permutations = {{1,  0.125, 0.000};... Left Bronchus Intubation
+                      {1,  0.125, 0.000};... Right Bronchus Intubation
+                      {1,  0.000, 0.125}}; % Esophageal Intubation
 
 % Conductivity Settings
 flags.set_complex       = 0; % Choice of complex (1) or real (0) conductivities
 flags.const_body        = 0; % Decide if you want a solid/constant body (1) or not (0)
-flags.do_conditions     = 0; % Decide if you want to run multiple conditions (1), or just the programed condition below (0)
+flags.do_conditions     = 1; % Decide if you want to run multiple conditions (1), or just the programed condition below (0)
     flags.max_inspiration   = 0.5; % Decide if the lungs should be at inspiration (1), expiration (0), or somewhere in-between. Also controls esoph in esoph_intubate.
     flags.cardiac_cycle     = 1;   % Decide if the heart should be at diastole (1), systole (0), or somewhere in-between
     flags.lung_range        = 0.25; % Decide what percentage of inspiration range you are okay with. Default is 0.25/25%
@@ -72,18 +78,18 @@ flags.do_conditions     = 0; % Decide if you want to run multiple conditions (1)
     flags.left_only         = 0; % Decide if you want only ventilation on the left side (1) or not (0)
     flags.right_only        = 0; % Decide if you want only ventilation on the right side (1) or not (0)
     flags.esoph_intubate    = 0; % Decide if the esophagus is intubated (1) or not (0)
-flags.permute_conds     = 0; % Decide if you want random conds (1) or not (0)
+flags.permute_conds     = 1; % Decide if you want random conds (1) or not (0)
 
 % Plot settings
 flags.plot_slices     = 0; % Plot individual slices when going slice by slice
 flags.plot_trachea    = 0; % Plotting of carina height & trachea orientation
-flags.plot_electrodes = 0; % Plotting of electrode consturction
+flags.plot_electrodes = 1; % Plotting of electrode consturction
 flags.plot_conds      = 0; % Plotting of conductivities
-flags.plot_GTs        = 0; % Plot ground truth images
+flags.plot_GTs        = 1; % Plot ground truth images
 flags.plot_internal   = 0; % Plotting of internal nodes
-flags.plot_volts      = 0; % Plotting of nodal voltages
+flags.plot_volts      = 1; % Plotting of nodal voltages
 flags.plot_heart      = 0; % Plot heart BCs
-flags.plot_breath     = 0; % Plot the breathing and cardiac curves
+flags.plot_breath     = 1; % Plot the breathing and cardiac curves
 flags.fixed_range     = 1; % Set GT plots to be a standard range
 
 
@@ -136,9 +142,7 @@ elseif exist("msh_path", "var") && exist("old_msh_path", "var")
     [msh_name, msh_path] = uigetfile(old_msh_path, "Select Mesh File");
 else
     % First time running this
-    % [msh_name, msh_path] = uigetfile(pwd,"Select Mesh File");
-    msh_path = fullfile(pwd, '../CTs/R1044');
-    msh_name = 'R1044_Mesh_NoBones_Eroded.mat';
+    [msh_name, msh_path] = uigetfile(pwd,"Select Mesh File");
 end
 
 % Some user validation
@@ -178,8 +182,7 @@ if flags.solve_problem == 1
         [save_path] = uigetdir(old_save_path, "Select Parent Folder to Save Files In");
     else
         % First time running this
-        % [save_path] = uigetdir(msh_path, "Select Parent Folder to Save Files In");
-        save_path = fullfile(pwd,'Results');
+        [save_path] = uigetdir(msh_path, "Select Parent Folder to Save Files In");
     end
     
     % Some user validation
