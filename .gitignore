@@ -13,5 +13,8 @@
 /Mesh_Creation_and_Conversion
 /Mesh_Erosion
 
+# Ignore my Dataset exploration
+/Dataset_Exploration
+
 # Ignore all .asv files
 *.asv
