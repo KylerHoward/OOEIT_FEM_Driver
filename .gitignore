@@ -13,5 +13,13 @@
 /Mesh_Creation_and_Conversion
 /Mesh_Erosion
 
+# Ignore my Dataset exploration
+/Dataset_Exploration
+
 # Ignore all .asv files
 *.asv
+
+# Ignore extra excel files
+"Adaptive Electrode Sizes.xlsx"
+Matrix_Free_Methods.xlsx
+Run_Times.xlsx
