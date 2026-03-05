@@ -20,9 +20,10 @@ clinical_frame = [111,117]; % Sbj005
 % clinical_frame = [1305,1310]; % Sbj002
 % clinical_frame = [1280,1287]; % Sbj003
 % clinical_frame = [1217,1221]; % Sbj004
-% clinical_frame = 1287;
+% clinical_frame = 117;
 remove_elec    = 0;
 bad_elecs      = [4,5,12];
+bad_elecs      = [30]; % Sbj005
 insp_exp_plot  = 1; % MUST HAVE CLINICAL_FRAMES IN ORDER OF [INSP, EXP] AND ONLY TWO!
 
 % Load files

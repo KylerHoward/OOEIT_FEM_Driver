@@ -13,71 +13,79 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
     tic
 %% ------------------------------- Setup -------------------------------- %
 
-    % S/m
-    % Set up Ventilation Lung Conductivity settings
-    if flags.use_GE == 1 % Freq = 10 kHz
+    % Set up Ventilation Lung Complex Conductivity settings. Averaging both frequencies from TFC
+    % Real Conductivities (S/m)
         background_cond  = 0.0;    background_cond_range  = 0.0;     % 0.0,   0.0
-        trachea_cond     = 0.311;  trachea_cond_range     = 0.0086;  % 0.15,  0.0
-        soft_tissue_cond = 0.4;    soft_tissue_cond_range = 0.023;   % 0.3,   0.0       % 0.4, 0.023
+        soft_tissue_cond = 0.375;  soft_tissue_cond_range = 0.025;   % 0.4,   0.023
+        trachea_cond     = mean([0.311, 0.337]);  trachea_cond_range     = 0.0086;  % 0.15,  0.0
         bone_cond        = 0.0204; bone_cond_range        = 0.0003;  % 0.05,  0.02
-        % heart_cond       = 0.66;   heart_cond_range       = 0.1;     % 0.4,   0.1
-        % KH: Updated 2/18/26 based on TFC and the cardiac cycle
+        % KH: Updated 2/18/26 based on TFC and the cardiac cycle. Old values 0.66 & 0.1
         % heart_cond       = (50+70*flags.cardiac_cycle)/120*0.6 + (70*flags.cardiac_cycle)/120*0.153;
         heart_cond       = flags.cardiac_cycle*.2 + .55; % Updated to range from 0.55 - 0.75
         heart_cond_range = 0.05;
-        % lung_cond        = 0.168;   lung_cond_range        = 0.075;    % 0.175, 0.125
-        % KH: Updated 2/13/25 based on TFC
+        % KH: Updated 2/13/25 based on TFC. Old values 0.168 & 0.075
         lung_m           = -0.1498;
         lung_b           =  0.243;
         lung_cond        = lung_m * flags.max_inspiration + lung_b;  % Linear range between max/min
         lung_cond_range  = abs((lung_m * 0 + lung_b) - (lung_m * flags.lung_range + lung_b)); 
-        if flags.esoph_intubate == 1
-            esophagus_cond   = lung_m * flags.max_inspiration + lung_b;  
-            esophagus_cond_range   = abs((lung_m * 0 + lung_b) - (lung_m * flags.esoph_range + lung_b));   % 0.164, 0.054
-            lung_cond        = 0.243;  lung_cond_range = 0;
-        else
-            esophagus_cond   = 0.530;  esophagus_cond_range   = 0.054;   % 0.164, 0.054
-        end
         lung_tissue_cond = 0.243;
-    
-        % Set up Complex Conductivity settings
-        background_susc  = 0.0;    background_susc_range  = 0.0;     % 0.0,   0.0
-        lung_susc        = 0.4;    lung_susc_range        = 0.4;     % 0.4,   0.4
-        trachea_susc     = 0.05;   trachea_susc_range     = 0.05;    % 0.05,  0.05
-        soft_tissue_susc = 0.2;    soft_tissue_susc_range = 0.0;     % 0.2,   0.0
-        bone_susc        = 0.05;   bone_susc_range        = 0.05;    % 0.05,  0.05
-        esophagus_susc   = 0.0;    esophagus_susc_range   = 0.0;     % 0.0,   0.0
-        heart_susc       = 0.4;    heart_susc_range       = 0.2;     % 0.4,   0.2
-
-    else % Freq = 93 kHz
-        error("KYLER YOU SHOULD REALLY FIX THIS")
-        if flags.verbose == 1
-            fprintf("      All these values are wrong. Doing this for Chris\n")
-        end
-        background_cond  = 0.0;    background_cond_range  = 0.0;     % 0.0,   0.0
-        trachea_cond     = 0.311;  trachea_cond_range     = 0.0086;  % 0.15,  0.0
-        soft_tissue_cond = 0.4;    soft_tissue_cond_range = 0.023;   % 0.3,   0.0       % 0.2254, 0.023
-        bone_cond        = 0.0204; bone_cond_range        = 0.0003;  % 0.05,  0.02
-        heart_cond       = 0.66;   heart_cond_range       = 0.1;     % 0.4,   0.1
-        % lung_cond        = 0.168;   lung_cond_range        = 0.075;    % 0.175, 0.125
-        % KH: Updated 2/13/25 based on TFC
-        lung_cond        = -0.1498 * flags.max_inspiration + 0.243;  % Linear range between max/min
-        lung_cond_range  = 0.125;
         if flags.esoph_intubate == 1
-            esophagus_cond   = 0.164;  esophagus_cond_range   = 0.054;   % 0.164, 0.054
+            esophagus_cond       = lung_m * flags.max_inspiration + lung_b;  
+            esophagus_cond_range = abs((lung_m * 0 + lung_b) - (lung_m * flags.esoph_range + lung_b));   % 0.164, 0.054
+            lung_cond            = lung_tissue_cond;  lung_cond_range = 0;
         else
-            esophagus_cond   = 0.530;  esophagus_cond_range   = 0.054;   % 0.164, 0.054
+            esophagus_cond = 0.530;  esophagus_cond_range   = 0.054;   % 0.164, 0.054
         end
-    
-        % Set up Complex Conductivity settings
-        background_susc  = 0.0;    background_susc_range  = 0.0;     % 0.0,   0.0
-        lung_susc        = 0.4;    lung_susc_range        = 0.4;     % 0.4,   0.4
-        trachea_susc     = 0.05;   trachea_susc_range     = 0.05;    % 0.05,  0.05
-        soft_tissue_susc = 0.2;    soft_tissue_susc_range = 0.0;     % 0.2,   0.0
-        bone_susc        = 0.05;   bone_susc_range        = 0.05;    % 0.05,  0.05
-        esophagus_susc   = 0.0;    esophagus_susc_range   = 0.0;     % 0.0,   0.0
-        heart_susc       = 0.4;    heart_susc_range       = 0.2;     % 0.4,   0.2
+
+    % Set permitivity of free space
+    eps0 = 8.8541878188e-12; % F/m
+
+    % Set up system frequencies
+    if flags.use_GE == 1
+        freq = 10000; % Hz
+
+        % Complex Conductivity (S/m). TFC gives multiples of Permittivity of free space
+        background_susc  = freq*eps0*0.00e4;   background_susc_range  = freq*eps0*0.00e3;  % 0.0,   0.0
+        soft_tissue_susc = freq*eps0*2.40e4;   soft_tissue_susc_range = freq*eps0*3.00e3;  % 0.2,   0.0
+        trachea_susc     = freq*eps0*2.55e4;   trachea_susc_range     = freq*eps0*2.26e3;  % 0.05,  0.05
+        bone_susc        = freq*eps0*5.20e2;   bone_susc_range        = freq*eps0*3.00e1;  % 0.05,  0.05
+        heart_susc       = freq*eps0*0.4;    heart_susc_range       = freq*eps0*0.2;     % 0.4,   0.2
+        lung_m           = -1.68e4;
+        lung_b           =  3.4e4;
+        lung_susc        = freq*eps0*(lung_m * flags.max_inspiration + lung_b);  % Linear range between max/min. Old values 0.4 & 0.4
+        lung_susc_range  = freq*eps0*abs((lung_m * 0 + lung_b) - (lung_m * flags.lung_range + lung_b)); 
+        lung_tissue_susc = freq*eps0*3.40e4;
+        if flags.esoph_intubate == 1
+            esophagus_susc       = freq*eps0*lung_m * flags.max_inspiration + lung_b;  
+            esophagus_susc_range = freq*eps0*abs((lung_m * 0 + lung_b) - (lung_m * flags.esoph_range + lung_b));   % 0.0, 0.0
+            lung_susc            = lung_tissue_susc;  lung_susc_range = 0;
+        else
+            esophagus_susc = freq*eps0*8.7e3;  esophagus_cond_range   = freq*eps0*3e2;   % 0, 0
+        end
+    else % ACT5 System    
+        freq = 93750; % Hz
+
+        % Complex Conductivity (S/m). TFC gives multiples of Permittivity of free space
+        background_susc  = freq*eps0*0.00e4;   background_susc_range  = freq*eps0*0.00e3;  % 0.0,   0.0
+        soft_tissue_susc = freq*eps0*2.40e4;   soft_tissue_susc_range = freq*eps0*3.00e3;  % 0.2,   0.0
+        trachea_susc     = freq*eps0*2.55e4;   trachea_susc_range     = freq*eps0*2.26e3;  % 0.05,  0.05
+        bone_susc        = freq*eps0*5.20e2;   bone_susc_range        = freq*eps0*3.00e1;  % 0.05,  0.05
+        heart_susc       = freq*eps0*0.4;    heart_susc_range       = freq*eps0*0.2;     % 0.4,   0.2
+        lung_m           = -1.68e4;
+        lung_b           =  3.4e4;
+        lung_susc        = freq*eps0*(lung_m * flags.max_inspiration + lung_b);  % Linear range between max/min. Old values 0.4 & 0.4
+        lung_susc_range  = freq*eps0*abs((lung_m * 0 + lung_b) - (lung_m * flags.lung_range + lung_b)); 
+        lung_tissue_susc = freq*eps0*3.40e4;
+        if flags.esoph_intubate == 1
+            esophagus_susc       = freq*eps0*lung_m * flags.max_inspiration + lung_b;  
+            esophagus_susc_range = freq*eps0*abs((lung_m * 0 + lung_b) - (lung_m * flags.esoph_range + lung_b));   % 0.0, 0.0
+            lung_susc            = lung_tissue_susc;  lung_susc_range = 0;
+        else
+            esophagus_susc = freq*eps0*8.7e3;  esophagus_cond_range   = freq*eps0*3e2;   % 0, 0
+        end
     end
+
+    
     
     if flags.permute_conds == 1
         % Generate a number in [-1, 1] for each tissue type
