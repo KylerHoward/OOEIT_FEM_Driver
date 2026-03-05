@@ -23,9 +23,9 @@ addpath(fullfile("Utility_Functions"))
 % ----------------------------------------------------------------------- %
 % User settings
 flags.do_pauses       = 0; % Decide to include pauses to check things or not
-flags.solve_problem   = 1; % Decide if you want to setup (0), or fully solve (1)
+flags.solve_problem   = 0; % Decide if you want to setup (0), or fully solve (1)
 flags.use_GE          = 1; % Decide if you want to use GE (1) or ACT5 (0) current patterns/conductivities
-flags.do_parfor       = 1; % Decide if you want to paralize (1) or not (0)
+flags.do_parfor       = 0; % Decide if you want to paralize (1) or not (0)
 flags.inject_current  = 1; % Decide if you want to inject ANY current (1) or only measure voltages (0)
 flags.heart_BCs       = 0; % Decide if you want to include heart BCs (1) or not (0)
 flags.save_heart_mesh = 0; % Decide if you want to generate and save a heart mesh (1) or not (0)

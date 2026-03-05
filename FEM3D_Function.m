@@ -488,7 +488,10 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
                         hold on
                         plot(1:n_bframes, flags.breath_curve)
                         plot(1:n_bframes, flags.heart_curve)
-                        legend("Breath Curve", "Heart Curve")
+                        xline([1,20,39],'r')
+                        legend(["Breath Curve", "Heart Curve","","",""],'Location','southoutside')
+                        xlabel("Frame")
+                        ylabel("% of Cycle")
                 end
             else
                 % Set the default values
