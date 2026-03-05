@@ -49,6 +49,9 @@ function Plot_Voltages(nodes, Uall, flags)
     axis(ax1, 'equal')
     c = colorbar(ax1);
     c.Label.String = "mV";
+    if flags.fixed_range == 1
+        clim([min(Uall(:,:,:),[],'all'), max(Uall(:,:,:),[],'all')])
+    end
     % c.Location     = 'southoutside';
     
     % Plot 2 (if complex)
