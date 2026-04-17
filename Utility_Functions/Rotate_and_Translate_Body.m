@@ -151,9 +151,9 @@ function [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, organ_connects, ca
 %         figure; 
 %             hold on
 %             scatter(trachea_nodes(:,1), trachea_nodes(:,3))
-%             scatter(mean_bot(1), mean_bot(2), 'r', 'filled')
-%             scatter(mean_top(1), mean_top(2), 'r', 'filled')
-%             plot(endpoints(:,1), endpoints(:,2),'r')
+%             scatter(mean_bot(1), mean_bot(2), "r", "filled")
+%             scatter(mean_top(1), mean_top(2), "r", "filled")
+%             plot(endpoints(:,1), endpoints(:,2),"r")
 %             title(sprintf("Slope of %.2f\n", slope))
 %     end
 % 
@@ -191,9 +191,9 @@ function [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, organ_connects, ca
 %             figure; 
 %                 hold on
 %                 scatter(trachea_nodes(:,1), trachea_nodes(:,3))
-%                 scatter(mean_bot(1), mean_bot(2), 'r', 'filled')
-%                 scatter(mean_top(1), mean_top(2), 'r', 'filled')
-%                 plot(endpoints(:,1), endpoints(:,2),'r')
+%                 scatter(mean_bot(1), mean_bot(2), "r", "filled")
+%                 scatter(mean_top(1), mean_top(2), "r", "filled")
+%                 plot(endpoints(:,1), endpoints(:,2),"r")
 %                 title(sprintf("Slope of %.2f\n", slope_new))
 %         end
 % 

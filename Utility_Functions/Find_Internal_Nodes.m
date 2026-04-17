@@ -9,7 +9,7 @@ function inside_indices = Find_Internal_Nodes(t_nodes, flags)
     return: inside_indices - indicies of internal nodes in a mesh
     %}
 
-    warning('off')
+    warning("off")
 
     % How large of a window to look at, at a time (default = 15)
     gap = 10; % mm
@@ -32,11 +32,11 @@ function inside_indices = Find_Internal_Nodes(t_nodes, flags)
         cluster_rad  = mean([range(x), range(y)]) / 2;
 
         % Finding clusters
-        clusters = dbscan([x,y], cluster_rad, 1, 'Distance','squaredeuclidean');
-        % clusters = dbscan([x,y,z], cluster_rad/2, 5, 'Distance','squaredeuclidean');
+        clusters = dbscan([x,y], cluster_rad, 1, "Distance","squaredeuclidean");
+        % clusters = dbscan([x,y,z], cluster_rad/2, 5, "Distance","squaredeuclidean");
 
         % Find out if a cluster is a min/max
-        for group = unique(clusters)'
+        for group = unique(clusters).'
             if min(y) == min(plane(clusters == group, 2))
                 miny_group = group;
             end
@@ -68,16 +68,16 @@ function inside_indices = Find_Internal_Nodes(t_nodes, flags)
             figure
                 subplot(1,2,1)
                     gscatter(x, y, clusters)
-                    xlabel('x')
-                    ylabel('y')
+                    xlabel("x")
+                    ylabel("y")
                     title(sprintf("Gropus of Points at %d mm", height))
                 subplot(1,2,2)
                     hold on
-                    scatter(outside_points(:,1),   outside_points(:,2),   12, 'k')
-                    scatter(inside_points(:,1), inside_points(:,2), 12, 'r', 'filled')
+                    scatter(outside_points(:,1),   outside_points(:,2),   12, "k")
+                    scatter(inside_points(:,1), inside_points(:,2), 12, "r", "filled")
                     hold off
-                    xlabel('x')
-                    ylabel('y')
+                    xlabel("x")
+                    ylabel("y")
                     title(sprintf("Deleting Red Points at %d mm", height))
         end
     end
@@ -87,11 +87,11 @@ function inside_indices = Find_Internal_Nodes(t_nodes, flags)
         figure
             hold on
             scatter3(t_nodes(:,1), t_nodes(:,2), t_nodes(:,3))
-            scatter3(inside_nodes(:,1), inside_nodes(:,2), inside_nodes(:,3),'r','filled')
-            xlabel('x')
-            ylabel('y')
-            zlabel('z')
-            title('Found Internal Points')
+            scatter3(inside_nodes(:,1), inside_nodes(:,2), inside_nodes(:,3),"r","filled")
+            xlabel("x")
+            ylabel("y")
+            zlabel("z")
+            title("Found Internal Points")
     end
     
     % Find the rows to delete from nodes, and return them for deletion

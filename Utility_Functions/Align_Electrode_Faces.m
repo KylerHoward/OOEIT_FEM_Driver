@@ -19,14 +19,14 @@ function E_connect = Align_Electrode_Faces(G_nodes, surface_faces, E_nodes, flag
     if flags.plot_electrodes == 1
         figure
         hold on
-        trimesh(surface_faces, G_nodes(:,1),G_nodes(:,2),G_nodes(:,3),"FaceColor","cyan","EdgeColor",'blue')
+        trimesh(surface_faces, G_nodes(:,1),G_nodes(:,2),G_nodes(:,3),"FaceColor","cyan","EdgeColor","blue")
     end
     
     % Loop through each electrode
     for l = 1:length(E_nodes)
     
         % Find the global nodes indicies for the electrode
-        [~, indices] = intersect(G_nodes, E_nodes{l}, 'rows', 'stable');
+        [~, indices] = intersect(G_nodes, E_nodes{l}, "rows", "stable");
         
         % Determine if the surface faces contain any of the indices
         isInIndices = ismember(surface_faces, indices);
@@ -52,9 +52,9 @@ function E_connect = Align_Electrode_Faces(G_nodes, surface_faces, E_nodes, flag
                 mesh_color    = [0,0.6,0];
             end
             
-            scatter3(E_nodes{l}(:,1), E_nodes{l}(:,2), E_nodes{l}(:,3), 'MarkerEdgeColor', scatter_color, 'MarkerFaceColor', scatter_color)
-            trimesh(filteredRows, G_nodes(:,1),G_nodes(:,2),G_nodes(:,3), 'FaceColor', mesh_color, 'EdgeColor', mesh_color)
-            % quiver3(centers(:,1),centers(:,2),centers(:,3), normals(:,1),normals(:,2),normals(:,3), 2, 'color',scatter_color);
+            scatter3(E_nodes{l}(:,1), E_nodes{l}(:,2), E_nodes{l}(:,3), "MarkerEdgeColor", scatter_color, "MarkerFaceColor", scatter_color)
+            trimesh(filteredRows, G_nodes(:,1),G_nodes(:,2),G_nodes(:,3), "FaceColor", mesh_color, "EdgeColor", mesh_color)
+            % quiver3(centers(:,1),centers(:,2),centers(:,3), normals(:,1),normals(:,2),normals(:,3), 2, "color",scatter_color);
             xlabel("X (mm)");
             ylabel("Y (mm)");
             zlabel("Z (mm)");

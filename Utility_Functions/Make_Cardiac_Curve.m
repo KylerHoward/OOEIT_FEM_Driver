@@ -93,13 +93,13 @@ function cardiac_curve = Make_Cardiac_Curve(period, tot_samples)
     %     subplot(2,1,2)
     %         hold on
     %         plot(u, y)
-    %         scatter(u_shifted, y_shifted,'filled')
+    %         scatter(u_shifted, y_shifted,"filled")
     %         legend("Regular", "Shifted")
     %         ylim([-0.1, 1.1])
     
     % Downsample with interopolation
     u_sub = linspace(0,1,period);
-    y_sub = interp1(u_shifted(1:Np-1), y_shifted(1:Np-1), u_sub, 'linear', 'extrap');
+    y_sub = interp1(u_shifted(1:Np-1), y_shifted(1:Np-1), u_sub, "linear", "extrap");
     
     % Repeat the signal to fill out breaths
     n_periods = floor(tot_samples / period); 
@@ -117,6 +117,6 @@ function cardiac_curve = Make_Cardiac_Curve(period, tot_samples)
     %     clf
     %     hold on
     %     plot(1:frames, y_rep)
-    %     plot([14,14], [0,1], ':r')
+    %     plot([14,14], [0,1], ":r")
     %     ylim([-0.1, 1.1])
 end

@@ -12,7 +12,7 @@ function E_connect = Align_Electrode_Faces2(G_nodes, surface_faces, E_nodes)
     %}
     
     % Find the global nodes indicies for the electrode
-    [~, indices] = intersect(G_nodes, E_nodes, 'rows', 'stable');
+    [~, indices] = intersect(G_nodes, E_nodes, "rows", "stable");
     
     % Determine if the surface faces contain any of the indices
     isInIndices = ismember(surface_faces, indices);

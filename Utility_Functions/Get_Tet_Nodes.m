@@ -16,7 +16,7 @@ function [tissue_nodes, node_ind] = Get_Tet_Nodes(G_nodes, tissue_connect)
     i = 1;
     % Loop through the connectivity matrix to find node coords
     node_ind = unique(tissue_connect, "stable");
-    for node = node_ind'
+    for node = node_ind.'
         tissue_nodes(i,:) = G_nodes(node,:);
         i                 = i + 1;
     end

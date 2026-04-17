@@ -39,11 +39,11 @@ function radius = Parameratize_Bdry(plane, M, theta)
     % Create the Q matrix with the sin/cos functions
     Q = NaN(2*M + 1, length(c_plane));
     for i = 0:M
-        Q(i+1,:)   = cos(i*th_vec)';
+        Q(i+1,:)   = cos(i*th_vec).';
     end
     j = 1;
     for i = (M+2):(2*M+1)
-        Q(i,:) = sin(j*th_vec)';
+        Q(i,:) = sin(j*th_vec).';
         j = j+1;
     end
 
