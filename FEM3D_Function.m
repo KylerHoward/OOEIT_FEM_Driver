@@ -30,10 +30,7 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
     save: volt_metadata - All metadata related to volt saving. Includes units and variable descriptions
     save: cond_metadata - All metadata related to cond saving. Includes units and variable descriptions
     %}
-    
-    
-    
-    
+       
 % ----------------------------------------------------------------------- %
 %%                                 Setup                                  %
 % ----------------------------------------------------------------------- %
@@ -181,13 +178,13 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
     heart_faces     = Get_Unique_Faces(organ_connects{heart});
     esophagus_faces = Get_Unique_Faces(organ_connects{esophagus});
     
-    lung_intersect      = intersect(sort(body_faces,2),  sort(lung_faces,2),      'rows');
-    trachea_intersect   = intersect(sort(body_faces,2),  sort(trachea_faces,2),   'rows');
-    heart_intersect     = intersect(sort(body_faces,2),  sort(heart_faces,2),     'rows');
-    esophagus_intersect = intersect(sort(body_faces,2),  sort(esophagus_faces,2), 'rows');
+    lung_intersect      = intersect(sort(body_faces,2),  sort(lung_faces,2),      "rows");
+    trachea_intersect   = intersect(sort(body_faces,2),  sort(trachea_faces,2),   "rows");
+    heart_intersect     = intersect(sort(body_faces,2),  sort(heart_faces,2),     "rows");
+    esophagus_intersect = intersect(sort(body_faces,2),  sort(esophagus_faces,2), "rows");
      
     inner_intersects = vertcat(lung_intersect, trachea_intersect, heart_intersect, esophagus_intersect);
-    surface_faces    = setdiff(sort(body_faces,2), sort(inner_intersects,2), 'rows');
+    surface_faces    = setdiff(sort(body_faces,2), sort(inner_intersects,2), "rows");
     
     % Extract desired organ nodes
     [trachea_nodes, ~]    = Get_Tet_Nodes(nodes, organ_connects{trachea});
@@ -205,9 +202,9 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
         subplot(1,2,1)
             scatter3(trachea_nodes(:,1), trachea_nodes(:,2), trachea_nodes(:,3), "MarkerEdgeAlpha", 0.2)
             hold on
-            scatter3(mean(trachea_nodes(:,1)), mean(trachea_nodes(:,2)), sbj_info.carina, 'r', 'filled')
-            scatter3(trachea_nodes(startsWith(string(trachea_nodes(:,3)), sprintf("%.1f", sbj_info.carina)), 1), trachea_nodes(startsWith(string(trachea_nodes(:,3)), sprintf("%.1f", sbj_info.carina)), 2), sbj_info.carina, 'r', 'filled')
-            % constantplane('z', sbj_info.carina) R2024b
+            scatter3(mean(trachea_nodes(:,1)), mean(trachea_nodes(:,2)), sbj_info.carina, "r", "filled")
+            scatter3(trachea_nodes(startsWith(string(trachea_nodes(:,3)), sprintf("%.1f", sbj_info.carina)), 1), trachea_nodes(startsWith(string(trachea_nodes(:,3)), sprintf("%.1f", sbj_info.carina)), 2), sbj_info.carina, "r", "filled")
+            % constantplane("z", sbj_info.carina) R2024b
             title(sprintf("Carina: %.2f mm", sbj_info.carina))
             axis equal
         subplot(1,2,2)
@@ -256,15 +253,16 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
     if flags.plot_electrodes == 1
         figure()
             hold on
-            scatter3(boundary_nodes(:,1), boundary_nodes(:,2), boundary_nodes(:,3), 'MarkerEdgeColor', [0.3010 0.7450 0.9330], 'LineWidth',0.05)
-            scatter3(trachea_nodes(:,1),trachea_nodes(:,2),trachea_nodes(:,3),'y','filled')
-            scatter3(lung_nodes(:,1), lung_nodes(:,2), lung_nodes(:,3), 'b')
+            % scatter3(boundary_nodes(:,1), boundary_nodes(:,2), boundary_nodes(:,3), "MarkerEdgeColor", [0.3010 0.7450 0.9330], "LineWidth",0.05)
+            scatter3(boundary_nodes(:,1), boundary_nodes(:,2), boundary_nodes(:,3), "MarkerEdgeColor", [0.21 0.71 0.52], "LineWidth",0.05)
+            scatter3(trachea_nodes(:,1),trachea_nodes(:,2),trachea_nodes(:,3),"y","filled")
+            scatter3(lung_nodes(:,1), lung_nodes(:,2), lung_nodes(:,3), "b")
             for i = 1:length(E_connect)
-                trimesh(E_connect{i}, nodes(:,1), nodes(:,2), nodes(:,3), 'FaceColor', 'r', 'edgeColor', 'r');
+                trimesh(E_connect{i}, nodes(:,1), nodes(:,2), nodes(:,3), "FaceColor", "r", "edgeColor", "r");
             end
-            xlabel('X (mm)')
-            ylabel('Y (mm)')
-            zlabel('Z (mm)')
+            xlabel("X (mm)")
+            ylabel("Y (mm)")
+            zlabel("Z (mm)")
             axis equal
         if flags.do_pauses == 1
             fprintf("      Press any key if correct\n")
@@ -288,16 +286,16 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
         try
             % Find the metadata substructure and go straigt to the units
             heart_var_names = fieldnames(heart_BCs);
-            meta_idx = contains(lower(heart_var_names), 'metadata');
+            meta_idx = contains(lower(heart_var_names), "metadata");
             heart_metadata = heart_BCs.(heart_var_names{meta_idx}).units;
             
             % Find the unit used
             meta_var_names = fieldnames(heart_metadata);
-            unit_idx = contains(lower(meta_var_names), 'values');
+            unit_idx = contains(lower(meta_var_names), "values");
             unit_name = heart_metadata.(meta_var_names{unit_idx});
-            if contains(unit_name, 'm')
+            if contains(unit_name, "m")
                 heart_unit_convert = 1e-3;
-            elseif contains(unit_name, 'u') || contains(unit_name, 'µ')
+            elseif contains(unit_name, "u") || contains(unit_name, "µ")
                 heart_unit_convert = 1e-6;
             else
                 heart_unit_convert = 1;
@@ -323,36 +321,36 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
                 heart_BC_nodes = heart_surface_nodes(heart_BC_surface_indices{hframe,i_BC},:);
                 
                 % Find the global nodes indicies for the heart BC
-                [~, heart_BC_indices{hframe,i_BC}] = intersect(nodes, heart_BC_nodes, 'rows', 'stable');
+                [~, heart_BC_indices{hframe,i_BC}] = intersect(nodes, heart_BC_nodes, "rows", "stable");
             end
         end
         if flags.plot_heart == 1
             % Set figure settings
-            fig = uifigure('color','w','Position',[573,337.67,560,470]);
+            fig = uifigure("color","w","Position",[573,337.67,560,470]);
             % --- Grid Layout ---
             % Layout:
             %   Row 1: plots (1 or 2)
             %   Row 2: sliders (3 sliders stacked) autofitted
             mainGrid = uigridlayout(fig,[2 1]);
-            mainGrid.RowHeight = {'1x', 'fit'};
-            mainGrid.ColumnWidth = {'1x'};
+            mainGrid.RowHeight = {"1x", "fit"};
+            mainGrid.ColumnWidth = {"1x"};
     
             plotGrid = uigridlayout(mainGrid,[1 1]);
             ax1 = uiaxes(plotGrid);
-            hold(ax1, 'on')
+            hold(ax1, "on")
             start_hframe = 5;
             
             % Plot 1 for Frame 1
             s1 = cell(1,size(heart_BC_surface_indices,2));
             for i_BC = 1:size(heart_BC_surface_indices,2)
                 heart_BC_nodes = heart_surface_nodes(heart_BC_surface_indices{start_hframe,i_BC},:);
-                s1{i_BC} = scatter3(ax1, heart_BC_nodes(:,1), heart_BC_nodes(:,2), heart_BC_nodes(:,3),[],heart_BC_vals(i_BC)*ones(size(heart_BC_nodes,1),1),'filled');
+                s1{i_BC} = scatter3(ax1, heart_BC_nodes(:,1), heart_BC_nodes(:,2), heart_BC_nodes(:,3),[],heart_BC_vals(i_BC)*ones(size(heart_BC_nodes,1),1),"filled");
             end
             title(ax1, sprintf("Heart BC\nFrame %d", 1))
             xlabel(ax1, "X (mm)")
             ylabel(ax1, "Y (mm)")
             zlabel(ax1, "Z (mm)")
-            axis(ax1, 'equal')
+            axis(ax1, "equal")
             clim(ax1, [min(heart_BC_vals), max(heart_BC_vals)])
             colormap(ax1, "turbo")
             c = colorbar(ax1, "eastoutside");
@@ -363,15 +361,15 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
             frameBlock.RowHeight = {15,30};
             
             uilabel(frameBlock, ... 
-                    'Text','Frame Index', ... 
-                    'HorizontalAlignment','center', ... 
-                    'FontWeight','bold');
+                    "Text","Frame Index", ... 
+                    "HorizontalAlignment","center", ... 
+                    "FontWeight","bold");
             uislider(frameBlock, ...
-                     'Limits',[1 n_hframes], ...
-                     'Value',start_hframe, ...
-                     'MajorTicks',1:n_hframes, ...
-                     'MinorTicks',[], ...
-                     'ValueChangedFcn',@(src,evt) updateHeartFrame(ax1, src.Value, heart_BC_vals, heart_surface_nodes, heart_BC_surface_indices));
+                     "Limits",[1 n_hframes], ...
+                     "Value",start_hframe, ...
+                     "MajorTicks",1:n_hframes, ...
+                     "MinorTicks",[], ...
+                     "ValueChangedFcn",@(src,evt) updateHeartFrame(ax1, src.Value, heart_BC_vals, heart_surface_nodes, heart_BC_surface_indices));
         end
 
         if flags.verbose == 1
@@ -428,9 +426,15 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
         % FIXME: KH 1/26/26, this is only for babies on GE right now
         zeta       = round((0.116-0.079)/(290.67-339.62) * (perim_mm - 290.67) + 0.116,3);
         flags.zeta = zeta*ones(L,1);
-        solver.mode = 'current';
+        solver.mode = "current";
         solver.zeta = flags.zeta;
     end
+
+    % DELETE ME: TESTING CONTACT IMPEDANCES
+    zeta = [0.133];
+    for ii = 1:length(zeta)
+        solver.zeta = zeta(ii)*ones(L,1);
+        flags.zeta  = solver.zeta;  
     
 % ----------------------------------------------------------------------- %
 %%                               Setup Loops                              %
@@ -488,8 +492,8 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
                         hold on
                         plot(1:n_bframes, flags.breath_curve)
                         plot(1:n_bframes, flags.heart_curve)
-                        xline([1,20,39],'r')
-                        legend(["Breath Curve", "Heart Curve","","",""],'Location','southoutside')
+                        xline([1,20,39],"r")
+                        legend(["Breath Curve", "Heart Curve","","",""],"Location","southoutside")
                         xlabel("Frame")
                         ylabel("% of Cycle")
                 end
@@ -529,13 +533,7 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
             
     % ----------------------------------------------------------------------- %
     %%                                 Solve                                  %
-    % ----------------------------------------------------------------------- %
-                % DELETE ME: TESTING CONTACT IMPEDANCES
-                % zeta = [0.041];
-                % for ii = 1:length(zeta)
-                %     solver.zeta = zeta(ii)*ones(L,1);
-                %     flags.zeta  = solver.zeta;    
-                
+    % ----------------------------------------------------------------------- %                
                 % Make a local version for each core
                 Umeas_local = zeros(L, K, n_hframes);
                 Uall_local  = zeros(size(nodes,1), K, n_hframes);
@@ -550,9 +548,9 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
                         % Solve the voltage
                         solve_start          = tic;
                         if flags_local.do_parfor == 1
-                            [Umeas_frame, Imeas_frame, Uall_frame] = MF_Simulation(fmesh,  [], sigma(:,bframe), solver_local.zeta, heart_BC_indices(hframe,:), heart_BC_vals, solver, 'current', noise);
+                            [Umeas_frame, Imeas_frame, Uall_frame] = MF_Simulation(fmesh,  [], sigma(:,bframe), solver_local.zeta, heart_BC_indices(hframe,:), heart_BC_vals, solver, "current", noise);
                         else
-                            [Umeas_frame, Imeas_frame, Uall_frame] = MF_Simulation2(fmesh, [], sigma(:,bframe), solver_local.zeta, heart_BC_indices(hframe,:), heart_BC_vals, solver, 'current', noise);
+                            [Umeas_frame, Imeas_frame, Uall_frame] = MF_Simulation2(fmesh, [], sigma(:,bframe), solver_local.zeta, heart_BC_indices(hframe,:), heart_BC_vals, solver, "current", noise);
                         end
                         solve_time           = toc(solve_start);
                         if flags_local.verbose == 1
@@ -635,6 +633,7 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
             end % end saving data
         end % end looping over permutations
     end % end looping through conditions
+    end % Zeta testing end
 end % end function as a whole
     
 % ----------------------------------------------------------------------- %
@@ -644,20 +643,20 @@ end % end function as a whole
 function updateHeartFrame(ax1, framenum, heart_BC_vals, heart_surface_nodes, heart_BC_surface_indices)
     plotframe = round(framenum);
     cla(ax1)
-    hold(ax1,'on')
+    hold(ax1,"on")
 
     % Update plot 1
     s1 = cell(1,size(heart_BC_surface_indices,2));
     for i_BC = 1:size(heart_BC_surface_indices,2)
         heart_BC_nodes = heart_surface_nodes(heart_BC_surface_indices{plotframe,i_BC},:);
         colordata = heart_BC_vals(i_BC)*ones(size(heart_BC_nodes,1),1);
-        s1{i_BC} = scatter3(ax1, heart_BC_nodes(:,1), heart_BC_nodes(:,2), heart_BC_nodes(:,3),[],colordata,'filled');
+        s1{i_BC} = scatter3(ax1, heart_BC_nodes(:,1), heart_BC_nodes(:,2), heart_BC_nodes(:,3),[],colordata,"filled");
     end
     title(ax1, sprintf("Heart BC\nFrame %d", 1))
     xlabel(ax1, "X (mm)")
     ylabel(ax1, "Y (mm)")
     zlabel(ax1, "Z (mm)")
-    axis(ax1, 'equal')
+    axis(ax1, "equal")
     clim(ax1, [min(heart_BC_vals), max(heart_BC_vals)])
     colormap(ax1, "turbo")
     c = colorbar(ax1, "eastoutside");
