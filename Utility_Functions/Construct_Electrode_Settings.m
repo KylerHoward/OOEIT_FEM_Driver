@@ -49,7 +49,7 @@ function [E, flags] = Construct_Electrode_Settings(flags)
     L_belt.E_count     = 16;                    % Electrodes per row
     L_belt.gap_width   = NaN;
     L_belt.gap_height  = NaN;
-    L_belt.equal_space = 0;
+    L_belt.equal_space = 1;
     
     % Constructing small GE belt
     S_belt.type        = "belt";
@@ -63,7 +63,7 @@ function [E, flags] = Construct_Electrode_Settings(flags)
     S_belt.E_count     = 16;                    % Electrodes per row
     S_belt.gap_width   = NaN;
     S_belt.gap_height  = NaN;
-    S_belt.equal_space = 0;
+    S_belt.equal_space = 1;
 
     % Constructing custom electrode setup
     E_custom.type  = flags.E_type;
