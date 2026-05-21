@@ -13,14 +13,14 @@ save: Umeas - Measured voltages on each electrode for each current pattern
 %}
 
 close all
-clear
+clearvars -except msh_path
 clc
 pause('on')
 start_time = tic;
 
 addpath Modified_OOEIT\ForwardProblemSolvers\ Modified_OOEIT\MiscClasses\ Utility_Functions\
 
-msh_path = "Meshes";
+% msh_path = "Meshes";
 % msh_name = "R1053_Mesh_NoBones.mat"; % 4 months
 % msh_name = "R1035_Mesh_Cylinder.mat"; % Adjust labels lines 103-112
 % msh_name = "R1035_Mesh_NoBones.mat"; % 13 months
@@ -32,9 +32,13 @@ msh_path = "Meshes";
 % msh_name = "case101819_Mesh_Trimmed.mat";
 % msh_name = "case101819_Mesh_Trimmed_NoBones.mat";
 
-msh_name = "R1044_Mesh_NoBones.mat"; % 1 month old
+% msh_name = "R1044_Mesh_NoBones.mat"; % 1 month old
 
-% [msh_name, msh_path] = uigetfile("G:\Lungmap_EIT\Radiology_Images","Select Mesh File"); 
+try
+    [msh_name, msh_path] = uigetfile(msh_path, "Select Mesh File"); 
+catch
+    [msh_name, msh_path] = uigetfile("Select Mesh File"); 
+end
 
 % Load the mesh
 tetmesh     = load(fullfile(msh_path,msh_name), "tetmesh").tetmesh;
@@ -61,18 +65,18 @@ flags.right_only      = 0; % Decide if you want only ventilation on the right si
 flags.permute_conds   = 0; % Decide if you want random conds (1) or not (0)
 
 % Plot settings
-flags.plot_slices     = 1; % Plot individual slices when going slice by slice
-flags.plot_trachea    = 0; % Plotting of carina height
+flags.plot_slices     = 0; % Plot individual slices when going slice by slice
+flags.plot_trachea    = 1; % Plotting of carina height
 flags.plot_electrodes = 1; % Plotting of electrode consturction
-flags.plot_conds      = 1; % Plotting of conductivities
-flags.plot_GTs        = 1; % Plot ground truth images
+flags.plot_conds      = 0; % Plotting of conductivities
+flags.plot_GTs        = 0; % Plot ground truth images
 flags.plot_internal   = 0; % Plotting of internal nodes
-flags.plot_volts      = 1; % Plotting of nodal voltages
+flags.plot_volts      = 0; % Plotting of nodal voltages
 
-flags.CP_choice       = 2; % Choice of current pattern for patches
+flags.CP_choice       = 1; % Choice of current pattern for patches
     % 1: Standard pattern
     % 2: 4x8 pattern
-flags.E_choice        = 2; % Choice of Electrode configuration
+flags.E_choice        = 4; % Choice of Electrode configuration
     % 1: Large patch front back  (GE Patch)
     % 2: Small patch front back  (GE Patch)
     % 3: Two rows of large belts (GE Belt)
@@ -206,11 +210,11 @@ end
 
 % Extract wanted info from the table
 row_num       = find(strcmp(sbj_sheet.Subject, sbj_name));
-upside_down   = sbj_sheet.UpsideDown(row_num);
-facing_dir    = sbj_sheet.PositiveYIs(row_num);
-carina_height = sbj_sheet.CarinaActual_mm(row_num);
-T5_height     = sbj_sheet.T5Actual_mm(row_num);
-T8_height     = sbj_sheet.T8Actual_mm(row_num);
+upside_down   = 0;%sbj_sheet.UpsideDown(row_num);
+facing_dir    = 0;%sbj_sheet.PositiveYIs(row_num);
+carina_height = 150;%sbj_sheet.CarinaActual_mm(row_num);
+T5_height     = 180;%sbj_sheet.T5Actual_mm(row_num);
+T8_height     = 130;%sbj_sheet.T8Actual_mm(row_num);
 
 % %KH DELETE ME TESTING FOR R1133
 if contains(msh_name, "R1133")
@@ -294,17 +298,46 @@ boundary_nodes(inside_indices,:) = [];
 ind(inside_indices,:)            = [];
 
 if flags.plot_trachea == 1
+    % figure()
+    % subplot(1,2,1)
+    %     scatter3(trachea_nodes(:,1), trachea_nodes(:,2), trachea_nodes(:,3), "MarkerEdgeAlpha", 0.2)
+    %     hold on
+    %     scatter3(mean(trachea_nodes(:,1)), mean(trachea_nodes(:,2)), sbj_info.carina, 'r', 'filled')
+    %     scatter3(trachea_nodes(startsWith(string(trachea_nodes(:,3)), sprintf("%.1f", sbj_info.carina)), 1), trachea_nodes(startsWith(string(trachea_nodes(:,3)), sprintf("%.1f", sbj_info.carina)), 2), sbj_info.carina, 'r', 'filled')
+    %     % constantplane('z', sbj_info.carina) R2024b
+    %     title(sprintf("Carina: %.2f mm", sbj_info.carina))
+    % subplot(1,2,2)
+    %     pdeplot3D(nodes', organ_connects{lung}')
     figure()
-    subplot(1,2,1)
-        scatter3(trachea_nodes(:,1), trachea_nodes(:,2), trachea_nodes(:,3), "MarkerEdgeAlpha", 0.2)
-        hold on
-        scatter3(mean(trachea_nodes(:,1)), mean(trachea_nodes(:,2)), sbj_info.carina, 'r', 'filled')
-        scatter3(trachea_nodes(startsWith(string(trachea_nodes(:,3)), sprintf("%.1f", sbj_info.carina)), 1), trachea_nodes(startsWith(string(trachea_nodes(:,3)), sprintf("%.1f", sbj_info.carina)), 2), sbj_info.carina, 'r', 'filled')
-        % constantplane('z', sbj_info.carina) R2024b
-        title(sprintf("Carina: %.2f mm", sbj_info.carina))
-    subplot(1,2,2)
-        pdeplot3D(nodes', organ_connects{lung}')
+        scatter3(boundary_nodes(:,1), boundary_nodes(:,2), boundary_nodes(:,3))
+        xlabel("X");ylabel("Y");zlabel("Z")
 end
+return
+
+%% Find perimeter of cleaver mesh
+height = 195;
+plane = boundary_nodes(boundary_nodes(:,3) > height -5 & boundary_nodes(:,3) < height +5, :);
+center = (max(plane,[],1) + min(plane,[],1)) / 2;
+i = 1;
+point     = zeros(200, 3);
+perim_mm  = 0;
+param_terms   = 15;
+for theta = 0 : (2*pi)/200 : 2*pi - (2*pi)/200
+radius =  Parameratize_Bdry(plane, param_terms, theta);
+point(i,:) = [center(1) + radius*cos(theta), center(2) + radius*sin(theta), center(3)];
+if i >= 2
+dist = sqrt((point(i-1,1) - point(i,1))^2 + (point(i-1,2) - point(i,2))^2);
+perim_mm = perim_mm + dist;
+end
+i = i + 1;
+end
+figure()
+hold on
+scatter(plane(:,1), plane(:,2))
+plot(point(:,1),   point(:,2), 'r', 'linewidth', 1.5)
+legend("Exact Points", "Parameratized Boundary", 'location','southoutside')
+title("Center of Patch")
+fprintf("Perimeter is %.1f cm\n", perim_mm / 10)
 
 % ----------------------------------------------------------------------- %
 %%                             Make Electrodes                            %
