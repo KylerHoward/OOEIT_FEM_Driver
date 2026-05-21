@@ -243,13 +243,19 @@ for sbj_i = 3:size(dataset_contents, 1)
     
     % RUN THE 3D FEM 
     fprintf("Running %s\n", sbj_name)
-    FEM3D_Function(msh_path, msh_name, sbj_name, sbj_save_path, flags, noise)
+    n_bframes = FEM3D_Function(msh_path, msh_name, sbj_name, sbj_save_path, flags, noise);
     
     sbj_stop_time = toc(sbj_start_time);
     fprintf("\n   It took %.2f hours to solve the forward problem\n", sbj_stop_time / 3600)
 
     sbjs_solved = sbjs_solved + 1;
-    num_solves  = num_solves + sum(cellfun(@(x) x{1}, flags.permutations));
+    if flags.do_conditions == 1
+        n_conditions = size(flags.conditions,1);
+    else
+        n_conditions = 1;
+    end
+   
+    num_solves  = num_solves + n_conditions * n_bframes * sum(cellfun(@(x) x{1}, flags.permutations));
 end
 
 

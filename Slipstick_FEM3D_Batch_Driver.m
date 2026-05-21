@@ -45,7 +45,7 @@ flags.insp_range  = [0.375, 0.625]; % Min and max inspiration percentages
 % Condition & permutation settings
     % Conditions are a cell array, where each cell contains its own condition
     % Condition is {max_inspiration, equal_vent, left_only, right_only, esoph_intubate, condition_name}
-flags.conditions   = {{0.500, 1, 0, 0, 0, "Reg_Intubate"};...   Regular Baby Inspiration
+flags.conditions   = {{0.500, 0, 0, 0, 0, "Reg_Intubate"};...   Regular Baby Inspiration
                     % {1.500, 1, 0, 0, 0, "Deep_Insp"},...      Deep Inspiration
                       {0.500, 0, 0, 1, 0, "Left_Intubate"};...  Left Bronchus Intubation
                       {0.500, 0, 1, 0, 0, "Right_Intubate"};... Right Bronchus Intubation
@@ -77,7 +77,7 @@ flags.plot_slices     = 0; % Plot individual slices when going slice by slice
 flags.plot_trachea    = 0; % Plotting of carina height & trachea orientation
 flags.plot_electrodes = 0; % Plotting of electrode consturction
 flags.plot_conds      = 0; % Plotting of conductivities
-flags.plot_GTs        = 1; % Plot ground truth images
+flags.plot_GTs        = 0; % Plot ground truth images
 flags.plot_internal   = 0; % Plotting of internal nodes
 flags.plot_volts      = 0; % Plotting of nodal voltages
 flags.plot_heart      = 0; % Plot heart BCs
@@ -177,10 +177,12 @@ end
 
 dataset_contents = dir(dataset_path);
 dataset_contents = dataset_contents(3:end); % Remove . and ..
+n_sbjs           = size(dataset_contents,1);
+sbj_per_node     = ceil(n_sbjs/10)*node_i;
 sbjs_solved = 0;
 num_solves  = 0;
 % for sbj_i = 1:size(dataset_contents, 1)
-for sbj_i = 1+12*(node_i-1) : 10 + 12*(node_i-1)
+for sbj_i = 1 + sbj_per_node : sbj_per_node + sbj_per_node*node_i
     if sbj_i > size(dataset_contents,1)
         return
     end
@@ -242,13 +244,19 @@ for sbj_i = 1+12*(node_i-1) : 10 + 12*(node_i-1)
     
     % RUN THE 3D FEM 
     fprintf("Running %s\n", sbj_name)
-    FEM3D_Function(msh_path, msh_name, sbj_name, sbj_save_path, flags, noise)
+    n_bframes = FEM3D_Function(msh_path, msh_name, sbj_name, sbj_save_path, flags, noise);
     
     sbj_stop_time = toc(sbj_start_time);
     fprintf("\n   It took %.2f hours to solve the forward problem\n", sbj_stop_time / 3600)
 
     sbjs_solved = sbjs_solved + 1;
-    num_solves  = num_solves + sum(cellfun(@(x) x{1}, flags.permutations));
+    if flags.do_conditions == 1
+        n_conditions = size(flags.conditions,1);
+    else
+        n_conditions = 1;
+    end
+   
+    num_solves  = num_solves + n_conditions * n_bframes * sum(cellfun(@(x) x{1}, flags.permutations));
 end
 
 
