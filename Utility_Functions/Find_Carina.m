@@ -52,7 +52,7 @@ function carina_height = Find_Carina(t_nodes, flags)
         if size(plane,1) == 1
             clusters = 1;
         else
-            clusters = dbscan(plane, cluster_rad, 1, 'Distance','squaredeuclidean');
+            clusters = dbscan(plane, cluster_rad, 1, "Distance","squaredeuclidean");
         end
     
         % Find the centroid of each plane and adjust the symbol, color, and
@@ -61,7 +61,7 @@ function carina_height = Find_Carina(t_nodes, flags)
         syms   = "";
         colors = 'brgcmy';
         names  = strings(length(unique(clusters)),1);
-        for i = unique(clusters)'
+        for i = unique(clusters).'
             cluster_centroids(i,:) = mean(plane(clusters == i, :), 1);
             syms    = syms + "o";
             names(i) = sprintf("Cluster %d Centroid", i);
@@ -72,10 +72,10 @@ function carina_height = Find_Carina(t_nodes, flags)
             figure()
                 hold on
                 gscatter(plane(:,1), plane(:,2), clusters, colors(1:length(unique(clusters))), syms)
-                gscatter(cluster_centroids(:,1), cluster_centroids(:,2), unique(clusters), colors(1:length(unique(clusters))), 'filled')
-                scatter(global_centroid(1),    global_centroid(2),   60, '*', 'k')
+                gscatter(cluster_centroids(:,1), cluster_centroids(:,2), unique(clusters), colors(1:length(unique(clusters))), "filled")
+                scatter(global_centroid(1),    global_centroid(2),   60, "*", "k")
                 title(z)
-                legend([unique(clusters)', names', "Global Centroid"], 'Location','eastoutside')
+                legend([unique(clusters).', names.', "Global Centroid"], "Location","eastoutside")
         end
         
         % Check if there are 2 clusters and if we've gone past the first 25% of
@@ -107,10 +107,10 @@ function carina_height = Find_Carina(t_nodes, flags)
         figure(carina_height)
             hold on
             gscatter(plane(:,1), plane(:,2), clusters, colors(1:length(unique(clusters))), syms)
-            gscatter(cluster_centroids(:,1), cluster_centroids(:,2), unique(clusters), colors(1:length(unique(clusters))), 'filled')
-            scatter(global_centroid(1),    global_centroid(2),   60, '*', 'k')
+            gscatter(cluster_centroids(:,1), cluster_centroids(:,2), unique(clusters), colors(1:length(unique(clusters))), "filled")
+            scatter(global_centroid(1),    global_centroid(2),   60, "*", "k")
             title(carina_height)
-            legend([unique(clusters)', names', "Global Centroid"], 'Location','eastoutside')
+            legend([unique(clusters).', names.', "Global Centroid"], "Location","eastoutside")
     end
 
 end

@@ -7,11 +7,11 @@ Initial Version: 10/07/24 - Kyler Howard
 Current Version: 01/30/26 - Kyler Howard
 %}
 
-all_fig = findall(0, 'type', 'figure');
-% close(all_fig)
+all_fig = findall(0, "type", "figure");
+close(all_fig)
 clearvars -except msh_path old_msh_path save_path old_save_path
 clc
-pause('on')
+pause("on")
 
 % Add paths in a way that works for macs as well
 addpath(fullfile("Modified_OOEIT", "ForwardProblemSolvers"))
@@ -25,7 +25,7 @@ addpath(fullfile("Utility_Functions"))
 flags.do_pauses       = 0; % Decide to include pauses to check things or not
 flags.solve_problem   = 0; % Decide if you want to setup (0), or fully solve (1)
 flags.use_GE          = 1; % Decide if you want to use GE (1) or ACT5 (0) current patterns/conductivities
-flags.do_parfor       = 0; % Decide if you want to paralize (1) or not (0)
+flags.do_parfor       = 1; % Decide if you want to paralize (1) or not (0)
 flags.inject_current  = 1; % Decide if you want to inject ANY current (1) or only measure voltages (0)
 flags.heart_BCs       = 0; % Decide if you want to include heart BCs (1) or not (0)
 flags.save_heart_mesh = 0; % Decide if you want to generate and save a heart mesh (1) or not (0)
@@ -50,9 +50,6 @@ flags.conditions   = {{0.625, 1, 0, 0, 0, "Max_Insp"};...       Max Baby Inspira
                       {0.500, 0, 0, 1, 0, "Left_Intubate"};...  Left Bronchus Intubation
                       {0.500, 0, 1, 0, 0, "Right_Intubate"};... Right Bronchus Intubation
                       {0.000, 1, 0, 0, 1, "Esoph_Intubate"}}; % Esophageal Intubation
-flags.conditions   = {{0.500, 0, 0, 1, 0, "Left_Intubate"};...  Left Bronchus Intubation
-                      {0.500, 0, 1, 0, 0, "Right_Intubate"};... Right Bronchus Intubation
-                      {0.000, 1, 0, 0, 1, "Esoph_Intubate"}}; % Esophageal Intubation
     % Permutations are a cell array, where each cell contains its own permutation settings
     % Perumutation is {num_perm, lung_range, esoph_range}
 flags.permutations = {{2,  0.025, 0.000};... Max Baby Inspiration
@@ -62,23 +59,20 @@ flags.permutations = {{2,  0.025, 0.000};... Max Baby Inspiration
                       {5,  0.125, 0.000};... Left Bronchus Intubation
                       {5,  0.125, 0.000};... Right Bronchus Intubation
                       {5,  0.000, 0.125}}; % Esophageal Intubation
-flags.permutations = {{1,  0.125, 0.000};... Left Bronchus Intubation
-                      {1,  0.125, 0.000};... Right Bronchus Intubation
-                      {1,  0.000, 0.125}}; % Esophageal Intubation
 
 % Conductivity Settings
 flags.set_complex       = 0; % Choice of complex (1) or real (0) conductivities
 flags.const_body        = 0; % Decide if you want a solid/constant body (1) or not (0)
-flags.do_conditions     = 1; % Decide if you want to run multiple conditions (1), or just the programed condition below (0)
-    flags.max_inspiration   = 0.5; % Decide if the lungs should be at inspiration (1), expiration (0), or somewhere in-between. Also controls esoph in esoph_intubate.
+flags.do_conditions     = 0; % Decide if you want to run multiple conditions (1), or just the programed condition below (0)
+    flags.max_inspiration   = 0.0; % Decide if the lungs should be at inspiration (1), expiration (0), or somewhere in-between. Also controls esoph in esoph_intubate.
     flags.cardiac_cycle     = 1;   % Decide if the heart should be at diastole (1), systole (0), or somewhere in-between
     flags.lung_range        = 0.25; % Decide what percentage of inspiration range you are okay with. Default is 0.25/25%
     flags.esoph_range       = 0.125; % Decide what percentage of inspiration range for the lungs for esoph intubation
-    flags.equal_vent        = 1; % Decide if you want equal ventilation (1) or split (0)
+    flags.equal_vent        = 1; % Decide if you want equal ventilation in each lung (1) or split (0)
     flags.left_only         = 0; % Decide if you want only ventilation on the left side (1) or not (0)
     flags.right_only        = 0; % Decide if you want only ventilation on the right side (1) or not (0)
     flags.esoph_intubate    = 0; % Decide if the esophagus is intubated (1) or not (0)
-flags.permute_conds     = 1; % Decide if you want random conds (1) or not (0)
+flags.permute_conds     = 0; % Decide if you want random conds (1) or not (0)
 
 % Plot settings
 flags.plot_slices     = 0; % Plot individual slices when going slice by slice
@@ -96,7 +90,7 @@ flags.fixed_range     = 1; % Set GT plots to be a standard range
 flags.CP_choice       = 1; % Choice of current pattern for patches
     % 1: Standard pattern
     % 2: 4x8 pattern
-flags.E_choice        = 4; % Choice of Electrode configuration
+flags.E_choice        = 3; % Choice of Electrode configuration
     % 1: Large patch front back  (GE Patch)
     % 2: Small patch front back  (GE Patch)
     % 3: Two rows of large belts (GE Belt)
@@ -106,16 +100,18 @@ flags.E_choice        = 4; % Choice of Electrode configuration
 % Custom Electrode Settings
 flags.E_type          = "belt";   % Choice between "patch" and "belt"
 flags.E_shape         = "circle"; % Choice between "circle" and "rectangle"
-flags.E_dia           = 30;  % Diameter of electrode in mm (for circle)
-flags.E_width         = 22;  % Width  of electrode in mm (for rectangle)
-flags.E_height        = 29;  % Height of electrode in mm (for rectangle)
-flags.gap_width       = 46.675; % Gap between electrodes horizontally in mm (edge-edge) (for patch) %2.5 / 46.675
-flags.gap_height      = 32.875; % Gap between electrodes vertically in mm (edge-edge) (for patch) %2.5 / 32.3875
-flags.E_count         = [16];  % Number of electrodes per row (for belt), or matrix of how many rows and columns (for patch)
+flags.E_dia           = 30;       % Diameter of electrode in mm (for circle)
+flags.E_width         = 22;       % Width  of electrode in mm (for rectangle)
+flags.E_height        = 29;       % Height of electrode in mm (for rectangle)
+flags.gap_width       = 46.675;   % Gap between electrodes horizontally in mm (edge-edge) (for patch) %2.5 / 46.675
+flags.gap_height      = 32.875;   % Gap between electrodes vertically in mm (edge-edge) (for patch) %2.5 / 32.3875
+flags.E_count         = [16];     % Number of electrodes per row (for belt), or matrix of how many rows and columns (for patch)
+flags.equal_space     = 1;        % If the electrodes should be equally spaced (1) or start at the armpit and "rolled" on like GE (0)
+flags.E_space         = 5;        % Edge-to-edge spacing between electrodes in mm for unequal belt spacing
 
 % Save the correct electrode settings, not the custom ones when using the
 % standard settings
-flags = Construct_Electrode_Settings(flags);
+[~, flags] = Construct_Electrode_Settings(flags);
 
 noise = [0, 0, 0, 0];       % Noise and error parameters
     % noise_rel = err(1);
@@ -123,7 +119,7 @@ noise = [0, 0, 0, 0];       % Noise and error parameters
     % e_systematic_rel = err(3);
     % e_systematic_abs = err(4);
 
-if isempty(gcp('nocreate')) && flags.solve_problem == 1 && flags.do_parfor == 1
+if isempty(gcp("nocreate")) && flags.solve_problem == 1 && flags.do_parfor == 1
     % Open a parallel pool
     parpool;
 end
@@ -157,11 +153,11 @@ if contains(lower(msh_name), "mesh") == 0
 end
 
 % Extracting the subject name
-parts    = split(msh_name, '_');
+parts    = split(msh_name, "_");
 sbj_name = parts{1};
 
 % Updating setting based on the mesh
-if contains(msh_name, 'NoBones')
+if contains(msh_name, "NoBones")
     flags.are_bones = 0; % There are no bones
 else
     flags.are_bones = 1; % There are bones
@@ -241,7 +237,7 @@ start_time = tic;
 
 % RUN THE 3D FEM 
 fprintf("Running %s\n", sbj_name)
-FEM3D_Function(msh_path, msh_name, sbj_name, sbj_save_path, flags, noise)
+FEM3D_Function(msh_path, msh_name, sbj_name, sbj_save_path, flags, noise);
 
 stop_time = toc(start_time);
 fprintf("\n   It took %.2f hours to solve the forward problem\n", stop_time / 3600)

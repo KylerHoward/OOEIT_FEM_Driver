@@ -22,7 +22,7 @@ function E_nodes = Trim_Electrodes(E_nodes)
     end
     
     % Step 2: Find duplicates across cells
-    [~, ~, ic] = unique(allPts, 'rows');
+    [~, ~, ic] = unique(allPts, "rows");
     counts = accumarray(ic, 1);
     
     % Step 3: Mark coordinates that appear in more than one cell

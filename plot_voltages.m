@@ -10,32 +10,49 @@ end
 
 fprintf("Inspecting %s\n", filename)
 load(fullfile(filepath, filename))  
-% Tripped at about 2190, so could only compute ECG to 2190
+
 % Truncate the number of frames
 try % Try ACT5 loading
     frame_voltage = squeeze(frame_voltage(1:31,:,:));  % CP, electrode, frame
-catch % GE loading. Must multiply by Vscale/Iscale
-    frame_voltage = eval(squeeze(filename(1:end-4)));
-    Vscale        = eval(sprintf('%s_VScale', filename(1:end-4)));
-    Vscale        = mean(Vscale(1:32));
-    frame_voltage = frame_voltage .* Vscale;
-    frame_voltage = reshape(frame_voltage, [size(frame_voltage,1),32,31]);
-    frame_voltage = permute(frame_voltage, [3,2,1]);
-
-    cur_pattern = eval(sprintf('%s_Pattern', filename(1:end-4)));
-    Iscale      = eval(sprintf('%s_IScale',  filename(1:end-4)));
-    cur_pattern = cur_pattern .* mean(Iscale(1:32));
-    cur_pattern = cur_pattern'/1000; % Scale it for the later scaling back
-    current_amp = max(real(cur_pattern),[],'all');
+catch 
+    try % GE loading. Must multiply by Vscale/Iscale
+        frame_voltage = eval(squeeze(filename(1:end-4)));
+        Vscale        = eval(sprintf('%s_VScale', filename(1:end-4)));
+        Vscale        = mean(Vscale(1:32));
+        frame_voltage = frame_voltage .* Vscale;
+        frame_voltage = reshape(frame_voltage, [size(frame_voltage,1),32,31]);
+        frame_voltage = permute(frame_voltage, [3,2,1]);
+    
+        cur_pattern = eval(sprintf('%s_Pattern', filename(1:end-4)));
+        Iscale      = eval(sprintf('%s_IScale',  filename(1:end-4)));
+        cur_pattern = cur_pattern .* mean(Iscale(1:32));
+        cur_pattern = cur_pattern'/1000; % Scale it for the later scaling back
+        current_amp = max(real(cur_pattern),[],'all');
+    catch % FEM Data
+        frame_voltage = permute(Umeas_NoNoise, [2,1,3]);
+        cur_pattern   = cur_pat;
+        current_amp   = max(real(cur_pattern),[],'all');
+    end
 end
 [K,L,Slides] = size(frame_voltage);
 try
-    minutes = floor(Slides / system_frame_rate / 60);
-    seconds = floor((Slides/system_frame_rate/60 - minutes)*60);
+    minutes = floor(Slides  / system_frame_rate / 60);
+    seconds = floor((Slides / system_frame_rate / 60 - minutes)*60);
 catch
-    system_frame_rate = eval(sprintf('%s_FPS', filename(1:end-4)));
-    minutes = floor(Slides / system_frame_rate / 60);
-    seconds = floor((Slides/system_frame_rate/60 - minutes)*60);
+    try % ACT 5
+        minutes = floor(Slides  / frame_rate / 60);
+        seconds = floor((Slides / frame_rate / 60 - minutes)*60);   
+    catch 
+        try % GE
+            system_frame_rate = eval(sprintf('%s_FPS', filename(1:end-4)));
+            minutes = floor(Slides  / system_frame_rate / 60);
+            seconds = floor((Slides / system_frame_rate / 60 - minutes)*60);
+        catch % FEM
+            system_frame_rate = flags.fps;
+            minutes = floor(Slides  / system_frame_rate / 60);
+            seconds = floor((Slides / system_frame_rate / 60 - minutes)*60);
+        end
+    end
 end
     
 fprintf("The voltage is %d by %d by %d\n", K, L, Slides)
@@ -130,6 +147,17 @@ for ii=1:Slides
   power_wavef_mx(:,:,ii)=J'*Vframe.'; % should be size 31 by 31 by num frames
 end
 figure
+    hold on
     power_wavef = squeeze(power_wavef_mx(1,1,:));
     plot(power_wavef)
     title(sprintf("Power Waveform of %s", filename), 'Interpreter', 'none')
+
+    if exist('annotations', 'var')
+        fprintf("Annotations:\n")
+        for i = 1:length(annotations)
+            if isempty(annotations(i).frame) == 0
+                xline(annotations(i).frame, 'r')
+                fprintf("   Annotation at frame % 5d is: '%s'\n", annotations(i).frame, annotations(i).text{1})
+            end
+        end
+    end

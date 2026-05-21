@@ -7,24 +7,29 @@ load: current_pat - Current patterns for belt/patch electodes
 load: subj011 - Structure containing voltage and current pattern for subject 011
 %}
 
-clear
+% clear
+clearvars -except temp msh_path old_msh_path save_path old_save_path
 % clc
 close all
 
-num_sims       = 2;
+num_sims       = 5;
 do_pauses      = 0;
 mean_shift     = 1;
 show_clinical  = 1;
 show_means     = 0;
-clinical_frame = [111,117]; % Sbj005
+% clinical_frame = [111,117]; % Sbj005
 % clinical_frame = [1305,1310]; % Sbj002
 % clinical_frame = [1280,1287]; % Sbj003
 % clinical_frame = [1217,1221]; % Sbj004
-% clinical_frame = 117;
+% clinical_frame = [818,834]; % Sbj007
+% clinical_frame = [1521,1530]; % Sbj009
+clinical_frame = 117;
 remove_elec    = 0;
 bad_elecs      = [4,5,12];
 bad_elecs      = [30]; % Sbj005
-insp_exp_plot  = 1; % MUST HAVE CLINICAL_FRAMES IN ORDER OF [INSP, EXP] AND ONLY TWO!
+% bad_elecs      = [2,3,5,16,25]; % Sbj007
+% bad_elecs      = [1,2,17,24,26]; % Sbj009 kinda
+insp_exp_plot  = 0; % MUST HAVE CLINICAL_FRAMES IN ORDER OF [INSP, EXP] AND ONLY TWO!
 
 % Load files
 sbj_path = "C:\Users\kyler\OneDrive\School\Colorado State\Research\Dr. Mueller\FEM\OOEIT_FEM_Driver\Clinical_Data";
@@ -34,6 +39,8 @@ sbj_file = "ETT_005_circular2x16_11_34_40_0001";
 % sbj_file = "ETT_002_circular2x16_12_19_48_0000";
 % sbj_file = "ETT_003_circular4x8_11_41_35_0003";
 % sbj_file = "ETT_004_circular4x8_13_13_57_0006";
+% sbj_file = "ETT009_circular2x16_12_10_52_0008";
+% sbj_file = "ETT007_circular2x16_12_13_17_0002";
 sbj_data = load(fullfile(sbj_path, sbj_file));
 parts    = split(sbj_file,"_");
 sbj_name = parts(2);
@@ -52,7 +59,7 @@ for i = 1:num_sims
     if i == 1
         [load_name{i}, load_loc{i}] = uigetfile("Results/", "Open Volt File");
     else
-        [load_name{i}, load_loc{i}] = uigetfile(load_loc{i-1}, "Open Volt File");
+        [load_name{i}, load_loc{i}] = uigetfile(load_loc{i-1}, sprintf("Open Volt File. Previous: %s", load_name{i-1}));
     end
 
     if load_name{i} == 0
@@ -74,7 +81,7 @@ for i = 1:num_sims
     end
     
     % Extract simulation name
-    sim_name{i} = string(parts{i}{1});
+    sim_name{i} = string(parts{i}{1}) + ", " + string(parts{i}(contains(parts{i}, 'z')));
 
     % Load files
     try
@@ -247,13 +254,18 @@ end
 volt_scale = zeros(L,num_sims);
 CP_scale   = zeros(L,num_sims);
 error      = zeros(num_sims,1);
+el_error   = zeros(L, num_sims);
 for i = 1:num_sims
     for l = 1:L
         volt_scale(l,i) = mean(rmoutliers(mean(sbj_volt(l,:,:),3) ./ sim_volt(l,:,i)));
         CP_scale(l,i)   = mean(rmoutliers(sim_CP(l,:,i)   ./ sbj_CP(l,:)),"all","omitmissing");
+
+        el_error(l,i)   = norm(squeeze(sim_volt(l,:,i) - sbj_volt(l,:,:)), inf) / norm(squeeze(sbj_volt(l,:,:)), inf) * 100;
     end
 
-    error(i) = norm(sim_volt(:,:,i) - sbj_volt(:,:,1))/norm(sbj_volt(:,:,1)) * 100;
+    vect_sim_volt = sim_volt(:,:,i);
+    vect_sbj_volt = sbj_volt(:,:,:);
+    error(i) = norm(vect_sim_volt(:) - vect_sbj_volt(:), inf)/norm(vect_sbj_volt(:), inf) * 100;
 end
 
 % for i = 1:num_sims
@@ -268,7 +280,8 @@ end
 
 for i = 1:num_sims
     fprintf("The average scale difference is %.2f & %.2f for voltage and CP respectively for %s\n", mean(volt_scale(:,i)), mean(CP_scale(:,i)), load_name{i})
-    fprintf("The relative voltage error is %.2f%% for %s\n\n", error(i), load_name{i})
+    fprintf("The mean electrode  Linf voltage error is %.2f%% for %s\n", mean(el_error(:,i)), load_name{i})
+    fprintf("The overal relative Linf voltage error is %.2f%% for %s\n\n", error(i), load_name{i})
 end
 
 if insp_exp_plot == 1
@@ -279,3 +292,34 @@ if insp_exp_plot == 1
     fprintf("Norm difference of clinical    is %.2f mV\n", norm(sbj_diff))
 end
 
+% find the minimums
+[min_el_error_val, min_el_error_idx] = min(mean(el_error));
+[min_error_val,    min_error_idx]    = min(error);
+fprintf("%s\n", repmat('-',[1,100]))
+fprintf("Minimum mean electrode  Linf voltage error is %.2f%% for %s\n", min_el_error_val, load_name{min_el_error_idx})
+fprintf("Minimum overal relative Linf voltage error is %.2f%% for %s\n", min_error_val,    load_name{min_error_idx})
+fprintf("%s\n", repmat('-',[1,100]))
+
+for i = 1:num_sims
+    figure
+        hold on
+        bar(1:size(el_error,1), el_error(:,i))
+        yline(mean(el_error(:,i)), 'r', 'LineWidth',2)
+        xlabel("Electrode")
+        ylabel("Linf Relative Error")
+        title(sprintf("Electrode Error for %s", sim_name{i}))
+end
+
+return
+% electrode_errors is a 32xn array of the el_error on each subject
+mean_vals = mean(el_error,2);
+std_vals  = std(el_error, [], 2);
+
+figure; 
+    hold on
+    plot(1:32, mean_vals, 'r-', 'LineWidth', 2)
+    plot(1:32, mean_vals-std_vals, 'b--', 'LineWidth', 1.5)
+    plot(1:32, mean_vals+std_vals, 'b--', 'LineWidth', 1.5)
+    xlabel("Electrode", "FontSize", 15) 
+    ylabel("L-Infinity Relative Error (%)", "FontSize", 15)
+    legend(["Mean", "-1 SD", "+1 SD"], "Location", "northeast", "FontSize", 15)

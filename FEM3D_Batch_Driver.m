@@ -7,11 +7,11 @@ Initial Version: 10/07/24 - Kyler Howard
 Current Version: 01/30/26 - Kyler Howard
 %}
 
-all_fig = findall(0, 'type', 'figure');
+all_fig = findall(0, "type", "figure");
 close(all_fig)
 clearvars -except dataset_path old_dataset_path save_path old_save_path
 clc
-pause('on')
+pause("on")
 
 % Add paths in a way that works for macs as well
 addpath(fullfile("Modified_OOEIT", "ForwardProblemSolvers"))
@@ -104,16 +104,18 @@ flags.E_choice        = 4; % Choice of Electrode configuration
 % Custom Electrode Settings
 flags.E_type          = "belt";   % Choice between "patch" and "belt"
 flags.E_shape         = "circle"; % Choice between "circle" and "rectangle"
-flags.E_dia           = 30;  % Diameter of electrode in mm (for circle)
-flags.E_width         = 22;  % Width  of electrode in mm (for rectangle)
-flags.E_height        = 29;  % Height of electrode in mm (for rectangle)
-flags.gap_width       = 46.675; % Gap between electrodes horizontally in mm (edge-edge) (for patch) %2.5 / 46.675
-flags.gap_height      = 32.875; % Gap between electrodes vertically in mm (edge-edge) (for patch) %2.5 / 32.3875
-flags.E_count         = [16];  % Number of electrodes per row (for belt), or matrix of how many rows and columns (for patch)
+flags.E_dia           = 30;       % Diameter of electrode in mm (for circle)
+flags.E_width         = 22;       % Width  of electrode in mm (for rectangle)
+flags.E_height        = 29;       % Height of electrode in mm (for rectangle)
+flags.gap_width       = 46.675;   % Gap between electrodes horizontally in mm (edge-edge) (for patch) %2.5 / 46.675
+flags.gap_height      = 32.875;   % Gap between electrodes vertically in mm (edge-edge) (for patch) %2.5 / 32.3875
+flags.E_count         = [16];     % Number of electrodes per row (for belt), or matrix of how many rows and columns (for patch)
+flags.equal_space     = 1;        % If the electrodes should be equally spaced (1) or start at the armpit and "rolled" on like GE (0)
+flags.E_space         = 5;        % Edge-to-edge spacing between electrodes in mm for unequal belt spacing
 
 % Save the correct electrode settings, not the custom ones when using the
 % standard settings
-flags = Construct_Electrode_Settings(flags);
+[~, flags] = Construct_Electrode_Settings(flags);
 
 noise = [0, 0, 0, 0];       % Noise and error parameters
     % noise_rel = err(1);
@@ -121,7 +123,7 @@ noise = [0, 0, 0, 0];       % Noise and error parameters
     % e_systematic_rel = err(3);
     % e_systematic_abs = err(4);
 
-if isempty(gcp('nocreate')) && flags.solve_problem == 1 && flags.do_parfor == 1
+if isempty(gcp("nocreate")) && flags.solve_problem == 1 && flags.do_parfor == 1
     % Open a parallel pool
     parpool;
 end
@@ -190,7 +192,7 @@ for sbj_i = 3:size(dataset_contents, 1)
     msh_name = dir(fullfile(msh_path, "*Eroded.mat")).name;
 
     % Updating setting based on the mesh
-    if contains(msh_name, 'NoBones')
+    if contains(msh_name, "NoBones")
         flags.are_bones = 0; % There are no bones
     else
         flags.are_bones = 1; % There are bones
@@ -241,13 +243,19 @@ for sbj_i = 3:size(dataset_contents, 1)
     
     % RUN THE 3D FEM 
     fprintf("Running %s\n", sbj_name)
-    FEM3D_Function(msh_path, msh_name, sbj_name, sbj_save_path, flags, noise)
+    n_bframes = FEM3D_Function(msh_path, msh_name, sbj_name, sbj_save_path, flags, noise);
     
     sbj_stop_time = toc(sbj_start_time);
     fprintf("\n   It took %.2f hours to solve the forward problem\n", sbj_stop_time / 3600)
 
     sbjs_solved = sbjs_solved + 1;
-    num_solves  = num_solves + sum(cellfun(@(x) x{1}, flags.permutations));
+    if flags.do_conditions == 1
+        n_conditions = size(flags.conditions,1);
+    else
+        n_conditions = 1;
+    end
+   
+    num_solves  = num_solves + n_conditions * n_bframes * sum(cellfun(@(x) x{1}, flags.permutations));
 end
 
 

@@ -18,7 +18,7 @@ function face_mesh = Get_Unique_Faces(tet_mesh)
     sorted_faces = sort(all_faces,2);
     
     % determine uniqueness of faces
-    [u,~,idx] = unique(sorted_faces,'rows');
+    [u,~,idx] = unique(sorted_faces,"rows");
 
     % determine counts for each unique face
     counts = accumarray(idx(:), 1);
@@ -27,5 +27,5 @@ function face_mesh = Get_Unique_Faces(tet_mesh)
     sorted_exteriorF = u(counts == 1,:);
     
     % find in original faces so that ordering of indices is correct
-    face_mesh = all_faces(ismember(sorted_faces,sorted_exteriorF,'rows'),:);
+    face_mesh = all_faces(ismember(sorted_faces,sorted_exteriorF,"rows"),:);
 end

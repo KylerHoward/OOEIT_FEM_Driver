@@ -33,7 +33,7 @@ function rotated_nodes = Rotate_Body(nodes, body_nodes)
             rotated_nodes      = nodes*rotationMatrix;
             rotated_nodes(:,1) = rotated_nodes(:,1) * -1;
             rotated_nodes(:,3) = rotated_nodes(:,3) + abs(min(rotated_nodes(:,3)));
-            fprintf('   Rotated body\n')
+            fprintf("   Rotated body\n")
             break
         end
     end

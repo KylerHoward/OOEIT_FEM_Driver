@@ -90,6 +90,8 @@ function metadata = Make_Metadata(type)
     metadata.descriptions.flags.gap_width       = "Gap between electrodes horizontally (edge-edge) (for patch electrodes).";
     metadata.descriptions.flags.gap_height      = "Gap between electrodes vertically (edge-edge) (for patch electrodes).";
     metadata.descriptions.flags.E_count         = "Number of electrodes per row (for belt), or matrix of how many rows and columns (for patch).";
+    metadata.descriptions.flags.equal_space     = "If the electrodes should be equally spaced (1) or start at the armpit and 'rolled' on like GE (0).";
+    metadata.descriptions.flags.E_space         = "Edge-to-edge spacing between electrodes in mm for unequal belt spacing.";
     
     metadata.descriptions.flags.are_bones       = "Flag if the mesh has bones (1) or not (0).";
     metadata.descriptions.flags.zeta            = "Contact impedance on every boundary condition. Saved as Lx1.";
@@ -104,6 +106,7 @@ function metadata = Make_Metadata(type)
     metadata.units.flags.E_height    = "mm";
     metadata.units.flags.gap_width   = "mm";
     metadata.units.flags.gap_height  = "mm";
+    metadata.units.flags.E_space     = "mm";
     metadata.units.flags.E_area      = "mm²";
     metadata.units.flags.breath_rate = "breath/min";
     metadata.units.flags.heart_rate  = "beat/min";
@@ -111,19 +114,19 @@ function metadata = Make_Metadata(type)
 
     % Store computer info
     metadata.computer_info.computer_type  = computer;
-    metadata.computer_info.OS             = feature('GetOS');
-    metadata.computer_info.n_cores        = feature('numCores');
-    metadata.computer_info.n_processors   = str2double(getenv('NUMBER_OF_PROCESSORS')); 
-    metadata.computer_info.CPU            = feature('GetCPU');
+    metadata.computer_info.OS             = feature("GetOS");
+    metadata.computer_info.n_cores        = feature("numCores");
+    metadata.computer_info.n_processors   = str2double(getenv("NUMBER_OF_PROCESSORS")); 
+    metadata.computer_info.CPU            = feature("GetCPU");
     metadata.computer_info.MATLAB_version = version;
 
     % Random metadata information
-    metadata.timestamp = datetime('now', 'Format', 'm_dd_y HH:mm:ss');
+    metadata.timestamp = datetime("now", "Format", "m_dd_y HH:mm:ss");
     
     % Get the username depending on the operating system
     if ispc
-        metadata.user = getenv('USERNAME');
+        metadata.user = getenv("USERNAME");
     elseif isunix || ismac
-        metadata.user = getenv('USER');
+        metadata.user = getenv("USER");
     end
 end

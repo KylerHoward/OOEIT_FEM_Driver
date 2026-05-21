@@ -249,7 +249,7 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
 %% ----------------------------- Lung Prep ------------------------------ %
     split_correct = false;
     while split_correct == false
-        [clusters, centroids] = kmeans(lung_nodes(:, [1,2]), 2, 'Distance','cityblock');
+        [clusters, centroids] = kmeans(lung_nodes(:, [1,2]), 2, "Distance","cityblock");
         
         % Left and right are flipped
         if centroids(1,1) > centroids(2,1)
@@ -280,13 +280,13 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
     if flags.plot_conds == 1
         figure()
             hold on
-            scatter3(lung_nodes(clusters==1,1),lung_nodes(clusters==1,2),lung_nodes(clusters==1,3),'b')
-            scatter3(lung_nodes(clusters==2,1),lung_nodes(clusters==2,2),lung_nodes(clusters==2,3),'red')
-            xlabel('x')
-            ylabel('y')
-            zlabel('z')
-            legend("Left (1)", "Right (2)", 'location', 'southoutside')
-            title('xy projected - cityblock distance')
+            scatter3(lung_nodes(clusters==1,1),lung_nodes(clusters==1,2),lung_nodes(clusters==1,3),"b")
+            scatter3(lung_nodes(clusters==2,1),lung_nodes(clusters==2,2),lung_nodes(clusters==2,3),"red")
+            xlabel("x")
+            ylabel("y")
+            zlabel("z")
+            legend("Left (1)", "Right (2)", "location", "southoutside")
+            title("xy projected - cityblock distance")
     end
 
 
@@ -300,7 +300,7 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
     % multiple elements to use the same node
     sigma = cell(size(nodes,1), 1);
     for node = 1:size(nodes,1)
-        sigma{node} = nan([1, counts(node)], 'like', cond_vals{3});
+        sigma{node} = nan([1, counts(node)], "like", cond_vals{3});
     end
 
     % Cycle through elements
@@ -339,7 +339,7 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
     % Check for weird gaps from Cleaver
     % zero_nodes   = nodes(real(sigma) == 0,:);
     % zero_indices = Find_Internal_Nodes(zero_nodes, flags);
-    % [~, zero_indices, ~] = intersect(nodes, zero_nodes(zero_indices,:),'rows');
+    % [~, zero_indices, ~] = intersect(nodes, zero_nodes(zero_indices,:),"rows");
     % sigma(zero_indices)  = soft_tissue_val;
 
     % Set constant if wanted
@@ -365,7 +365,7 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
                 zlabel("z (mm)")
                 c = colorbar;
                 c.Label.String = "S/m";
-                c.Location     = 'southoutside';
+                c.Location     = "southoutside";
     
             ax2 = subplot(1,2,2);
                 scatter3(nodes(:,1), nodes(:,2), nodes(:,3), 10, imag(sigma))
@@ -375,17 +375,17 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
                 zlabel("z (mm)")
                 c = colorbar;
                 c.Label.String = "S/m";
-                c.Location     = 'southoutside';
+                c.Location     = "southoutside";
 
             % Add a slider for x-axis min limit
-            uicontrol('Style', 'slider', 'Min', min(nodes(:,1)), 'Max', max(nodes(:,1))-1, 'Value', 0, ...
-                      'Position', [210, 30, 150, 20], ...
-                      'Callback', @(src, event) update_xlim([ax1, ax2], src.Value, max(nodes(:,1))));
+            uicontrol("Style", "slider", "Min", min(nodes(:,1)), "Max", max(nodes(:,1))-1, "Value", 0, ...
+                      "Position", [210, 30, 150, 20], ...
+                      "Callback", @(src, event) update_xlim([ax1, ax2], src.Value, max(nodes(:,1))));
     
             % Add a slider for y-axis min limit
-            uicontrol('Style', 'slider', 'Min', min(nodes(:,2)), 'Max', max(nodes(:,2))-1, 'Value', 0, ...
-                      'Position', [210, 10, 150, 20], ...
-                      'Callback', @(src, event) update_ylim([ax1, ax2], src.Value, max(nodes(:,1))));
+            uicontrol("Style", "slider", "Min", min(nodes(:,2)), "Max", max(nodes(:,2))-1, "Value", 0, ...
+                      "Position", [210, 10, 150, 20], ...
+                      "Callback", @(src, event) update_ylim([ax1, ax2], src.Value, max(nodes(:,1))));
         else
             scatter3(nodes(:,1), nodes(:,2), nodes(:,3), 10, real(sigma))
                 title("Conductivity")
@@ -394,17 +394,17 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
                 zlabel("z (mm)")
                 c = colorbar;
                 c.Label.String = "S/m";
-                c.Location     = 'southoutside';
+                c.Location     = "southoutside";
 
             % Add a slider for x-axis min limit
-            uicontrol('Style', 'slider', 'Min', min(nodes(:,1)), 'Max', max(nodes(:,1))-1, 'Value', 0, ...
-                      'Position', [210, 30, 150, 20], ...
-                      'Callback', @(src, event) update_xlim(gca, src.Value, max(nodes(:,1))));
+            uicontrol("Style", "slider", "Min", min(nodes(:,1)), "Max", max(nodes(:,1))-1, "Value", 0, ...
+                      "Position", [210, 30, 150, 20], ...
+                      "Callback", @(src, event) update_xlim(gca, src.Value, max(nodes(:,1))));
     
             % Add a slider for y-axis min limit
-            uicontrol('Style', 'slider', 'Min', min(nodes(:,2)), 'Max', max(nodes(:,2))-1, 'Value', 0, ...
-                      'Position', [210, 10, 150, 20], ...
-                      'Callback', @(src, event) update_ylim(gca, src.Value, max(nodes(:,1))));
+            uicontrol("Style", "slider", "Min", min(nodes(:,2)), "Max", max(nodes(:,2))-1, "Value", 0, ...
+                      "Position", [210, 10, 150, 20], ...
+                      "Callback", @(src, event) update_ylim(gca, src.Value, max(nodes(:,1))));
         end
 
         if flags.do_pauses == 1

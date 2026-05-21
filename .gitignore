@@ -24,3 +24,6 @@
 Matrix_Free_Methods.xlsx
 Run_Times.xlsx
 Conditions.xlsx
+
+# Ignore old Cleaver file
+FEM3D_Function_Cleaver

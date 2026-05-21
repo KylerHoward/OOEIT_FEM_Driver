@@ -16,7 +16,7 @@ function [surf_nodes, surf_ind] = Get_Surface_Nodes(G_nodes, surf_connects)
     i = 1;
     % Loop through the connectivity matrix to find node coords
     surf_ind = unique(surf_connects, "stable");
-    for node = surf_ind'
+    for node = surf_ind.'
         surf_nodes(i,:) = G_nodes(node,:);
         i                = i + 1;
     end

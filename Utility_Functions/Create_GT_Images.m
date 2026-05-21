@@ -69,19 +69,19 @@ function sigma_GT = Create_GT_Images(thickness, nodes, E_nodes, sigma, flags)
         end
     
         % Set figure settings
-        fig = uifigure('color','w','Position',[573,337.67,700,420]);
+        fig = uifigure("color","w","Position",[573,337.67,700,420]);
         % --- Grid Layout ---
         % Layout:
         %   Row 1: plots (1 or 2)
         %   Row 2: sliders (3 sliders stacked) autofitted
         mainGrid = uigridlayout(fig,[2 1]);
-        mainGrid.RowHeight = {'1x', 'fit'};
-        mainGrid.ColumnWidth = {'1x'};
+        mainGrid.RowHeight = {"1x", "fit"};
+        mainGrid.ColumnWidth = {"1x"};
 
         % --- Plot Panel ---
         if flags.set_complex
             plotGrid = uigridlayout(mainGrid,[1 2]);
-            plotGrid.ColumnWidth = {'1x','1x'};
+            plotGrid.ColumnWidth = {"1x","1x"};
         else
             plotGrid = uigridlayout(mainGrid,[1 1]);
         end
@@ -96,10 +96,10 @@ function sigma_GT = Create_GT_Images(thickness, nodes, E_nodes, sigma, flags)
         end
         
         % Plot 1
-        s1 = scatter(ax1, plane_nodes(:,1), plane_nodes(:,2), 10, real(plane_sigma(:,frame)), 'filled');
+        s1 = scatter(ax1, plane_nodes(:,1), plane_nodes(:,2), 10, real(plane_sigma(:,frame)), "filled");
         title(ax1, sprintf("Frame %d Ground Truth\nConductivity", frame))
-        axis(ax1, 'equal', 'off')
-        set(ax1, 'XDir', 'reverse') % set in DICOM standard
+        axis(ax1, "equal", "off")
+        set(ax1, "XDir", "reverse") % set in DICOM standard
         colormap("jet")
         if flags.fixed_range == 1
             try
@@ -119,10 +119,10 @@ function sigma_GT = Create_GT_Images(thickness, nodes, E_nodes, sigma, flags)
         
         % Plot 2 (if complex)
         if flags.set_complex
-            s2 = scatter(ax2, plane_nodes(:,1), plane_nodes(:,2), 10, imag(plane_sigma(:,frame)), 'filled');
+            s2 = scatter(ax2, plane_nodes(:,1), plane_nodes(:,2), 10, imag(plane_sigma(:,frame)), "filled");
             title(ax2, sprintf("Frame %d Ground Truth\nSusceptivity", frame))
-            axis(ax2, 'equal', 'off')
-            set(ax2, 'XDir', 'reverse') % set in DICOM standard
+            axis(ax2, "equal", "off")
+            set(ax2, "XDir", "reverse") % set in DICOM standard
             colormap("jet")
             if flags.fixed_range == 1
                 try
@@ -148,15 +148,15 @@ function sigma_GT = Create_GT_Images(thickness, nodes, E_nodes, sigma, flags)
         frameBlock.RowHeight = {15,30};
         
         uilabel(frameBlock, ... 
-                'Text','Frame Index', ... 
-                'HorizontalAlignment','center', ... 
-                'FontWeight','bold');
+                "Text","Frame Index", ... 
+                "HorizontalAlignment","center", ... 
+                "FontWeight","bold");
         uislider(frameBlock, ...
-                 'Limits',[0.9 size(sigma,2)], ...
-                 'Value',1, ...
-                 'MajorTicks',1:size(sigma,2), ...
-                 'MinorTicks',[],...
-                 'ValueChangedFcn',@(src,evt) updateFrame(ax1, ax2, s1, s2, src.Value, plane_sigma, flags));
+                 "Limits",[0.9 size(sigma,2)], ...
+                 "Value",1, ...
+                 "MajorTicks",1:size(sigma,2), ...
+                 "MinorTicks",[],...
+                 "ValueChangedFcn",@(src,evt) updateFrame(ax1, ax2, s1, s2, src.Value, plane_sigma, flags));
     end % end plotting
 
 % --- Callback Functions ---
