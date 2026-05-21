@@ -1,4 +1,4 @@
-function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, noise)
+function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, noise)
     %{
     Run a 3D FEM simulation on the subject selected with the given settings
     The driver expects the subject to have the origin at the bottom, posterior,
@@ -115,6 +115,10 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
         sbj_sheet = readtable("CT Data Boundaries.xlsx", "Sheet","New Mexico Baby Set");
     elseif contains(sbj_name, "EIT1")
         sbj_sheet = readtable("CT Data Boundaries.xlsx", "Sheet","Anschutz Set");
+    elseif contains(sbj_name, "EIT2")
+        sbj_sheet = readtable("CT Data Boundaries.xlsx", "Sheet","R01");
+    elseif contains(sbj_name, "G2")
+        sbj_sheet = readtable("CT Data Boundaries.xlsx", "Sheet","R21");
     elseif contains(sbj_name, "MCR0")
         sbj_sheet = readtable("CT Data Boundaries.xlsx", "Sheet","MCR Set");
     else
@@ -424,17 +428,28 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
     
         % Creating an equation based on data for sbj002 & sbj005. (339.62, 0.079) & (290.67, 0.116)
         % FIXME: KH 1/26/26, this is only for babies on GE right now
-        zeta       = round((0.116-0.079)/(290.67-339.62) * (perim_mm - 290.67) + 0.116,3);
+        % zeta       = round((0.116-0.079)/(290.67-339.62) * (perim_mm - 290.67) + 0.116,3);
+
+        % Creating zeta based on the average of the first four GE subjects
+        % FIXME: KH 5/21/26, this is only for babies on GE right now
+        zeta = mean([0.079, 0.116, 0.217, 0.133]);
         flags.zeta = zeta*ones(L,1);
         solver.mode = "current";
         solver.zeta = flags.zeta;
     end
 
-    % DELETE ME: TESTING CONTACT IMPEDANCES
-    zeta = [0.133];
-    for ii = 1:length(zeta)
-        solver.zeta = zeta(ii)*ones(L,1);
-        flags.zeta  = solver.zeta;  
+    % % DELETE ME: TESTING CONTACT IMPEDANCES
+    % flags2 = flags;
+    % solver2 = solver;
+    % zeta = [0.082 0.083 0.084 0.086 0.087 0.088 0.089];
+    % parfor ii = 1:length(zeta)
+    % 
+    %     % Create local copies of the flags and the solver
+    %     flags  = flags2;
+    %     solver = solver2;
+    % 
+    %     solver.zeta = zeta(ii)*ones(L,1);
+    %     flags.zeta  = solver.zeta;  
     
 % ----------------------------------------------------------------------- %
 %%                               Setup Loops                              %
@@ -457,8 +472,9 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
             condition_name        = condition{6};
         end
             
-        if flags.permute_conds == 1
-            % Save the permutation settings
+        if flags.permute_conds == 1 && flags.do_conditions == 1
+            % Save the permutation settings but don't overwrite if we are
+            % setting just one permutation with the custom "condition"
             permutation       = flags.permutations{i_condition};
             num_permutations  = permutation{1};
             flags.lung_range  = permutation{2};
@@ -492,7 +508,7 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
                         hold on
                         plot(1:n_bframes, flags.breath_curve)
                         plot(1:n_bframes, flags.heart_curve)
-                        xline([1,20,39],"r")
+                        xline([2,20,37],"k")
                         legend(["Breath Curve", "Heart Curve","","",""],"Location","southoutside")
                         xlabel("Frame")
                         ylabel("% of Cycle")
@@ -516,9 +532,10 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
 
             % KH: Testing making this a parfor. Probably will need to check for computer availability?
             parfor bframe = 1:n_bframes
+            % for bframe = 1:n_bframes
                 % Create local copies of the flags and the solver
                 flags_local  = flags;
-                solver_local = solver
+                solver_local = solver;
 
                 % Extract which point on the breath curve we want to simulate on a local copy of the flags
                 flags_local.max_inspiration = flags.breath_curve(bframe);
@@ -624,16 +641,17 @@ function FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, nois
                 % Save the voltages and conductivties
                 volt_name = sprintf("%s-Volt%s.mat", sbj_name, save_suffix);
                 cond_name = sprintf("%s-Cond%s.mat", sbj_name, save_suffix);
-                if noise(1) == 0 || noise(2) == 0
-                    save(fullfile(volt_save_path, volt_name), "Umeas_NoNoise", "Uall_NoNoise", "cur_pat", "perim_mm", "noise", "flags", "volt_metadata", "-v7.3")
-                else
-                    save(fullfile(volt_save_path,volt_name), "Umeas", "Uall", "cur_pat", "perim_mm", "noise", "flags", "volt_metadata", "-v7.3")
-                end
-                save(fullfile(cond_save_path,cond_name), "sigma", "sigma_GT", "nodes", "E_connect", "flags", "cond_metadata", "-v7.3")
+                % if noise(1) == 0 || noise(2) == 0
+                %     save(fullfile(volt_save_path, volt_name), "Umeas_NoNoise", "Uall_NoNoise", "cur_pat", "perim_mm", "noise", "flags", "volt_metadata", "-v7.3")
+                % else
+                %     save(fullfile(volt_save_path,volt_name), "Umeas", "Uall", "cur_pat", "perim_mm", "noise", "flags", "volt_metadata", "-v7.3")
+                % end
+                % save(fullfile(cond_save_path,cond_name), "sigma", "sigma_GT", "nodes", "E_connect", "flags", "cond_metadata", "-v7.3")
+                saveData(volt_save_path, cond_save_path, volt_name, cond_name,  Umeas_NoNoise, Uall_NoNoise, Umeas, Uall, cur_pat, perim_mm, noise, flags, volt_metadata, sigma, sigma_GT, nodes, E_connect, cond_metadata)
             end % end saving data
         end % end looping over permutations
     end % end looping through conditions
-    end % Zeta testing end
+    % end % Zeta testing end
 end % end function as a whole
     
 % ----------------------------------------------------------------------- %
@@ -664,4 +682,14 @@ function updateHeartFrame(ax1, framenum, heart_BC_vals, heart_surface_nodes, hea
 
     
     title(ax1, sprintf("Heart BC\nFrame %d", plotframe))
+end
+
+
+function saveData(volt_save_path, cond_save_path, volt_name, cond_name, Umeas_NoNoise, Uall_NoNoise, Umeas, Uall, cur_pat, perim_mm, noise, flags, volt_metadata, sigma, sigma_GT, nodes, E_connect, cond_metadata)
+    if noise(1) == 0 || noise(2) == 0
+        save(fullfile(volt_save_path, volt_name), "Umeas_NoNoise", "Uall_NoNoise", "cur_pat", "perim_mm", "noise", "flags", "volt_metadata", "-v7.3")
+    else
+        save(fullfile(volt_save_path,volt_name), "Umeas", "Uall", "cur_pat", "perim_mm", "noise", "flags", "volt_metadata", "-v7.3")
+    end
+    save(fullfile(cond_save_path,cond_name), "sigma", "sigma_GT", "nodes", "E_connect", "flags", "cond_metadata", "-v7.3")
 end
