@@ -239,8 +239,24 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
     end
     
     % Trim electrodes that touch
-    E_nodes = Trim_Electrodes(E_nodes);
-    
+    [E_nodes, percent_trimmed] = Trim_Electrodes(E_nodes, flags);
+
+    % Electrodes are too big and we have a smaller belt/patch available
+    if sum(flags.E_choice == [1,3]) && percent_trimmed > 2
+        if flags.verbose == 1
+            fprintf("      Electrodes are too big. Trying again at smaller size\n")
+        end
+        flags.E_choice = flags.E_choice + 1;
+
+        [E_nodes, perim_mm] = Make_Electrodes3(boundary_nodes, nodes, body_faces, sbj_info, flags);
+        if iscell(E_nodes) == 0
+            E_nodes = {E_nodes};
+        end
+        
+        % Trim electrodes that touch
+        [E_nodes, ~] = Trim_Electrodes(E_nodes, flags);
+    end
+
     % Find the surface mesh faces that make up the electrodes
     E_connect = Align_Electrode_Faces(nodes, body_faces, E_nodes, flags);
     

@@ -87,7 +87,7 @@ flags.fixed_range     = 1; % Set GT plots to be a standard range
 flags.CP_choice       = 1; % Choice of current pattern for patches
     % 1: Standard pattern
     % 2: 4x8 pattern
-flags.E_choice        = 4; % Choice of Electrode configuration
+flags.E_choice        = 3; % Choice of Electrode configuration
     % 1: Large patch front back  (GE Patch)
     % 2: Small patch front back  (GE Patch)
     % 3: Two rows of large belts (GE Belt)
