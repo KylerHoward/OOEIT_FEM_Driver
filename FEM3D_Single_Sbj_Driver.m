@@ -33,7 +33,7 @@ flags.do_beeps        = 1; % Decide if you want the code to beep after each simu
 flags.verbose         = 1; % Decide if you want to print status updates along the way (1) or not (0)
 
 % Video settings
-flags.make_video  = 0;              % Decide if you want to make a video (1), or a single frame (0)
+flags.make_video  = 1;              % Decide if you want to make a video (1), or a single frame (0)
 flags.breath_rate = 44;             % Breath rate in breaths per minute
 flags.heart_rate  = 120;            % heart  rate in beats   per minute
 flags.fps         = 28;             % Frame rate to reconstruct the video with
@@ -43,18 +43,14 @@ flags.insp_range  = [0.375, 0.625]; % Min and max inspiration percentages
 % Condition & permutation settings
     % Conditions are a cell array, where each cell contains its own condition
     % Condition is {max_inspiration, equal_vent, left_only, right_only, esoph_intubate, condition_name}
-flags.conditions   = {{0.625, 1, 0, 0, 0, "Max_Insp"};...       Max Baby Inspiration
-                      {0.375, 1, 0, 0, 0, "Min_Insp"};...       Max Baby Expiration
-                      {0.500, 1, 0, 0, 0, "Mean_Insp"};...      Mean Inspiration
+flags.conditions   = {{0.500, 0, 0, 0, 0, "Reg_Intubate"};...   Regular Baby Inspiration
                     % {1.500, 1, 0, 0, 0, "Deep_Insp"},...      Deep Inspiration
                       {0.500, 0, 0, 1, 0, "Left_Intubate"};...  Left Bronchus Intubation
                       {0.500, 0, 1, 0, 0, "Right_Intubate"};... Right Bronchus Intubation
                       {0.000, 1, 0, 0, 1, "Esoph_Intubate"}}; % Esophageal Intubation
     % Permutations are a cell array, where each cell contains its own permutation settings
     % Perumutation is {num_perm, lung_range, esoph_range}
-flags.permutations = {{2,  0.025, 0.000};... Max Baby Inspiration
-                      {2,  0.025, 0.000};... Max Baby Expiration
-                      {10, 0.125, 0.000};... Mean Inspiration
+flags.permutations = {{10, 0.125, 0.000};... Regular Baby Inspiration
                     % {2,  0.100, 0.000};... Deep Inspiration
                       {5,  0.125, 0.000};... Left Bronchus Intubation
                       {5,  0.125, 0.000};... Right Bronchus Intubation
@@ -72,7 +68,7 @@ flags.do_conditions     = 0; % Decide if you want to run multiple conditions (1)
     flags.left_only         = 0; % Decide if you want only ventilation on the left side (1) or not (0)
     flags.right_only        = 0; % Decide if you want only ventilation on the right side (1) or not (0)
     flags.esoph_intubate    = 0; % Decide if the esophagus is intubated (1) or not (0)
-flags.permute_conds     = 0; % Decide if you want random conds (1) or not (0)
+flags.permute_conds     = 1; % Decide if you want random conds (1) or not (0)
 
 % Plot settings
 flags.plot_slices     = 0; % Plot individual slices when going slice by slice
@@ -237,10 +233,19 @@ start_time = tic;
 
 % RUN THE 3D FEM 
 fprintf("Running %s\n", sbj_name)
-FEM3D_Function(msh_path, msh_name, sbj_name, sbj_save_path, flags, noise);
+n_bframes = FEM3D_Function(msh_path, msh_name, sbj_name, sbj_save_path, flags, noise);
 
 stop_time = toc(start_time);
-fprintf("\n   It took %.2f hours to solve the forward problem\n", stop_time / 3600)
+
+if flags.do_conditions == 1
+    n_conditions = size(flags.conditions,1);
+else
+    n_conditions = 1;
+end
+
+num_solves  = num_solves + n_conditions * n_bframes * sum(cellfun(@(x) x{1}, flags.permutations));
+
+fprintf("\n\nIt took %.2f hours to run %d unique solves\n", stop_time / 3600, num_solves)
 
 if flags.do_beeps == 1
     beep

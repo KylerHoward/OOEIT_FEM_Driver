@@ -1,4 +1,4 @@
-function E_nodes = Trim_Electrodes(E_nodes)  
+function [E_nodes, percent_trimmed] = Trim_Electrodes(E_nodes, flags)  
     %{
     Trim any parts of electrdoes that are overlapping OR touching
     
@@ -8,8 +8,8 @@ function E_nodes = Trim_Electrodes(E_nodes)
     %}
 
     % Step 1: Concatenate all coordinates with cell IDs
-    allPts = zeros(sum(cellfun(@numel,E_nodes)), 3);
-    cellID = zeros(sum(cellfun(@numel,E_nodes)), 1);
+    allPts = zeros(sum(cellfun(@length,E_nodes)), 3);
+    cellID = zeros(sum(cellfun(@length,E_nodes)), 1);
     i = 1;
     for k = 1:numel(E_nodes)
         Pts = E_nodes{k};               % n×3 matrix of coordinates
@@ -22,11 +22,15 @@ function E_nodes = Trim_Electrodes(E_nodes)
     end
     
     % Step 2: Find duplicates across cells
-    [~, ~, ic] = unique(allPts, "rows");
+    [Urows, ~, ic] = unique(allPts, "rows");
     counts = accumarray(ic, 1);
     
     % Step 3: Mark coordinates that appear in more than one cell
-    sharedMask = counts(ic) > 1;
+    sharedMask      = counts(ic) > 1;
+    percent_trimmed = sum(sharedMask) / size(allPts,1) * 100;
+    if flags.verbose == 1
+        fprintf("      Trimmed %.2f %% of the electrode nodes\n", percent_trimmed)
+    end
     
     % Step 4: Remove shared coordinates from each cell
     offset = 0;
