@@ -104,9 +104,6 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
     
     L = size(cur_pat, 1); % Number of electrodes
     K = size(cur_pat, 2); % Number of current patterns
-    % if K == 1 % KH 1/28/26: I'm not sure why it was set to 0
-    %     K = 0;
-    % end
     
     % Load the table
     if contains(sbj_name, "R1")
@@ -132,22 +129,18 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
     T8_height     = sbj_sheet.T8FromST_mm(row_num);
     
     if flags.are_bones == 1
-        background  = 1;
-        lung        = 2;
-        trachea     = 3;
-        soft_tissue = 4;
-        bone        = 5;
-        esophagus   = 6;
-        heart       = 7;
-        external    = 8;
+        lung        = 1;
+        trachea     = 2;
+        soft_tissue = 3;
+        bone        = 4;
+        esophagus   = 5;
+        heart       = 6;
     else
         lung        = 1;
         trachea     = 2;
         soft_tissue = 3;
         esophagus   = 4;
         heart       = 5;
-        background  = 6;
-        external    = 7;
     end
     
     % Create a cell array with each individual organ mesh
@@ -175,31 +168,37 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
         fprintf("   Extracting Trachea and Surface Nodes\n")
     end
 
-    % Extract desired faces & find their intersection
+    % Find the surface shells of each organ
     body_faces      = Get_Unique_Faces(organ_connects{soft_tissue});
     lung_faces      = Get_Unique_Faces(organ_connects{lung});
     trachea_faces   = Get_Unique_Faces(organ_connects{trachea});
     heart_faces     = Get_Unique_Faces(organ_connects{heart});
     esophagus_faces = Get_Unique_Faces(organ_connects{esophagus});
+    if flags.are_bones == 1
+        bone_faces = Get_Uniaue_Faces(organ_connects{bone});
+    end
     
+    % Find the intersection of each internal organ and the soft tissue
     lung_intersect      = intersect(sort(body_faces,2),  sort(lung_faces,2),      "rows");
     trachea_intersect   = intersect(sort(body_faces,2),  sort(trachea_faces,2),   "rows");
     heart_intersect     = intersect(sort(body_faces,2),  sort(heart_faces,2),     "rows");
     esophagus_intersect = intersect(sort(body_faces,2),  sort(esophagus_faces,2), "rows");
-     
-    inner_intersects = vertcat(lung_intersect, trachea_intersect, heart_intersect, esophagus_intersect);
+    if flags.are_bones == 1
+        bone_intersect = intersect(sort(body_faces,2),  sort(bone_faces,2), "rows");
+    end
+    
+    % Find the difference between the organs to only keep body surface faces
+    if flags.are_bones == 1
+        inner_intersects = vertcat(lung_intersect, trachea_intersect, heart_intersect, esophagus_intersect, bone_intersect);
+    else
+        inner_intersects = vertcat(lung_intersect, trachea_intersect, heart_intersect, esophagus_intersect);
+    end
     surface_faces    = setdiff(sort(body_faces,2), sort(inner_intersects,2), "rows");
     
     % Extract desired organ nodes
-    [trachea_nodes, ~]    = Get_Tet_Nodes(nodes, organ_connects{trachea});
-    [lung_nodes, ~]       = Get_Tet_Nodes(nodes, organ_connects{lung});
-    [boundary_nodes, ind] = Get_Surface_Nodes(nodes, surface_faces);
-    
-    % Delete any extra nodes in the center of boundary_nodes
-    inside_indices                   = Find_Internal_Nodes(boundary_nodes, flags);
-    old_boundary_nodes               = boundary_nodes;
-    boundary_nodes(inside_indices,:) = [];
-    ind(inside_indices,:)            = [];
+    [trachea_nodes, ~]  = Get_Tet_Nodes(nodes, organ_connects{trachea});
+    [lung_nodes, ~]     = Get_Tet_Nodes(nodes, organ_connects{lung});
+    [boundary_nodes, ~] = Get_Surface_Nodes(nodes, surface_faces);
     
     if flags.plot_trachea == 1
         figure()
@@ -223,8 +222,9 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
         save(fullfile("Heart_Meshes", heart_name), "nodes", "connectivity", "labels", "heart_faces", "heart_nodes", "heart_surface_nodes")
     end
     
-    clear trachea_faces heart_faces esophagus_faces
-    clear lung_intersect trachea_intersect heart_intersect esophagus_intersect inner_intersects surface_faces
+    clear trachea_faces heart_faces esophagus_faces lung_faces bone_faces
+    clear lung_intersect trachea_intersect heart_intersect esophagus_intersect inner_intersects bone_intersect
+    clear surface_faces
 % ----------------------------------------------------------------------- %
 %%                             Make Electrodes                            %
 % ----------------------------------------------------------------------- %
@@ -269,7 +269,6 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
     % Look at the electrodes and plot their number of faces & areas per electrode
     Compare_Electrodes(L, nodes, E_connect, flags)
     
-    
     if flags.plot_electrodes == 1
         figure()
             hold on
@@ -300,14 +299,14 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
             heart_start_time = tic;
         end
         Diriclet_name = dir(fullfile("Heart_BCs", sprintf("%s_*Dirichlet*.mat",sbj_name))).name;
-        heart_BCs = load(fullfile("Heart_BCs", Diriclet_name));
+        loaded_heart_BCs = load(fullfile("Heart_BCs", Diriclet_name));
 
         % Find Heart unit conversion
         try
             % Find the metadata substructure and go straigt to the units
-            heart_var_names = fieldnames(heart_BCs);
+            heart_var_names = fieldnames(loaded_heart_BCs);
             meta_idx = contains(lower(heart_var_names), "metadata");
-            heart_metadata = heart_BCs.(heart_var_names{meta_idx}).units;
+            heart_metadata = loaded_heart_BCs.(heart_var_names{meta_idx}).units;
             
             % Find the unit used
             meta_var_names = fieldnames(heart_metadata);
@@ -324,24 +323,24 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
             heart_unit_convert = 1e-3;
         end
         
-        heart_BC_vals            = heart_BCs.heart_BC_values*heart_unit_convert; % Convert to standard units
-        heart_BC_surface_indices = heart_BCs.heart_BC_surface_indices;
-        clear heart_BCs
+        heart_BC.vals            = loaded_heart_BCs.heart_BC_values*heart_unit_convert; % Convert to standard units
+        heart_BC.surface_indices = loaded_heart_BCs.heart_BC_surface_indices;
+        clear loaded_heart_BCs
     
         % Convert the given indices into the node coordinates
         heart_surface_nodes   = load(fullfile("Heart_Meshes", sprintf("%s_Heart_Mesh.mat",sbj_name))).heart_surface_nodes;
         % heart_faces           = load(fullfile("Heart_Meshes", sprintf("%s_Heart_Mesh.mat",sbj_name))).heart_faces;
 
         % Find the heart nodes that we're applying the BC on
-        n_hframes        = size(heart_BC_surface_indices, 1);
-        heart_BC_indices = cell(size(heart_BC_surface_indices));
+        n_hframes        = size(heart_BC.surface_indices, 1);
+        heart_BC.indices = cell(size(heart_BC.surface_indices));
             
         for hframe = 1:n_hframes
-            for i_BC = 1:size(heart_BC_surface_indices,2)
-                heart_BC_nodes = heart_surface_nodes(heart_BC_surface_indices{hframe,i_BC},:);
+            for i_BC = 1:size(heart_BC.surface_indices,2)
+                heart_BC_nodes = heart_surface_nodes(heart_BC.surface_indices{hframe,i_BC},:);
                 
                 % Find the global nodes indicies for the heart BC
-                [~, heart_BC_indices{hframe,i_BC}] = intersect(nodes, heart_BC_nodes, "rows", "stable");
+                [~, heart_BC.indices{hframe,i_BC}] = intersect(nodes, heart_BC_nodes, "rows", "stable");
             end
         end
         if flags.plot_heart == 1
@@ -361,17 +360,17 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
             start_hframe = 5;
             
             % Plot 1 for Frame 1
-            s1 = cell(1,size(heart_BC_surface_indices,2));
-            for i_BC = 1:size(heart_BC_surface_indices,2)
-                heart_BC_nodes = heart_surface_nodes(heart_BC_surface_indices{start_hframe,i_BC},:);
-                s1{i_BC} = scatter3(ax1, heart_BC_nodes(:,1), heart_BC_nodes(:,2), heart_BC_nodes(:,3),[],heart_BC_vals(i_BC)*ones(size(heart_BC_nodes,1),1),"filled");
+            s1 = cell(1,size(heart_BC.surface_indices,2));
+            for i_BC = 1:size(heart_BC.surface_indices,2)
+                heart_BC_nodes = heart_surface_nodes(heart_BC.surface_indices{start_hframe,i_BC},:);
+                s1{i_BC} = scatter3(ax1, heart_BC_nodes(:,1), heart_BC_nodes(:,2), heart_BC_nodes(:,3),[],heart_BC.vals(i_BC)*ones(size(heart_BC_nodes,1),1),"filled");
             end
             title(ax1, sprintf("Heart BC\nFrame %d", 1))
             xlabel(ax1, "X (mm)")
             ylabel(ax1, "Y (mm)")
             zlabel(ax1, "Z (mm)")
             axis(ax1, "equal")
-            clim(ax1, [min(heart_BC_vals), max(heart_BC_vals)])
+            clim(ax1, [min(heart_BC.vals), max(heart_BC.vals)])
             colormap(ax1, "turbo")
             c = colorbar(ax1, "eastoutside");
             c.Label.String = "Volts";
@@ -389,7 +388,7 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
                      "Value",start_hframe, ...
                      "MajorTicks",1:n_hframes, ...
                      "MinorTicks",[], ...
-                     "ValueChangedFcn",@(src,evt) updateHeartFrame(ax1, src.Value, heart_BC_vals, heart_surface_nodes, heart_BC_surface_indices));
+                     "ValueChangedFcn",@(src,evt) updateHeartFrame(ax1, src.Value, heart_BC.vals, heart_surface_nodes, heart_BC.surface_indices));
         end
 
         if flags.verbose == 1
@@ -398,8 +397,8 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
         end
     else
         % Set empty conditions for no Dirichlet BCs
-        heart_BC_indices = {[]};
-        heart_BC_vals  = [];
+        heart_BC.indices = {[]};
+        heart_BC.vals  = [];
         n_hframes = 1;
     end
     
@@ -452,6 +451,10 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
         flags.zeta = zeta*ones(L,1);
         solver.mode = "current";
         solver.zeta = flags.zeta;
+    else
+        % Create empty structures
+        fmesh  = [];
+        solver = [];
     end
 
     % % DELETE ME: TESTING CONTACT IMPEDANCES
@@ -537,75 +540,57 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
             end
 
 % ----------------------------------------------------------------------- %
-%%                         Assign Conductivities                          %
+%%                    Assign Conductivities and Solve                     %
 % ----------------------------------------------------------------------- %
-            % Initialize Umeas and Uall
+            % Initialize sigma, Umeas, and Uall
             sigma = zeros(size(nodes,1), n_bframes);
-            Umeas = zeros(L,             K, n_hframes*n_bframes);
-            Uall  = zeros(size(nodes,1), K, n_hframes*n_bframes);
             Umeas_cell = cell(n_bframes, 1);
             Uall_cell  = cell(n_bframes, 1);
 
-            % KH: Testing making this a parfor. Probably will need to check for computer availability?
-            parfor bframe = 1:n_bframes
-            % for bframe = 1:n_bframes
-                % Create local copies of the flags and the solver
-                flags_local  = flags;
-                solver_local = solver;
+            % Set up structures to pass into the function instead of everything as individual variables
+            mesh_info.nodes = nodes;
+            mesh_info.connect = connectivity;
+            mesh_info.labels  = labels;
+            mesh_info.lung_nodes = lung_nodes;
+            mesh_info.L          = L;
+            mesh_info.K          = K;
+            mesh_info.cur_pat    = cur_pat;
 
-                % Extract which point on the breath curve we want to simulate on a local copy of the flags
-                flags_local.max_inspiration = flags.breath_curve(bframe);
-                flags_local.cardiac_cycle   = flags.heart_curve(bframe);
+            frame_info.n_hframes        = n_hframes;
+            frame_info.n_bframes        = n_bframes;
+            frame_info.i_permutation    = i_permutation;
+            frame_info.num_permutations = num_permutations;
 
-                if flags_local.verbose == 1
-                    fprintf("   Assigning Conductivities\n")
-                end
-            
-                % Creating the conductivity vector at the nodes (IN SIEMENS PER METER)
-                sigma(:,bframe) = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, flags_local);
-            
-    % ----------------------------------------------------------------------- %
-    %%                                 Solve                                  %
-    % ----------------------------------------------------------------------- %                
-                % Make a local version for each core
-                Umeas_local = zeros(L, K, n_hframes);
-                Uall_local  = zeros(size(nodes,1), K, n_hframes);
+            % Run the function to assign conductivities and solve the forward problem
+            if flags.do_parfor == 1
+                parfor bframe = 1:n_bframes
+                % for bframe = 1:n_bframes
+    
+                    frame_info_local = frame_info;
+                    frame_info_local.bframe = bframe;
 
-                for hframe = 1:n_hframes
-                    if flags_local.solve_problem == 1
-                        fprintf("   Solving Forward Problem %d of %d\n", (i_permutation-1)*n_hframes*n_bframes + (bframe-1)*n_hframes + hframe, num_permutations*n_hframes*n_bframes)
+                    % Set local versions for the parfor
+                    solver_local = solver;
+                    flags_local  = flags;
+    
+                    [Umeas_local, Uall_local, sigma(:,bframe)] = Assign_and_Solve(mesh_info, frame_info_local, heart_BC, solver_local, fmesh, noise, flags_local);
                     
-                        % Set the current pattern (IN AMPS)
-                        solver_local.Iel = cur_pat;
+                    % Combine all the heart solutions into a cell array
+                    Umeas_cell{bframe} = Umeas_local; 
+                    Uall_cell{bframe} = Uall_local;
+                end % end looping over each video
+            else
+                for bframe = 1:n_bframes
+   
+                    frame_info.bframe = bframe;
+    
+                    [Umeas_local, Uall_local, sigma(:,bframe)] = Assign_and_Solve(mesh_info, frame_info, heart_BC, solver, fmesh, noise, flags);
                     
-                        % Solve the voltage
-                        solve_start          = tic;
-                        if flags_local.do_parfor == 1
-                            [Umeas_frame, Imeas_frame, Uall_frame] = MF_Simulation(fmesh,  [], sigma(:,bframe), solver_local.zeta, heart_BC_indices(hframe,:), heart_BC_vals, solver, "current", noise);
-                        else
-                            [Umeas_frame, Imeas_frame, Uall_frame] = MF_Simulation2(fmesh, [], sigma(:,bframe), solver_local.zeta, heart_BC_indices(hframe,:), heart_BC_vals, solver, "current", noise);
-                        end
-                        solve_time           = toc(solve_start);
-                        if flags_local.verbose == 1
-                            fprintf("      It took %.2f minutes to solve for voltages\n", solve_time/60)
-                        end
-                    
-                        Umeas_frame = Umeas_frame * 1e3; % Convert V to mV
-                        Uall_frame  = Uall_frame  * 1e3; % Convert V to mV
-
-                        % Save the local frame
-                        Umeas_local(:,:,hframe) = reshape(Umeas_frame, L, K); 
-                        Uall_local(:,:,hframe) = Uall_frame(1:size(nodes,1),:);
-                        % Umeas(:,:,(bframe-1)*n_hframes + hframe) = reshape(Umeas_frame, L, K);
-                        % Uall(:,:,(bframe-1)*n_hframes + hframe)  = Uall_frame(1:size(nodes,1),:);
-                    end % end running a solve
-                end % end looping over heart frames
-
-                % Combine all the heart solutions into a cell array
-                Umeas_cell{bframe} = Umeas_local; 
-                Uall_cell{bframe} = Uall_local;
-
-            end % end looping over each video
+                    % Combine all the heart solutions into a cell array
+                    Umeas_cell{bframe} = Umeas_local; 
+                    Uall_cell{bframe} = Uall_local;
+                end % end looping over each video
+            end
 
             % Finally combine all results
             Umeas = cat(3, Umeas_cell{:});
@@ -627,6 +612,7 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
             % Plot the ground truth images at each row
             GT_Thickness = 5; %mm
             sigma_GT = Create_GT_Images(GT_Thickness, nodes, E_nodes, sigma, flags);
+
 % ----------------------------------------------------------------------- %
 %%                               Save Data                                %
 % ----------------------------------------------------------------------- %
@@ -657,12 +643,6 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
                 % Save the voltages and conductivties
                 volt_name = sprintf("%s-Volt%s.mat", sbj_name, save_suffix);
                 cond_name = sprintf("%s-Cond%s.mat", sbj_name, save_suffix);
-                % if noise(1) == 0 || noise(2) == 0
-                %     save(fullfile(volt_save_path, volt_name), "Umeas_NoNoise", "Uall_NoNoise", "cur_pat", "perim_mm", "noise", "flags", "volt_metadata", "-v7.3")
-                % else
-                %     save(fullfile(volt_save_path,volt_name), "Umeas", "Uall", "cur_pat", "perim_mm", "noise", "flags", "volt_metadata", "-v7.3")
-                % end
-                % save(fullfile(cond_save_path,cond_name), "sigma", "sigma_GT", "nodes", "E_connect", "flags", "cond_metadata", "-v7.3")
                 saveData(volt_save_path, cond_save_path, volt_name, cond_name,  Umeas_NoNoise, Uall_NoNoise, Umeas, Uall, cur_pat, perim_mm, noise, flags, volt_metadata, sigma, sigma_GT, nodes, E_connect, cond_metadata)
             end % end saving data
         end % end looping over permutations
