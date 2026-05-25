@@ -298,8 +298,8 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
 
     % Initialize the conductivity matrix to be NaNs and be large enough for
     % multiple elements to use the same node
-    sigma = cell(size(nodes,1), 1);
-    for node = 1:size(nodes,1)
+    sigma = cell(min(size(nodes,1), max(idx)), 1);
+    for node = 1:min(size(nodes,1), max(idx)) % Go to the maximum node used
         sigma{node} = nan([1, counts(node)], "like", cond_vals{3});
     end
 
@@ -336,22 +336,11 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
     % Take a row wise average of the conductivities
     sigma = cellfun(@(x) mode(x, 2), sigma);
 
-    % Check for weird gaps from Cleaver
-    % zero_nodes   = nodes(real(sigma) == 0,:);
-    % zero_indices = Find_Internal_Nodes(zero_nodes, flags);
-    % [~, zero_indices, ~] = intersect(nodes, zero_nodes(zero_indices,:),"rows");
-    % sigma(zero_indices)  = soft_tissue_val;
-
     % Set constant if wanted
     if flags.const_body == 1
         % Find all nodes that are not background
         sigma(~(real(sigma) == 0 & imag(sigma) == 0)) = cond_vals{4};
     end
-
-    cond_time = toc;
-    % if flags.verbose == 1
-    %     fprintf("      It took %.2f seconds to assign values\n", cond_time)
-    % end
 
 %% ----------------------------- Plotting ------------------------------- %
     if flags.plot_conds == 1

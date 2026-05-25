@@ -118,6 +118,8 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
         sbj_sheet = readtable("CT Data Boundaries.xlsx", "Sheet","R21");
     elseif contains(sbj_name, "MCR0")
         sbj_sheet = readtable("CT Data Boundaries.xlsx", "Sheet","MCR Set");
+    elseif contains(sbj_name, "Mean")
+        sbj_sheet = readtable("CT Data Boundaries.xlsx", "Sheet","Means");
     else
         error("No excel file for subject %s\n", sbj_name)
     end
@@ -144,9 +146,9 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
     end
     
     % Create a cell array with each individual organ mesh
-    organ_connects = cell(length(unique(labels)),1);
+    organ_connects = cell(6,1);
     i = 1;
-    for label = unique(labels).'
+    for label = 1:6
         organ_connects{i} = connectivity(labels==label, :);
         i = i + 1;
     end
@@ -159,8 +161,14 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
         % Anterior is positive y
         % Superior is positive z
         % Right    is positive x
-    [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, organ_connects, carina_height, T5_height, T8_height, flags);
-    
+    if contains(sbj_name, "Mean") == 0 % Means are already in right orientation
+        [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, organ_connects, carina_height, T5_height, T8_height, flags);
+    else
+        sbj_info.carina = carina_height;
+        sbj_info.T5     = T5_height;
+        sbj_info.T8     = T8_height;
+    end
+
 % ----------------------------------------------------------------------- %
 %%                              Surface Nodes                             %
 % ----------------------------------------------------------------------- %
@@ -175,7 +183,7 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
     heart_faces     = Get_Unique_Faces(organ_connects{heart});
     esophagus_faces = Get_Unique_Faces(organ_connects{esophagus});
     if flags.are_bones == 1
-        bone_faces = Get_Uniaue_Faces(organ_connects{bone});
+        bone_faces = Get_Unique_Faces(organ_connects{bone});
     end
     
     % Find the intersection of each internal organ and the soft tissue

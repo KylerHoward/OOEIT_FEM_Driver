@@ -33,7 +33,7 @@ flags.do_beeps        = 1; % Decide if you want the code to beep after each simu
 flags.verbose         = 1; % Decide if you want to print status updates along the way (1) or not (0)
 
 % Video settings
-flags.make_video  = 1;              % Decide if you want to make a video (1), or a single frame (0)
+flags.make_video  = 0;              % Decide if you want to make a video (1), or a single frame (0)
 flags.breath_rate = 44;             % Breath rate in breaths per minute 44
 flags.heart_rate  = 120;            % heart  rate in beats   per minute
 flags.fps         = 28;             % Frame rate to reconstruct the video with
