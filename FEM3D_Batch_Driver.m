@@ -255,7 +255,7 @@ for sbj_i = 3:size(dataset_contents, 1)
         n_conditions = 1;
     end
    
-    num_solves  = num_solves + n_conditions * n_bframes * sum(cellfun(@(x) x{1}, flags.permutations));
+    num_solves  = num_solves + n_conditions * n_bframes * ((sum(cellfun(@(x) x{1}, flags.permutations))-1)*flags.do_conditions*flags.permute_conds+1); % Adjusting for if we did permutations
 end
 
 
