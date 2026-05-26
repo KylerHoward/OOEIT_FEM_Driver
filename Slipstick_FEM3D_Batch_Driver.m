@@ -180,11 +180,11 @@ end
 dataset_contents = dir(dataset_path);
 dataset_contents = dataset_contents(3:end); % Remove . and ..
 n_sbjs           = size(dataset_contents,1);
-sbj_per_node     = ceil(n_sbjs/10)*node_i;
+sbj_per_node     = ceil(n_sbjs/10);
 sbjs_solved = 0;
 num_solves  = 0;
 % for sbj_i = 1:size(dataset_contents, 1)
-for sbj_i = 1 + sbj_per_node : sbj_per_node + sbj_per_node*node_i
+for sbj_i = 1 + sbj_per_node*node_i : sbj_per_node + sbj_per_node*node_i
     if sbj_i > size(dataset_contents,1)
         return
     end
