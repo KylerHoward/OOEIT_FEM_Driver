@@ -115,7 +115,11 @@ function metadata = Make_Metadata(type)
     % Store computer info
     metadata.computer_info.computer_type  = computer;
     metadata.computer_info.OS             = feature("GetOS");
-    metadata.computer_info.n_cores        = feature("numCores");
+    try
+        metadata.computer_info.n_cores = maxNumCompThreads;
+    catch
+        metadata.computer_info.n_cores        = feature("numCores");
+    end
     metadata.computer_info.n_processors   = str2double(getenv("NUMBER_OF_PROCESSORS")); 
     metadata.computer_info.CPU            = feature("GetCPU");
     metadata.computer_info.MATLAB_version = version;
