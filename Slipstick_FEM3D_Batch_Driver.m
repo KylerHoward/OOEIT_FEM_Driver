@@ -103,6 +103,8 @@ flags.E_height        = 29;  % Height of electrode in mm (for rectangle)
 flags.gap_width       = 46.675; % Gap between electrodes horizontally in mm (edge-edge) (for patch) %2.5 / 46.675
 flags.gap_height      = 32.875; % Gap between electrodes vertically in mm (edge-edge) (for patch) %2.5 / 32.3875
 flags.E_count         = [16];  % Number of electrodes per row (for belt), or matrix of how many rows and columns (for patch)
+flags.equal_space     = 1;        % If the electrodes should be equally spaced (1) or start at the armpit and "rolled" on like GE (0)
+flags.E_space         = 5;        % Edge-to-edge spacing between electrodes in mm for unequal belt spacing
 
 % Save the correct electrode settings, not the custom ones when using the
 % standard settings
