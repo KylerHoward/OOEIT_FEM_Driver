@@ -298,8 +298,8 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
 
     % Initialize the conductivity matrix to be NaNs and be large enough for
     % multiple elements to use the same node
-    sigma = cell(min(size(nodes,1), max(idx)), 1);
-    for node = 1:min(size(nodes,1), max(idx)) % Go to the maximum node used
+    sigma = cell(size(nodes,1), 1);
+    for node = 1:size(nodes,1) % Go to the maximum node used
         sigma{node} = nan([1, counts(node)], "like", cond_vals{3});
     end
 
