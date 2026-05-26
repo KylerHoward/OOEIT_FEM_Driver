@@ -108,7 +108,7 @@ flags.E_space         = 5;        % Edge-to-edge spacing between electrodes in m
 
 % Save the correct electrode settings, not the custom ones when using the
 % standard settings
-flags = Construct_Electrode_Settings(flags);
+[~, flags] = Construct_Electrode_Settings(flags);
 
 noise = [0, 0, 0, 0];       % Noise and error parameters
     % noise_rel = err(1);
@@ -246,7 +246,8 @@ for sbj_i = 1 + sbj_per_node : sbj_per_node + sbj_per_node*node_i
     
     % RUN THE 3D FEM 
     fprintf("Running %s\n", sbj_name)
-    n_bframes = FEM3D_Function(msh_path, msh_name, sbj_name, sbj_save_path, flags, noise);
+    % n_bframes = FEM3D_Function(msh_path, msh_name, sbj_name, sbj_save_path, flags, noise);
+    n_bframes = 39;
     
     sbj_stop_time = toc(sbj_start_time);
     fprintf("\n   It took %.2f hours to solve the forward problem\n", sbj_stop_time / 3600)
