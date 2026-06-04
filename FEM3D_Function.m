@@ -255,6 +255,7 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
             fprintf("      Electrodes are too big. Trying again at smaller size\n")
         end
         flags.E_choice = flags.E_choice + 1;
+        [~, flags]     = Construct_Electrode_Settings(flags);
 
         [E_nodes, perim_mm] = Make_Electrodes3(boundary_nodes, nodes, body_faces, sbj_info, flags);
         if iscell(E_nodes) == 0
@@ -271,7 +272,7 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
     make_time = toc;
     if flags.verbose == 1
         fprintf("      It took %.2f seconds to make the electrodes\n", make_time)
-        fprintf("      The perimeter is %.2f mm\n", perim_mm)
+        fprintf("      The perimeter is %.2f cm\n", perim_mm/10)
     end
     
     % Look at the electrodes and plot their number of faces & areas per electrode
@@ -514,8 +515,8 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
             
             if flags.make_video == 1
                 % Find how many frames we are simulating
-                breaths_per_sec = 1 / (flags.breath_rate/60);
-                n_bframes = ceil(breaths_per_sec * flags.fps);
+                sec_per_breath = 1 / (flags.breath_rate/60);
+                n_bframes = ceil(sec_per_breath * flags.fps);
 
                 % Create cosine curve for ventilation
                 cosA = range(flags.insp_range)/2;
@@ -526,8 +527,8 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
                 flags.breath_curve = cosA * cos(cosB *((1:n_bframes) - cosC)) + cosD; 
 
                 % Create cardiac cycle based on literature
-                beats_per_sec = 1 / (flags.heart_rate/60);
-                heart_period = ceil(beats_per_sec * flags.fps);
+                sec_per_beat = 1 / (flags.heart_rate/60);
+                heart_period = ceil(sec_per_beat * flags.fps);
                 flags.heart_curve = Make_Cardiac_Curve(heart_period, n_bframes);
 
                 if flags.plot_breath == 1
@@ -535,7 +536,8 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
                         hold on
                         plot(1:n_bframes, flags.breath_curve)
                         plot(1:n_bframes, flags.heart_curve)
-                        xline([2,20,37],"k")
+                        xlim([0,n_bframes])
+                        % xline([2,20,37],"k")
                         legend(["Breath Curve", "Heart Curve","","",""],"Location","southoutside")
                         xlabel("Frame")
                         ylabel("% of Cycle")
