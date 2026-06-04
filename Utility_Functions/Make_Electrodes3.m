@@ -193,9 +193,15 @@ function [center, plane] = find_center(nodes, height, E, FoB)
     return: plane  - Plane containing the center
     %}
 
-    try
+    % Don't place electrodes higher than the body
+    if height > max(nodes(:,3))
+        height = max(nodes(:,3));
+    end
+
+    % Use whichever one isn't a NaN
+    if isnan(E.E_height)
         plane_gap = E.E_rad;
-    catch
+    elseif isnan(E.E_rad)
         plane_gap = E.E_height / 2;
     end
 
@@ -284,6 +290,11 @@ function E_nodes = create_electrode(local_nodes, coord, E, all_nodes, body_faces
             good_electrode = 1;
         end
 
+        % Create an escape condition for each electrode
+        if search_dist > 25
+            good_electrode = 1;
+        end
+
     end
 end
 
@@ -303,9 +314,9 @@ function E_nodes = create_rows(local_nodes, coord, E, all_nodes, body_faces)
     E_nodes   = cell(E.E_count(2),1);
 
     % Move in the +x direction to the center of the second electrode
-    try
+    if isnan(E.E_width)
         coord = coord + [E.E_rad + E.gap_width/2,    0,  0];
-    catch
+    elseif isnan(E.E_rad)
         coord = coord + [E.E_width/2 + E.gap_width/2, 0, 0];
     end
 
@@ -313,13 +324,14 @@ function E_nodes = create_rows(local_nodes, coord, E, all_nodes, body_faces)
     E_nodes{2} = create_electrode(local_nodes, coord, E, all_nodes, body_faces);
 
     % Set up the distance between electrodes
-    try
+    if isnan(E.E_width)
         dist = E.E_rad + E.gap_width;
         % dist = E.E_rad + 5/3*E.gap_width;
-    catch
+    elseif isnan(E.E_rad)
         % dist = E.E_width/2 + E.gap_width;
         dist = E.E_width/2 + 5/3*E.gap_width;
     end
+    
 
     % Find the first electrode
     max_vals   = max(E_nodes{2});
@@ -385,13 +397,14 @@ function E_nodes = create_patch(local_nodes, row_center3, E, FoB, all_nodes, bod
     end
 
     % Set up the distance between rows
-    try
+    if isnan(E.E_height)
         dist = E.E_rad + E.gap_height;
         % dist = E.E_rad + 5/3*E.gap_height;
-    catch
+    elseif isnan(E.E_rad)
         % dist = E.E_height/2 + E.gap_height;
         dist = E.E_height/2 + 5/3*E.gap_height;
     end
+    
 
     % Find the fourth row
     min_vals         = min([min(E_nodes{9}); min(E_nodes{10}); min(E_nodes{11}); min(E_nodes{12})]);
