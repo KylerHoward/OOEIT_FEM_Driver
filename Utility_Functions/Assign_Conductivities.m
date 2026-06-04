@@ -33,13 +33,13 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
         lc_empty = 0.243;
         lc_m     = (lc_full - lc_empty) / (1-0);
         lc_eq    = lc_m * flags.max_inspiration + lc_empty; % Linear range between empty/full
-        lc_range = lc_m * flags.lung_range; 
+        lc_range = abs(lc_m * flags.lung_range); 
 
         ls_full  = 1.72e4;
         ls_empty = 3.40e4;
         ls_m     = (ls_full - ls_empty) / (1-0);
         ls_eq    = ls_m * flags.max_inspiration+ ls_empty; % Linear range between empty/full
-        ls_range = ls_m * flags.lung_range; 
+        ls_range = abs(ls_m * flags.lung_range); 
     
         % Dictionary of conductivities (S/m) from TFC. 
         % First value is the mean, second value is the allowable ± range
