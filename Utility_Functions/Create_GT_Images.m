@@ -100,7 +100,6 @@ function sigma_GT = Create_GT_Images(thickness, nodes, E_nodes, sigma, flags)
         title(ax1, sprintf("Frame %d Ground Truth\nConductivity", frame))
         axis(ax1, "equal", "off")
         set(ax1, "XDir", "reverse") % set in DICOM standard
-        colormap("jet")
         if flags.fixed_range == 1
             try
                 clim(ax1, [0, 0.8])
@@ -116,6 +115,7 @@ function sigma_GT = Create_GT_Images(thickness, nodes, E_nodes, sigma, flags)
         end
         c = colorbar(ax1, "eastoutside");
         c.Label.String = "S/m";
+        colormap(ax1, "jet")
         
         % Plot 2 (if complex)
         if flags.set_complex
@@ -123,7 +123,6 @@ function sigma_GT = Create_GT_Images(thickness, nodes, E_nodes, sigma, flags)
             title(ax2, sprintf("Frame %d Ground Truth\nSusceptivity", frame))
             axis(ax2, "equal", "off")
             set(ax2, "XDir", "reverse") % set in DICOM standard
-            colormap("jet")
             if flags.fixed_range == 1
                 try
                     clim(ax2, [0, 0.8])
@@ -139,6 +138,7 @@ function sigma_GT = Create_GT_Images(thickness, nodes, E_nodes, sigma, flags)
             end
             c = colorbar(ax2, "eastoutside");
             c.Label.String = "S/m";
+            colormap(ax2, "jet")
         else
             s2 = [];
         end
@@ -179,6 +179,7 @@ function updateFrame(ax1, ax2, s1, s2, framenum, colordata, flags)
                 caxis(ax1,[min(real(colordata(:,plotframe))), max(real(colordata(:,plotframe)))])
             end
         end
+        colormap(ax1, "jet")
 
         % Update plot 2
         if flags.set_complex
@@ -197,6 +198,7 @@ function updateFrame(ax1, ax2, s1, s2, framenum, colordata, flags)
                     caxis(ax2,[min(imag(colordata(:,plotframe))), max(imag(colordata(:,plotframe)))])
                 end
             end
+            colormap(ax2, "jet")
         end
 
         

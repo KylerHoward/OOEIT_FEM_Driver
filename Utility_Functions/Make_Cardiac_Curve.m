@@ -102,7 +102,7 @@ function cardiac_curve = Make_Cardiac_Curve(period, tot_samples)
     y_sub = interp1(u_shifted(1:Np-1), y_shifted(1:Np-1), u_sub, "linear", "extrap");
     
     % Repeat the signal to fill out breaths
-    n_periods = floor(tot_samples / period); 
+    n_periods = floor(tot_samples / (period-1)); 
     
     % Repeat full periods 
     cardiac_curve = repmat(y_sub(2:end), 1, n_periods); 
