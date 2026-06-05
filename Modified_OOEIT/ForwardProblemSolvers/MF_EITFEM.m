@@ -169,8 +169,9 @@ Editted: 10/10/24 - Kyler Howard
 
             % Apply Dirichlet BCs
             for i_BC = 1:length(dirichlet_vals)
-                % First zero out rows from Dirichlet
+                % First zero out rows/cols from Dirichlet
                 self.A(dirichlet_nodes{i_BC},:) = 0;
+                self.A(:,dirichlet_nodes{i_BC}) = 0;
     
                 % Set the diagonal as ones
                 dirichlet_indices         = sub2ind(size(self.A), dirichlet_nodes{i_BC}, dirichlet_nodes{i_BC});
