@@ -182,14 +182,21 @@ Editted: 10/10/24 - Kyler Howard
             end
 
             % Solve FEM
-            try
-                tol   = 1e-6;
-                maxit = 200;
-                [self.L,self.U] = ilu(self.A,struct('type','nofill','droptol',1e-6));
-                for i = 1:size(self.b,2)
-                    [self.solVec(:,i), ~] = gmres(self.A, self.b(:,i),[],tol,maxit,self.L,self.U);
+            if size(self.A,1) > 5e5
+                try
+                    restart = 50;
+                    tol     = 1e-6;
+                    maxit   = 200;
+    
+                    [self.L,self.U] = ilu(self.A,struct('type','nofill','droptol',1e-6,'udiag',1));
+                    for i = 1:size(self.b,2)
+                        [self.solVec(:,i), ~] = gmres(self.A, self.b(:,i),restart,tol,maxit,self.L,self.U);
+                    end
+                catch
+                    self.solVec = self.A\self.b;
                 end
-            catch
+            else
+                fprintf("Sparsity of A is %f\n", nnz(self.A) / numel(self.A))
                 self.solVec = self.A\self.b;
             end
 
