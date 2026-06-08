@@ -7,8 +7,9 @@ load: current_pat - Current patterns for belt/patch electodes
 load: subj011 - Structure containing voltage and current pattern for subject 011
 %}
 
-% clear
-clearvars -except temp msh_path old_msh_path save_path old_save_path
+all_fig = findall(0, "type", "figure");
+close(all_fig)
+clearvars -except temp msh_path old_msh_path save_path old_save_path first_loc
 % clc
 close all
 
@@ -57,9 +58,14 @@ sim_CP_range   = zeros(2, L-1, num_sims);
 for i = 1:num_sims
     % Open the simulated voltage file
     if i == 1
-        [load_name{i}, load_loc{i}] = uigetfile("Results/", "Open Volt File");
+        if exist("first_loc", "var") && ischar(first_loc)
+            [load_name{i}, load_loc{i}] = uigetfile(first_loc, sprintf("Open Volt File %d of %d", i, num_sims));
+        else
+            [load_name{i}, load_loc{i}] = uigetfile("Results/", sprintf("Open Volt File %d of %d", i, num_sims));
+            first_loc = load_loc{i};
+        end
     else
-        [load_name{i}, load_loc{i}] = uigetfile(load_loc{i-1}, sprintf("Open Volt File. Previous: %s", load_name{i-1}));
+        [load_name{i}, load_loc{i}] = uigetfile(load_loc{i-1}, sprintf("Open Volt File %d of %d", i, num_sims));
     end
 
     if load_name{i} == 0
