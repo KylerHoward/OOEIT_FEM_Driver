@@ -135,14 +135,22 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
         trachea     = 2;
         soft_tissue = 3;
         bone        = 4;
-        esophagus   = 5;
-        heart       = 6;
+        if length(unique(labels)) == 6
+            esophagus   = 5;
+            heart       = 6;
+        elseif length(unique(labels)) == 5
+            heart = 5;
+        end
     else
         lung        = 1;
         trachea     = 2;
         soft_tissue = 3;
-        esophagus   = 4;
-        heart       = 5;
+        if length(unique(labels)) == 5
+            esophagus   = 4;
+            heart       = 5;
+        elseif length(unique(labels)) == 4
+            heart = 4;
+        end
     end
     
     % Create a cell array with each individual organ mesh
@@ -658,6 +666,7 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
         end % end looping over permutations
     end % end looping through conditions
     % end % Zeta testing end
+    keyboard
 end % end function as a whole
     
 % ----------------------------------------------------------------------- %

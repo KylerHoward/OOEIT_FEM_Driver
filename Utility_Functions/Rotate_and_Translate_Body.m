@@ -1,4 +1,4 @@
-function [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, organ_connects, carina_height, T5_height, T8_height, flags)
+function [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, labels, organ_connects, carina_height, T5_height, T8_height, flags)
     %{
     Assess if a torso is rotated or shifted, and put it back in a standard
     orientation where:
@@ -9,6 +9,7 @@ function [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, organ_connects, ca
     12/11/25 - Edited for GMSH Kyler Howard
     
     param: nodes          - Tetrahedron node list, n by 3, where n is the number of nodes
+    param: labels         - Tetrahedron label list, n by 1, where n is the number of elements
     param: organ_connects - Cell array of connectivity for each organ, n by 1, where n is the number of organs
                             Each cell is n by 4, where n is the number of elements
     param: carina_height  - Carina height from the excel file
@@ -22,22 +23,26 @@ function [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, organ_connects, ca
 
     % Create the organ numbering for reference 
     if flags.are_bones == 1
-        background  = 1;
-        lung        = 2;
-        trachea     = 3;
-        soft_tissue = 4;
-        bone        = 5;
-        esophagus   = 6;
-        heart       = 7;
-        external    = 8;
+        lung        = 1;
+        trachea     = 2;
+        soft_tissue = 3;
+        bone        = 4;
+        if length(unique(labels)) == 6
+            esophagus   = 5;
+            heart       = 6;
+        elseif length(unique(labels)) == 5
+            heart = 5;
+        end
     else
         lung        = 1;
         trachea     = 2;
         soft_tissue = 3;
-        esophagus   = 4;
-        heart       = 5;
-        background  = 6;
-        external    = 7;
+        if length(unique(labels)) == 5
+            esophagus   = 4;
+            heart       = 5;
+        elseif length(unique(labels)) == 4
+            heart = 4;
+        end
     end
 
 % ----------------------------------------------------------------------- %
