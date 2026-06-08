@@ -170,7 +170,7 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
         % Superior is positive z
         % Right    is positive x
     if contains(sbj_name, "Mean") == 0 % Means are already in right orientation
-        [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, organ_connects, carina_height, T5_height, T8_height, flags);
+        [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, labels, organ_connects, carina_height, T5_height, T8_height, flags);
     else
         sbj_info.carina = carina_height;
         sbj_info.T5     = T5_height;
@@ -189,7 +189,11 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
     lung_faces      = Get_Unique_Faces(organ_connects{lung});
     trachea_faces   = Get_Unique_Faces(organ_connects{trachea});
     heart_faces     = Get_Unique_Faces(organ_connects{heart});
-    esophagus_faces = Get_Unique_Faces(organ_connects{esophagus});
+    try
+        esophagus_faces = Get_Unique_Faces(organ_connects{esophagus});
+    catch
+        esophagus_faces = [];
+    end
     if flags.are_bones == 1
         bone_faces = Get_Unique_Faces(organ_connects{bone});
     end
@@ -198,7 +202,11 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
     lung_intersect      = intersect(sort(body_faces,2),  sort(lung_faces,2),      "rows");
     trachea_intersect   = intersect(sort(body_faces,2),  sort(trachea_faces,2),   "rows");
     heart_intersect     = intersect(sort(body_faces,2),  sort(heart_faces,2),     "rows");
-    esophagus_intersect = intersect(sort(body_faces,2),  sort(esophagus_faces,2), "rows");
+    try
+        esophagus_intersect = intersect(sort(body_faces,2),  sort(esophagus_faces,2), "rows");
+    catch
+        esophagus_intersect = [];
+    end
     if flags.are_bones == 1
         bone_intersect = intersect(sort(body_faces,2),  sort(bone_faces,2), "rows");
     end
@@ -464,7 +472,11 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
 
         % Creating zeta based on the average of the first four GE subjects
         % FIXME: KH 5/21/26, this is only for babies on GE right now
-        zeta = mean([0.079, 0.116, 0.217, 0.133]);
+        if flags.use_GE == 1
+            zeta = mean([0.079, 0.116, 0.217, 0.133]);
+        else
+            zeta = 0.023;
+        end
         flags.zeta = zeta*ones(L,1);
         solver.mode = "current";
         solver.zeta = flags.zeta;
@@ -477,8 +489,8 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
     % % DELETE ME: TESTING CONTACT IMPEDANCES
     % flags2 = flags;
     % solver2 = solver;
-    % zeta = [0.082 0.083 0.084 0.086 0.087 0.088 0.089];
-    % parfor ii = 1:length(zeta)
+    % zeta = [0.023];
+    % for ii = 1:length(zeta)
     % 
     %     % Create local copies of the flags and the solver
     %     flags  = flags2;
@@ -545,8 +557,8 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
                         plot(1:n_bframes, flags.breath_curve)
                         plot(1:n_bframes, flags.heart_curve)
                         xlim([0,n_bframes])
-                        % xline([2,20,37],"k")
-                        legend(["Breath Curve", "Heart Curve","","",""],"Location","southoutside")
+                        % xline([2,20,37],"k","LineWidth",2)
+                        legend(["Breath Curve", "Cardiac Curve","","",""],"Location","southoutside")
                         xlabel("Frame")
                         ylabel("% of Cycle")
                 end
@@ -666,7 +678,7 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
         end % end looping over permutations
     end % end looping through conditions
     % end % Zeta testing end
-    keyboard
+    
 end % end function as a whole
     
 % ----------------------------------------------------------------------- %
