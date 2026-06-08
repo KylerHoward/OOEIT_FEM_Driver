@@ -7,29 +7,33 @@ load: current_pat - Current patterns for belt/patch electodes
 load: sbj011 - Structure containing voltage and current pattern for subject 011
 %}
 
-% clear
-clearvars -except temp msh_path old_msh_path save_path old_save_path
+all_fig = findall(0, "type", "figure");
+close(all_fig)
+clearvars -except temp msh_path old_msh_path save_path old_save_path first_loc
 clc
 close all
 
-num_sims       = 3;
-do_pauses      = 0;
+num_sims       = 2;
+do_pauses      = 1;
 mean_shift     = 1;
-show_clinical  = 0;
+show_clinical  = 1;
 show_means     = 0;
 % clinical_frame = 71;%[37,44]; % 71 (Subj011)
-clinical_frame = [194,224]; % 207 (Kyler)
+% clinical_frame = [194,224]; % 207 (Kyler Patch)
+clinical_frame = [23619,23664]; % 207 (Kyler Finland)
+clinical_frame = 23619;
 remove_elec    = 0;
 bad_elecs      = [4,5,12];
 insp_exp_plot  = 0; % MUST HAVE CLINICAL_FRAMES IN ORDER OF [INSP, EXP] AND ONLY TWO!
 
 % Load files
 sbj_path = "C:\Users\kyler\OneDrive\School\Colorado State\Research\Dr. Mueller\FEM\OOEIT_FEM_Driver\Clinical_Data";
-sbj_file = "Sbj42_4x8_patch_circle_2025_02_14_15_10_34_0001";
+% sbj_file = "Sbj42_4x8_patch_circle_2025_02_14_15_10_34_0001"; % Kyler Patch
+sbj_file = "Sbj42_25_11_12_15_31_08";                           % Kyler Finland
 % sbj_file = "Subj011_2019_09_06_15_29_05_0002";
 sbj_data = load(fullfile(sbj_path, sbj_file));
 parts    = split(sbj_file,"_");
-sbj_name = parts(2);
+sbj_name = parts(1);
 L = 32;
 
 load_name      = cell(num_sims,1);
@@ -43,9 +47,14 @@ sim_CP_range   = zeros(2, L-1, num_sims);
 for i = 1:num_sims
     % Open the simulated voltage file
     if i == 1
-        [load_name{i}, load_loc{i}] = uigetfile("Results/", "Open Volt File");
+        if exist("first_loc", "var") && ischar(first_loc)
+            [load_name{i}, load_loc{i}] = uigetfile(first_loc, sprintf("Open Volt File %d of %d", i, num_sims));
+        else
+            [load_name{i}, load_loc{i}] = uigetfile("Results/", sprintf("Open Volt File %d of %d", i, num_sims));
+            first_loc = load_loc{i};
+        end
     else
-        [load_name{i}, load_loc{i}] = uigetfile(load_loc{i-1}, "Open Volt File");
+        [load_name{i}, load_loc{i}] = uigetfile(load_loc{i-1}, sprintf("Open Volt File %d of %d", i, num_sims));
     end
 
     if load_name{i} == 0
@@ -53,23 +62,35 @@ for i = 1:num_sims
     end
 
     parts{i} = split(load_name{i}, "_");
+    if size(parts{i},1) == 1
+        parts{i} = split(load_name{i}, "-");
+    end
     
     % Data validation
-    while contains(parts{i}{1}, "Volt") ~= 1
+    while contains(parts{i}{1}, "Volt") ~= 1 && contains(parts{i}{2}, "Volt") ~= 1
         load_name{i} = uigetfile(load_loc{i}, "Wrong File. Open Volt File");
         parts{i} = split(load_name{i}, "_");
+        if size(parts{i},1) == 1
+            parts{i} = split(load_name{i}, "-");
+        end
     end
 
     % Extract simulation name
-    sim_name{i} = string(parts{i}{2}(1:end-4));
+    sim_name{i} = string(parts{i}{1}) + ", " + string(parts{i}(contains(parts{i}, 'z')));
 
     % Load files
-    sim_volt(:,:,i) = real(load(fullfile(load_loc{i}, load_name{i})).Umeas);
+    try
+        sim_volt(:,:,i) = real(load(fullfile(load_loc{i}, load_name{i})).Umeas);
+    catch
+        sim_volt(:,:,i) = real(load(fullfile(load_loc{i}, load_name{i})).Umeas_NoNoise);
+    end
     try
         sim_CP(:,:,i)   = real(load(fullfile(load_loc{i}, load_name{i})).current_pat);
     catch
-        sim_CP(:,:,i)   = real(load(fullfile(load_loc{i}, load_name{i})).current_pattern);
+        sim_CP(:,:,i)   = real(load(fullfile(load_loc{i}, load_name{i})).cur_pat);
     end
+
+    sim_CP(:,:,i) = sim_CP(:,:,i)*1e6;
 
     % Set plotting ranges
     sim_volt_range(:,:,i)  = [1.1*min(sim_volt(:,:,i));     1.1*max(sim_volt(:,:,i))];
@@ -85,20 +106,12 @@ end
 %%
 % % Split the clinical data
 fields       = sort(fieldnames(sbj_data));
-DataVol0     = real(sbj_data.(fields{1}));
-[Slides,n]   = size(DataVol0);  % Slides is the number of frames, n the number of measurements
-sbj_Vmulti  = DataVol0.';      % Change to num_mesh_elts by number of frames
-sbj_Vmulti  = reshape(sbj_Vmulti,L,L-1,Slides);
-sbj_Vscale  = real(sbj_data.(fields{contains(lower(fields), 'vscale')}))';
-sbj_Vscale  = sbj_Vscale(1:L);
-
-% Scale the voltages
-sbj_Vscale(L+1:end) = [];
-sbj_Vscale = repmat(sbj_Vscale,1,L-1);
-for frame = 1:Slides
-    sbj_Vmulti(:,:,frame) = squeeze(sbj_Vmulti(:,:,frame)).*sbj_Vscale;
-end
-    
+idx          = find(strcmp(fields,'frame_voltage'));
+DataVol0     = real(sbj_data.(fields{idx}));
+DataVol0     = DataVol0 * 1e3; % Convert from V to mV
+sbj_Vmulti   = DataVol0(1:L-1, :, :);
+[~,~,Slides] = size(sbj_Vmulti);  % Slides is the number of frames
+sbj_Vmulti   = permute(sbj_Vmulti,[2,1,3]);  
 
 sbj_volt = zeros(L, L-1, length(clinical_frame));
 for i = 1:length(clinical_frame)
@@ -106,9 +119,8 @@ for i = 1:length(clinical_frame)
     sbj_volt(:,:,i)    = sbj_Vmulti(:,:,clinical_frame(i));
 end
 
-sbj_CPscale = real(sbj_data.(fields{contains(lower(fields), 'iscale')}));
-sbj_CP      = real(sbj_data.(fields{contains(lower(fields), 'pattern')}));
-sbj_CP      = mean(sbj_CPscale)* sbj_CP';
+sbj_CP = real(sbj_data.(fields{contains(lower(fields), 'cur_pattern')}));
+sbj_CP = sbj_CP(:,1:L-1) * 1e6; % Convert from A to uA
 
 % Remove bad electrodes
 if remove_elec == 1
@@ -118,8 +130,8 @@ end
 
 % Shift by mean to be 0 centered
 if mean_shift == 1
-    sbj_volt = sbj_volt - repmat(mean(sbj_volt),32,1);
-    sim_volt     = sim_volt     - repmat(mean(sim_volt),32,1);
+    sbj_volt = sbj_volt - repmat(mean(sbj_volt),size(sbj_volt,1),1);
+    sim_volt = sim_volt - repmat(mean(sim_volt),size(sbj_volt,1),1);
 end
 
 % Set plotting ranges
