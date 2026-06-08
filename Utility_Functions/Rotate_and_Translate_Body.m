@@ -1,4 +1,4 @@
-function [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, organ_connects, carina_height, T5_height, T8_height, flags)
+function [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, labels, organ_connects, carina_height, T5_height, T8_height, flags)
     %{
     Assess if a torso is rotated or shifted, and put it back in a standard
     orientation where:
@@ -9,6 +9,7 @@ function [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, organ_connects, ca
     12/11/25 - Edited for GMSH Kyler Howard
     
     param: nodes          - Tetrahedron node list, n by 3, where n is the number of nodes
+    param: labels         - Tetrahedron label list, n by 1, where n is the number of elements
     param: organ_connects - Cell array of connectivity for each organ, n by 1, where n is the number of organs
                             Each cell is n by 4, where n is the number of elements
     param: carina_height  - Carina height from the excel file
