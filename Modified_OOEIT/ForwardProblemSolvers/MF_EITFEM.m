@@ -196,7 +196,6 @@ Editted: 10/10/24 - Kyler Howard
                     self.solVec = self.A\self.b;
                 end
             else
-                fprintf("Sparsity of A is %f\n", nnz(self.A) / numel(self.A))
                 self.solVec = self.A\self.b;
             end
 
