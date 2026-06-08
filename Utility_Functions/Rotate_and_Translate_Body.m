@@ -22,22 +22,26 @@ function [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, organ_connects, ca
 
     % Create the organ numbering for reference 
     if flags.are_bones == 1
-        background  = 1;
-        lung        = 2;
-        trachea     = 3;
-        soft_tissue = 4;
-        bone        = 5;
-        esophagus   = 6;
-        heart       = 7;
-        external    = 8;
+        lung        = 1;
+        trachea     = 2;
+        soft_tissue = 3;
+        bone        = 4;
+        if length(unique(labels)) == 6
+            esophagus   = 5;
+            heart       = 6;
+        elseif length(unique(labels)) == 5
+            heart = 5;
+        end
     else
         lung        = 1;
         trachea     = 2;
         soft_tissue = 3;
-        esophagus   = 4;
-        heart       = 5;
-        background  = 6;
-        external    = 7;
+        if length(unique(labels)) == 5
+            esophagus   = 4;
+            heart       = 5;
+        elseif length(unique(labels)) == 4
+            heart = 4;
+        end
     end
 
 % ----------------------------------------------------------------------- %
