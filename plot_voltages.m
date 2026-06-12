@@ -1,6 +1,10 @@
 clearvars -except filepath
 clc
-% close all
+
+fig = findobj("Type", "figure", "Name", "Electrode Detection");
+if ~isempty(fig)
+    close(fig)
+end
     
 if exist('filepath', 'var') && ischar(filepath)
     [filename, filepath] = uigetfile(filepath, "Open Voltage File to Inspect");
@@ -141,7 +145,7 @@ Lambda = inv(R);                % Lambda is the DN map, size L-1 x L-1
 %     title('Normalized CPs')
 %     pause 
 % end
-figure
+
 % plot them
 V_norm = V - mean(V,1); % Subtract mean at each current pattern
 V_norm = V_norm ./ max(V_norm,[],1); % Normalize [-1, 1]
@@ -154,8 +158,10 @@ els = 1:L;
 for el = els
     el_error(el) = norm(V_norm(el,:) - J_norm(el,:), 2) / norm(J_norm(el,:), 2) * 100;
 end
-bad_els = els(el_error >= 2*mean(el_error));
+bad_els = els(el_error >= 50);
 
+
+fig = figure("Name", "Electrode Detection", "IntegerHandle", "off");
 for ii = [1:K, 1]
     clf
     hold on
@@ -171,7 +177,11 @@ for ii = [1:K, 1]
     legend(leg_plots, leg_names, 'Location','southoutside')
     title(sprintf("Normalized Voltages for CP %d",ii))  % Check old code and see if these sizes look right 
     xlabel("Electrode")
-    pause(0.5)
+    if ~isempty(bad_els)
+        pause()
+    else
+        pause(0.25)
+    end
 end
 
 % return
@@ -182,7 +192,9 @@ for ii=1:Slides
   Vframe= squeeze(real(frame_voltage(:,:,ii)));
   power_wavef_mx(:,:,ii)=J'*Vframe.'; % should be size 31 by 31 by num frames
 end
-figure
+
+parts = split(filename, "_");
+figure("Name", sprintf("Power Waveform of %s", strcat(parts{1:2})), "IntegerHandle", "off");
     hold on
     power_wavef = squeeze(power_wavef_mx(1,1,:));
     plot(power_wavef)
