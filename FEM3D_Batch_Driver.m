@@ -33,6 +33,7 @@ flags.heart_BCs       = 0; % Decide if you want to include heart BCs (1) or not 
 flags.save_heart_mesh = 0; % Decide if you want to generate and save a heart mesh (1) or not (0)
 flags.do_beeps        = 1; % Decide if you want the code to beep after each simulation (1) or not (0)
 flags.verbose         = 0; % Decide if you want to print status updates along the way (1) or not (0)
+flags.const_zeta      = 1; % Decide if you want a constant contact impedance (1) or different contact impedance per electrode (0)
 
 % Video settings
 flags.make_video  = 0;              % Decide if you want to make a video (1), or a single frame (0)

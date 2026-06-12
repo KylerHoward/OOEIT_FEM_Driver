@@ -474,10 +474,16 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
         % FIXME: KH 5/21/26, this is only for babies on GE right now
         if flags.use_GE == 1
             zeta = mean([0.079, 0.116, 0.217, 0.133]);
-        else
-            zeta = 0.023;
+            flags.zeta = zeta*ones(L,1);
+        else % Act 5
+            if flags.const_zeta == 1
+                zeta = 0.023;
+                flags.zeta = zeta*ones(L,1);
+            else
+                % Contact impedance per current pattern based on Sbj42 and R1097
+                flags.zeta = [0.027, 0.023, 0.018, 0.017, 0.021, 0.026, 0.025, 0.025, 0.028, 0.027, 0.021, 0.015, 0.021, 0.028, 0.027, 0.028, 0.021, 0.022, 0.023, 0.019, 0.023, 0.024, 0.027, 0.019, 0.021, 0.026, 0.023, 0.019, 0.024, 0.030, 0.024, 0.030]';
+            end
         end
-        flags.zeta = zeta*ones(L,1);
         solver.mode = "current";
         solver.zeta = flags.zeta;
     else
@@ -489,7 +495,7 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
     % % DELETE ME: TESTING CONTACT IMPEDANCES
     % flags2 = flags;
     % solver2 = solver;
-    % zeta = [0.023];
+    % zeta = [0.015:0.001:0.019];
     % for ii = 1:length(zeta)
     % 
     %     % Create local copies of the flags and the solver
