@@ -44,6 +44,7 @@ function metadata = Make_Metadata(type)
     metadata.descriptions.flags.save_heart_mesh = "Decide if you want to generate and save a heart mesh (1) or not (0).";
     metadata.descriptions.flags.do_beeps        = "Decide if you want the code to beep after each simulation (1) or not (0).";
     metadata.descriptions.flags.verbose         = "Decide if you want to print status updates along the way (1) or not (0).";
+    metadata.descriptions.flags.const_zeta      = "Decide if you want a constant contact impedance (1) or different contact impedance per electrode (0).";
 
     metadata.descriptions.flags.make_video      = "Decide if you want to make a video (1), or a single frame (0).";
     metadata.descriptions.flags.breath_rate     = "Breath rate in breaths per minute.";

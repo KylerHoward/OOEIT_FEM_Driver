@@ -34,6 +34,7 @@ flags.heart_BCs       = 0; % Decide if you want to include heart BCs (1) or not 
 flags.save_heart_mesh = 0; % Decide if you want to generate and save a heart mesh (1) or not (0)
 flags.do_beeps        = 0; % Decide if you want the code to beep after each simulation (1) or not (0)
 flags.verbose         = 0; % Decide if you want to print status updates along the way (1) or not (0)
+flags.const_zeta      = 0; % Decide if you want a constant contact impedance (1) or different contact impedance per electrode (0)
 
 % Video settings
 flags.make_video  = 1;              % Decide if you want to make a video (1), or a single frame (0)
@@ -246,7 +247,7 @@ for sbj_i = 1 + sbj_per_node*node_i : sbj_per_node + sbj_per_node*node_i
     
     % RUN THE 3D FEM 
     fprintf("Running %s\n", sbj_name)
-    n_bframes = FEM3D_Function(msh_path, msh_name, sbj_name, sbj_save_path, flags, noise);
+    [nodes, n_bframes] = FEM3D_Function(msh_path, msh_name, sbj_name, sbj_save_path, flags, noise);
     
     sbj_stop_time = toc(sbj_start_time);
     fprintf("\n   It took %.2f hours to solve the forward problem\n", sbj_stop_time / 3600)

@@ -18,7 +18,11 @@ function save_suffix = Make_Save_Name(condition_name, i_permutation, zeta, flags
     end
 
     % Add in the contact impedance
-    save_suffix = sprintf("%s-z%0.3f", save_suffix, zeta(1));
+    if flags.const_zeta == 1
+        save_suffix = sprintf("%s-z%0.3f", save_suffix, zeta(1));
+    else
+        save_suffix = sprintf("%s-zAdaptive", save_suffix);
+    end
 
     % Check Constant Body
     if flags.const_body == 1

@@ -1,6 +1,10 @@
 clearvars -except filepath
 clc
-% close all
+
+fig = findobj("Type", "figure", "Name", "Electrode Detection");
+if ~isempty(fig)
+    close(fig)
+end
     
 if exist('filepath', 'var') && ischar(filepath)
     [filename, filepath] = uigetfile(filepath, "Open Voltage File to Inspect");
@@ -40,30 +44,39 @@ try
     seconds = floor((Slides / system_frame_rate / 60 - minutes)*60);
 catch
     try % ACT 5
-        minutes = floor(Slides  / frame_rate / 60);
-        seconds = floor((Slides / frame_rate / 60 - minutes)*60);   
+        system_frame_rate = frame_rate;
+        minutes = floor(Slides  / system_frame_rate / 60);
+        seconds = floor((Slides / system_frame_rate / 60 - minutes)*60);   
     catch 
         try % GE
             system_frame_rate = eval(sprintf('%s_FPS', filename(1:end-4)));
             minutes = floor(Slides  / system_frame_rate / 60);
             seconds = floor((Slides / system_frame_rate / 60 - minutes)*60);
-        catch % FEM
-            system_frame_rate = flags.fps;
-            minutes = floor(Slides  / system_frame_rate / 60);
-            seconds = floor((Slides / system_frame_rate / 60 - minutes)*60);
+        catch
+            try % FEM
+                system_frame_rate = flags.fps;
+                minutes = floor(Slides  / system_frame_rate / 60);
+                seconds = floor((Slides / system_frame_rate / 60 - minutes)*60);
+            catch
+                system_frame_rate = 27;
+                minutes = floor(Slides  / system_frame_rate / 60);
+                seconds = floor((Slides / system_frame_rate / 60 - minutes)*60);
+            end
         end
     end
 end
     
 fprintf("The voltage is %d by %d by %d\n", K, L, Slides)
 fprintf("   That is %d minutes and %d seconds\n", minutes, seconds)
+fprintf("   Patient's circumference is %.1f\n", circumference)
+fprintf("   Frame rate is %d fps\n", system_frame_rate)
 
 % figure
 % plot(real(squeeze(frame_voltage(1,1,:))))
 % return
 
 %=========================== Define Parameters ============================
-V_nonhom = squeeze(real(frame_voltage(1:31,:,10)))*1000;     % mV
+V_nonhom = squeeze(real(frame_voltage(1:K,:,10)))*1000;     % mV
 %V_hom = squeeze(real(frame_voltage(1:31,:,20)))*1000;    % mV
 % Construct voltage matrix. Rows = electrode num , cols= current pattern
 V = V_nonhom';           % Reshape voltages into matrix 
@@ -72,11 +85,11 @@ V = V_nonhom';           % Reshape voltages into matrix
 
 CurrAmp = current_amp*1000;             % Current amplitude (mA)
 fprintf("The current applitude is %.2f mA\n", CurrAmp)
-  J = real(cur_pattern(:,1:31));  % These are in amps and they already include the amplitude
+  J = real(cur_pattern(:,1:K));  % These are in amps and they already include the amplitude
   J=J*1000;  % Convert to mA
-  for kk=1:31
-     cpnormvec(kk) = norm(J(:,kk),2);
-     J(:,kk) = J(:,kk)/cpnormvec(kk);
+  for k=1:31
+     cpnormvec(k) = norm(J(:,k),2);
+     J(:,k) = J(:,k)/cpnormvec(k);
   end
 % end
 
@@ -93,8 +106,8 @@ V = V - adjust;
 %   V = V * sqrt(2/L)/CurrAmp;
 %   V(:,L/2) = V(:,L/2) * sqrt(1/2); % The L/2 col. gets different treatment
 % else
-     for kk=1:31
-        V(:,kk) = V(:,kk)/cpnormvec(kk); 
+     for k=1:K
+        V(:,k) = V(:,k)/cpnormvec(k); 
      end
 % end
 
@@ -110,7 +123,7 @@ V = V - adjust;
 % %   Vref = Vref * sqrt(2/L)/CurrAmp;
 % %   Vref(:,L/2) = V(:,L/2) * sqrt(1/2); % The L/2 col. gets different treatment
 % % else
-%      for kk=1:31
+%      for kk=1:K
 %         Vref(:,kk) = Vref(:,kk)/cpnormvec(kk);
 %      end
 % % end
@@ -132,21 +145,56 @@ Lambda = inv(R);                % Lambda is the DN map, size L-1 x L-1
 %     title('Normalized CPs')
 %     pause 
 % end
-% figure
-% % plot them
-% for ii = 1:31
-%     plot(V(:,ii));
-%     title('Normalized Voltages')  % Check old code and see if these sizes look right 
-% end
-%return
 
-power_wavef_mx = zeros(31,31,Slides);
+% plot them
+V_norm = V - mean(V,1); % Subtract mean at each current pattern
+V_norm = V_norm ./ max(V_norm,[],1); % Normalize [-1, 1]
+J_norm = J - mean(J,1); % Subtract mean at each current pattern
+J_norm = J_norm ./ max(J_norm,[],1); % Normalize [-1, 1]
+
+
+el_error = zeros(L,1);
+els = 1:L;
+for el = els
+    el_error(el) = norm(V_norm(el,:) - J_norm(el,:), 2) / norm(J_norm(el,:), 2) * 100;
+end
+bad_els = els(el_error >= 50);
+
+
+fig = figure("Name", "Electrode Detection", "IntegerHandle", "off");
+for ii = [1:K, 1]
+    clf
+    hold on
+    p1 = plot(J_norm(:,ii), 'k');
+    p2 = plot(V_norm(:,ii), 'r');
+    leg_plots = [p1, p2];
+    leg_names = ["Current", "Voltage"];
+    if ~isempty(bad_els)
+        p3 = xline(bad_els, "k:");
+        leg_plots = [leg_plots, p3(1)];
+        leg_names = [leg_names, "Potentially Bad Electrodes"];
+    end
+    legend(leg_plots, leg_names, 'Location','southoutside')
+    title(sprintf("Normalized Voltages for CP %d",ii))  % Check old code and see if these sizes look right 
+    xlabel("Electrode")
+    if ~isempty(bad_els)
+        pause()
+    else
+        pause(0.25)
+    end
+end
+
+% return
+
+power_wavef_mx = zeros(K,K,Slides);
 % Compute power waveform
 for ii=1:Slides
   Vframe= squeeze(real(frame_voltage(:,:,ii)));
   power_wavef_mx(:,:,ii)=J'*Vframe.'; % should be size 31 by 31 by num frames
 end
-figure
+
+parts = split(filename, "_");
+figure("Name", sprintf("Power Waveform of %s", strcat(parts{1:2})), "IntegerHandle", "off");
     hold on
     power_wavef = squeeze(power_wavef_mx(1,1,:));
     plot(power_wavef)

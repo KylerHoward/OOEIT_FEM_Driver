@@ -50,6 +50,8 @@ L = 32;
 load_name      = cell(num_sims,1);
 load_loc       = cell(num_sims,1);
 parts          = cell(num_sims,1);
+case_name      = cell(num_sims,1);
+contact_imp    = cell(num_sims,1);
 sim_name       = cell(num_sims,1);
 sim_volt       = zeros(L, L-1, num_sims);
 sim_CP         = zeros(L, L-1, num_sims);
@@ -65,7 +67,7 @@ for i = 1:num_sims
             first_loc = load_loc{i};
         end
     else
-        [load_name{i}, load_loc{i}] = uigetfile(load_loc{i-1}, sprintf("Open Volt File %d of %d", i, num_sims));
+        [load_name{i}, load_loc{i}] = uigetfile(load_loc{i-1}, sprintf("Open Volt File %d of %d. Previous file was: %s", i, num_sims, load_name{i-1}));
     end
 
     if load_name{i} == 0
@@ -87,7 +89,10 @@ for i = 1:num_sims
     end
     
     % Extract simulation name
-    sim_name{i} = string(parts{i}{1}) + ", " + string(parts{i}(contains(parts{i}, 'z')));
+    case_name{i}   = string(parts{i}{1});
+    contact_imp{i} = string(parts{i}(contains(parts{i}, 'z')));
+    contact_imp{i} = str2double(regexp(contact_imp{i}, '-?\d+(\.\d+)?', 'match'));
+    sim_name{i} = sprintf("%s, Z: %.03f", case_name{i}, contact_imp{i});
 
     % Load files
     try
@@ -257,6 +262,7 @@ end
 if remove_elec == 1
     L = L - length(bad_elecs);
 end
+
 volt_scale = zeros(L,num_sims);
 CP_scale   = zeros(L,num_sims);
 error      = zeros(num_sims,1);
@@ -265,7 +271,6 @@ for i = 1:num_sims
     for l = 1:L
         volt_scale(l,i) = mean(rmoutliers(mean(sbj_volt(l,:,:),3) ./ sim_volt(l,:,i)));
         CP_scale(l,i)   = mean(rmoutliers(sim_CP(l,:,i)   ./ sbj_CP(l,:)),"all","omitmissing");
-
         el_error(l,i)   = norm(squeeze(sim_volt(l,:,i) - sbj_volt(l,:,:)), inf) / norm(squeeze(sbj_volt(l,:,:)), inf) * 100;
     end
 
@@ -299,11 +304,23 @@ if insp_exp_plot == 1
 end
 
 % find the minimums
+contact_imp_vec = zeros(1,L-1);
+[min_CP_error_val, min_CP_error_idx] = min(el_error,[],2);
 [min_el_error_val, min_el_error_idx] = min(mean(el_error));
 [min_error_val,    min_error_idx]    = min(error);
 fprintf("%s\n", repmat('-',[1,100]))
+if ~isempty(contact_imp{1})
+    fprintf("Minimum CP Impedances are: ")
+    for k = 1:L-1
+        contact_imp_vec(k) = contact_imp{min_CP_error_idx(k)};
+        fprintf("%.03f, ", contact_imp_vec(k))
+    end
+    fprintf("\b\b\n")
+end
+fprintf("%s\n", repmat('-',[1,100]))
 fprintf("Minimum mean electrode  Linf voltage error is %.2f%% for %s\n", min_el_error_val, load_name{min_el_error_idx})
 fprintf("Minimum overal relative Linf voltage error is %.2f%% for %s\n", min_error_val,    load_name{min_error_idx})
+fprintf("Minimum overal relative Linf voltage error is %.2f%% for adaptive contact impedance\n", mean(min_CP_error_val))
 fprintf("%s\n", repmat('-',[1,100]))
 
 for i = 1:num_sims
@@ -315,6 +332,23 @@ for i = 1:num_sims
         ylabel("Linf Relative Error")
         title(sprintf("Electrode Error for %s", sim_name{i}))
 end
+
+% Plot optimal contact impedances
+figure
+    subplot(1,2,1)
+        hold on
+        bar(min_CP_error_val)
+        yline(mean(min_CP_error_val), 'r', 'LineWidth',2)
+        xlabel("Current Pattern")
+        ylabel("Linf Relative Error")
+        title("Current Pattern Error")
+    subplot(1,2,2)
+        hold on
+        bar(contact_imp_vec)
+        yline(mean(contact_imp_vec), 'r', 'LineWidth',2)
+        xlabel("Current Pattern")
+        ylabel("Contact Impedance (Ω m²)")
+        title("Optimal Contact Impedances")
 
 return
 % electrode_errors is a 32xn array of the el_error on each subject
