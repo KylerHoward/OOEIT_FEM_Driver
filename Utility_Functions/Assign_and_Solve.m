@@ -48,7 +48,12 @@ function [Umeas, Uall, sigma] = Assign_and_Solve(mesh_info, frame_info, heart_BC
     end
 
     % Creating the conductivity vector at the nodes (IN SIEMENS PER METER)
-    sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, flags);
+    sigma_start = tic;
+    sigma       = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, flags);
+    sigma_time  = toc(sigma_start);
+    if flags.verbose == 1
+        fprintf("      It took %.2f seconds to assign conductivities\n", sigma_time)
+    end
 
 % ----------------------------------------------------------------------- %
 %%                                 Solve                                  %
@@ -73,7 +78,7 @@ function [Umeas, Uall, sigma] = Assign_and_Solve(mesh_info, frame_info, heart_BC
             end
             solve_time           = toc(solve_start);
             if flags.verbose == 1
-                fprintf("      It took %.2f minutes to solve for voltages\n", solve_time/60)
+                fprintf("      It took %.2f seconds to solve for voltages\n", solve_time)
             end
         
             Umeas_frame = Umeas_frame * 1e3; % Convert V to mV

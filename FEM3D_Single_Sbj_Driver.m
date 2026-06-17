@@ -25,20 +25,20 @@ addpath(fullfile("Utility_Functions"))
 flags.do_pauses       = 0; % Decide to include pauses to check things or not
 flags.solve_problem   = 1; % Decide if you want to setup (0), or fully solve (1)
 flags.use_GE          = 0; % Decide if you want to use GE (1) or ACT5 (0) current patterns/conductivities
-flags.do_parfor       = 0; % Decide if you want to paralize (1) or not (0)
+flags.do_parfor       = 1; % Decide if you want to paralize (1) or not (0)
 flags.inject_current  = 1; % Decide if you want to inject ANY current (1) or only measure voltages (0)
 flags.heart_BCs       = 0; % Decide if you want to include heart BCs (1) or not (0)
 flags.save_heart_mesh = 0; % Decide if you want to generate and save a heart mesh (1) or not (0)
 flags.do_beeps        = 1; % Decide if you want the code to beep after each simulation (1) or not (0)
 flags.verbose         = 1; % Decide if you want to print status updates along the way (1) or not (0)
-flags.const_zeta      = 0; % Decide if you want a constant contact impedance (1) or different contact impedance per electrode (0)
+flags.const_zeta      = 1; % Decide if you want a constant contact impedance (1) or different contact impedance per electrode (0)
 
 % Video settings
 flags.make_video  = 0;              % Decide if you want to make a video (1), or a single frame (0)
-flags.breath_rate = 44;             % Breath rate in breaths per minute / 44 / 20
-flags.heart_rate  = 120;            % heart  rate in beats   per minute / 120 / 98
+flags.breath_rate = 22;             % Breath rate in breaths per minute / 44 / 20
+flags.heart_rate  = 74;            % heart  rate in beats   per minute / 120 / 98
 flags.fps         = 28;             % Frame rate to reconstruct the video with
-flags.insp_range  = [0.375 0.625]; % Min and max inspiration percentages / [0.375 0.625] / [0.15, 0.85]
+flags.insp_range  = [0.25 0.75]; % Min and max inspiration percentages / [0.375 0.625] / [0.15, 0.85]
 % flags.insp_range  = [0, 1.5]; % Min and max inspiration percentages
 
 % Condition & permutation settings
@@ -61,7 +61,7 @@ flags.permutations = {{10, 0.125, 0.000};... Regular Baby Inspiration
 flags.set_complex       = 0; % Choice of complex (1) or real (0) conductivities
 flags.const_body        = 0; % Decide if you want a solid/constant body (1) or not (0)
 flags.do_conditions     = 0; % Decide if you want to run multiple conditions (1), or just the programed condition below (0)
-    flags.max_inspiration   = 0.85; % Decide if the lungs should be at inspiration (1), expiration (0), or somewhere in-between. Also controls esoph in esoph_intubate.
+    flags.max_inspiration   = 0.15; % Decide if the lungs should be at inspiration (1), expiration (0), or somewhere in-between. Also controls esoph in esoph_intubate.
     flags.cardiac_cycle     = 1;   % Decide if the heart should be at diastole (1), systole (0), or somewhere in-between
     flags.lung_range        = 0.125; % Decide what percentage of inspiration range you are okay with. Default is 0.25/25%
     flags.esoph_range       = 0.125; % Decide what percentage of inspiration range for the lungs for esoph intubation
@@ -96,10 +96,10 @@ flags.E_choice        = 5; % Choice of Electrode configuration
 
 % Custom Electrode Settings
 flags.E_type          = "belt";   % Choice between "patch" and "belt"
-flags.E_shape         = "circle"; % Choice between "circle" and "rectangle"
-flags.E_dia           = 20;       % Diameter of electrode in mm (for circle)
+flags.E_shape         = "rectangle"; % Choice between "circle" and "rectangle"
+flags.E_dia           = 22;       % Diameter of electrode in mm (for circle) / 22
 flags.E_width         = 20;       % Width  of electrode in mm (for rectangle) / 22
-flags.E_height        = 20;       % Height of electrode in mm (for rectangle / 29
+flags.E_height        = 17;       % Height of electrode in mm (for rectangle / 29
 flags.gap_width       = 20;   % Gap between electrodes horizontally in mm (edge-edge) (for patch) %2.5 / 46.675
 flags.gap_height      = 20;   % Gap between electrodes vertically in mm (edge-edge) (for patch) %2.5 / 32.3875
 flags.E_count         = [16];     % Number of electrodes per row (for belt), or matrix of how many rows and columns (for patch)
@@ -234,7 +234,7 @@ start_time = tic;
 
 % RUN THE 3D FEM 
 fprintf("Running %s\n", sbj_name)
-n_bframes = FEM3D_Function(msh_path, msh_name, sbj_name, sbj_save_path, flags, noise);
+[nodes, n_bframes] = FEM3D_Function(msh_path, msh_name, sbj_name, sbj_save_path, flags, noise);
 
 stop_time = toc(start_time);
 

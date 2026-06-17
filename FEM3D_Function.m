@@ -1,4 +1,4 @@
-function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, noise)
+function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, noise)
     %{
     Run a 3D FEM simulation on the subject selected with the given settings
     The driver expects the subject to have the origin at the bottom, posterior,
@@ -313,7 +313,6 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
             pause
         end
     end
-    
 % ----------------------------------------------------------------------- %
 %%                            Heart Conditions                            %
 % ----------------------------------------------------------------------- %
@@ -455,7 +454,7 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
         end
         init_time  = toc(init_start);
         if flags.verbose == 1
-            fprintf("      It took %.2f minutes to initialize solver\n", init_time/60)
+            fprintf("      It took %.2f seconds to initialize solver\n", init_time)
         end
                 
         % Set solving mode to injecting current and measuring voltages
@@ -477,11 +476,16 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
             flags.zeta = zeta*ones(L,1);
         else % Act 5
             if flags.const_zeta == 1
-                zeta = 0.023;
+                zeta = mean([0.023, 0.070, 0.090]);
+                % zeta = 0.070;
                 flags.zeta = zeta*ones(L,1);
             else
-                % Contact impedance per current pattern based on Sbj42 and R1097
-                flags.zeta = [0.027, 0.023, 0.018, 0.017, 0.021, 0.026, 0.025, 0.025, 0.028, 0.027, 0.021, 0.015, 0.021, 0.028, 0.027, 0.028, 0.021, 0.022, 0.023, 0.019, 0.023, 0.024, 0.027, 0.019, 0.021, 0.026, 0.023, 0.019, 0.024, 0.030, 0.024, 0.030]';
+                % Contact impedance per current pattern based on Sbj42/R1097, EIT103/R1221, and CSU401/case129952
+                zeta = [0.027, 0.023, 0.018, 0.017, 0.021, 0.026, 0.025, 0.025, 0.028, 0.027, 0.021, 0.015, 0.021, 0.028, 0.027, 0.028, 0.021, 0.022, 0.023, 0.019, 0.023, 0.024, 0.027, 0.019, 0.021, 0.026, 0.023, 0.019, 0.024, 0.030, 0.024, 0.030;...
+                        0.077, 0.065, 0.059, 0.057, 0.064, 0.064, 0.077, 0.069, 0.070, 0.081, 0.071, 0.064, 0.060, 0.095, 0.073, 0.074, 0.095, 0.064, 0.055, 0.066, 0.065, 0.066, 0.070, 0.060, 0.073, 0.088, 0.090, 0.081, 0.079, 0.095, 0.086, 0.072;...
+                        0.120, 0.075, 0.073, 0.110, 0.080, 0.099, 0.090, 0.086, 0.081, 0.087, 0.120, 0.090, 0.088, 0.090, 0.083, 0.104, 0.101, 0.063, 0.081, 0.055, 0.073, 0.102, 0.096, 0.080, 0.090, 0.120, 0.112, 0.096, 0.094, 0.117, 0.113, 0.091];
+                % zeta = [0.077, 0.065, 0.059, 0.057, 0.064, 0.064, 0.077, 0.069, 0.070, 0.081, 0.071, 0.064, 0.060, 0.095, 0.073, 0.074, 0.095, 0.064, 0.055, 0.066, 0.065, 0.066, 0.070, 0.060, 0.073, 0.088, 0.090, 0.081, 0.079, 0.095, 0.086, 0.072];
+                flags.zeta = mean(zeta,1)';
             end
         end
         solver.mode = "current";
@@ -491,11 +495,11 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
         fmesh  = [];
         solver = [];
     end
-
+    
     % % DELETE ME: TESTING CONTACT IMPEDANCES
     % flags2 = flags;
     % solver2 = solver;
-    % zeta = [0.015:0.001:0.019];
+    % zeta = [0.01:0.01:.1];
     % for ii = 1:length(zeta)
     % 
     %     % Create local copies of the flags and the solver
@@ -599,8 +603,8 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
 
             % Run the function to assign conductivities and solve the forward problem
             if flags.do_parfor == 1
-                parfor bframe = 1:n_bframes
-                % for bframe = 1:n_bframes
+                % parfor bframe = 1:n_bframes
+                for bframe = 1:n_bframes
     
                     frame_info_local = frame_info;
                     frame_info_local.bframe = bframe;
@@ -683,9 +687,9 @@ function n_bframes = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path,
             end % end saving data
         end % end looping over permutations
     end % end looping through conditions
-    % end % Zeta testing end
+    end % Zeta testing end
     
-end % end function as a whole
+% end % end function as a whole
     
 % ----------------------------------------------------------------------- %
 %%                            Custom Functions                            %

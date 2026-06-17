@@ -247,7 +247,7 @@ for sbj_i = 1 + sbj_per_node*node_i : sbj_per_node + sbj_per_node*node_i
     
     % RUN THE 3D FEM 
     fprintf("Running %s\n", sbj_name)
-    n_bframes = FEM3D_Function(msh_path, msh_name, sbj_name, sbj_save_path, flags, noise);
+    [nodes, n_bframes] = FEM3D_Function(msh_path, msh_name, sbj_name, sbj_save_path, flags, noise);
     
     sbj_stop_time = toc(sbj_start_time);
     fprintf("\n   It took %.2f hours to solve the forward problem\n", sbj_stop_time / 3600)
