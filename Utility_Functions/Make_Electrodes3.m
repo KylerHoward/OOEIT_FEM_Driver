@@ -52,7 +52,7 @@ function [E_nodes, perim_mm_high] = Make_Electrodes3(boundary_nodes, all_nodes, 
     end
 
     i = 1;
-    n_points      = 250;
+    n_points      = 2000;
     boundary_low  = zeros(n_points, 3);
     boundary_high = zeros(n_points, 3);
     perim_mm_low  = 0;
@@ -149,10 +149,18 @@ function [E_nodes, perim_mm_high] = Make_Electrodes3(boundary_nodes, all_nodes, 
         figure(); 
             hold on; 
             for cell_i = 1:size(E_nodes,1) / 2
-                scatter3(E_nodes{cell_i}(:,1), E_nodes{cell_i}(:,2), E_nodes{cell_i}(:,3), 'filled', 'o');
+                if cell_i == 1
+                    scatter3(E_nodes{cell_i}(:,1), E_nodes{cell_i}(:,2), E_nodes{cell_i}(:,3), 'k', 'filled', 'o');
+                else
+                    scatter3(E_nodes{cell_i}(:,1), E_nodes{cell_i}(:,2), E_nodes{cell_i}(:,3), 'filled', 'o');
+                end
             end
             for cell_i = (size(E_nodes,1) / 2) + 1:size(E_nodes,1)
-                scatter3(E_nodes{cell_i}(:,1), E_nodes{cell_i}(:,2), E_nodes{cell_i}(:,3), 'filled', 'square');
+                if cell_i == (size(E_nodes,1) / 2) + 1
+                    scatter3(E_nodes{cell_i}(:,1), E_nodes{cell_i}(:,2), E_nodes{cell_i}(:,3), 'k', 'filled', 'square');
+                else
+                    scatter3(E_nodes{cell_i}(:,1), E_nodes{cell_i}(:,2), E_nodes{cell_i}(:,3), 'filled', 'square');
+                end
             end
             legend('Location','eastoutside')
             xlabel('X (mm)')
@@ -162,9 +170,12 @@ function [E_nodes, perim_mm_high] = Make_Electrodes3(boundary_nodes, all_nodes, 
     elseif flags.plot_electrodes == 1 && E.type == "belt"
         figure(); 
             hold on
-                scatter3(E_nodes{1}(:,1), E_nodes{1}(:,2), E_nodes{1}(:,3), 'filled', 'square')
-            for node_i = 2:length(E_nodes)
-                scatter3(E_nodes{node_i}(:,1), E_nodes{node_i}(:,2), E_nodes{node_i}(:,3), 'filled')
+            for node_i = 1:length(E_nodes)
+                if node_i == 1 || node_i == 17
+                    scatter3(E_nodes{node_i}(:,1), E_nodes{node_i}(:,2), E_nodes{node_i}(:,3), 'k', 'filled', 'square')
+                else
+                    scatter3(E_nodes{node_i}(:,1), E_nodes{node_i}(:,2), E_nodes{node_i}(:,3), 'filled')
+                end
             end
             legend('Location','eastoutside')
             xlabel('X (mm)')
@@ -285,7 +296,7 @@ function E_nodes = create_electrode(local_nodes, coord, E, all_nodes, body_faces
 
         if E_area < E.E_area
             good_electrode = 0;
-            search_dist = search_dist + 0.5; % Look 1 mm further
+            search_dist = search_dist + 0.25; % Look 0.2 mm further
         else
             good_electrode = 1;
         end
@@ -513,7 +524,7 @@ function E_nodes = create_belt(local_nodes, E_plane, E, all_nodes, body_faces, f
         i = 1;
         j = 1;
         arc_length = 0;
-        n_points   = 250;
+        n_points   = 2000;
         point      = zeros(n_points, 3);
     
         % Determine the order to place the electrodes
@@ -546,7 +557,8 @@ function E_nodes = create_belt(local_nodes, E_plane, E, all_nodes, body_faces, f
             end
     
             % Check if we have moved around enough
-            goal_arc_length = perim_mm / (E.E_count + 0.5);
+            % goal_arc_length = perim_mm / (E.E_count + 0.5);
+            goal_arc_length = perim_mm / (E.E_count + 0);
             if arc_length >= goal_arc_length
                 % Reset arc length
                 arc_length = 0;
@@ -557,9 +569,9 @@ function E_nodes = create_belt(local_nodes, E_plane, E, all_nodes, body_faces, f
                 E_nodes{i} = create_electrode(local_nodes, E_center, E, all_nodes, body_faces);
                 i = i + 1;
     
-                if i > E.E_count
-                    break
-                end
+                % if i > E.E_count
+                %     break
+                % end
             end
     
             % Update the point index
@@ -570,7 +582,7 @@ function E_nodes = create_belt(local_nodes, E_plane, E, all_nodes, body_faces, f
         % KH: One Quarter at a time effectively
         i = 1;
         j = 1;
-        n_points   = 300;
+        n_points   = 2000;
         point      = zeros(n_points, 3);
     
         % Determine the order to place the electrodes
@@ -586,7 +598,7 @@ function E_nodes = create_belt(local_nodes, E_plane, E, all_nodes, body_faces, f
     
         for theta = thetas
 
-            radius =  Parameratize_Bdry(E_plane, 50, theta);
+            radius =  Parameratize_Bdry(E_plane, 40, theta);
             point(j,:) = [center(1) + radius*cos(theta), center(2) + radius*sin(theta), center(3)];
             
             if theta == tht_is(ceil(i/4))
