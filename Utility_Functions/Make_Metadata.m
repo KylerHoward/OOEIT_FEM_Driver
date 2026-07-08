@@ -134,4 +134,8 @@ function metadata = Make_Metadata(type)
     elseif isunix || ismac
         metadata.user = getenv("USER");
     end
+
+    % Get the computer name
+    metadata.computername = string(java.net.InetAddress.getLocalHost().getHostName());
+    
 end

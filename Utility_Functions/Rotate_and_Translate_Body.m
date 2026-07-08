@@ -42,93 +42,100 @@ function [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, labels, organ_conn
             heart       = 5;
         elseif length(unique(labels)) == 4
             heart = 4;
+        elseif length(unique(labels)) == 3
+            soft_tissue = 2;
+            heart       = 3;
+            trachea     = NaN;
         end
     end
 
 % ----------------------------------------------------------------------- %
 %%                            Sit Body Upright                            %
 % ----------------------------------------------------------------------- %
-    % Determine if the body is on its side
-    [trachea_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects{trachea});
-    [~, min_index]     = min(range(trachea_nodes));
-    [~, max_index]     = max(range(trachea_nodes));
-    % Check if the minimm range of the trachea is on the z axis -> laying down
-    % KH: 1/8/26. Swapping to a max index not being z instead
-    if min_index == 3 || max_index ~= 3
-        if flags.verbose == 1
-            fprintf("   Sitting Body Upright\n")
+    if ~isnan(trachea) % Only possible if there is a trachea to begin with
+        % Determine if the body is on its side
+        [trachea_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects{trachea});
+        [~, min_index]     = min(range(trachea_nodes));
+        [~, max_index]     = max(range(trachea_nodes));
+        % Check if the minimm range of the trachea is on the z axis -> laying down
+        % KH: 1/8/26. Swapping to a max index not being z instead
+        if min_index == 3 || max_index ~= 3
+            if flags.verbose == 1
+                fprintf("   Sitting Body Upright\n")
+            end
+            theta = pi/2;
+            rotationMatrix = [1, 0,           0;...
+                              0, cos(theta), -sin(theta);...
+                              0, sin(theta), cos(theta)];
+        
+            % Rotate and shift the body
+            nodes      = nodes*rotationMatrix;
+            nodes(:,2) = nodes(:,2) + abs(min(nodes(:,2)));
         end
-        theta = pi/2;
-        rotationMatrix = [1, 0,           0;...
-                          0, cos(theta), -sin(theta);...
-                          0, sin(theta), cos(theta)];
-    
-        % Rotate and shift the body
-        nodes      = nodes*rotationMatrix;
-        nodes(:,2) = nodes(:,2) + abs(min(nodes(:,2)));
-    end
     
 % ----------------------------------------------------------------------- %
 %%                           Flip Rightside Up                            %
 % ----------------------------------------------------------------------- %
-    % Determine if the body is upside down
-    [body_nodes, ~]     = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
-    [trachea_nodes, ~]  = Get_Tet_Nodes(nodes, organ_connects{trachea});
-    % Check if the difference between the top of the trachea and the top of the body is less than 2 mm
-    % Using the percentage of height doesn't work for short subjects
-    if abs(max(trachea_nodes(:,3)) - max(body_nodes(:,3))) > 2
-        if flags.verbose == 1
-            fprintf("   Rotating Body Rightside Up\n")
+        % Determine if the body is upside down
+        [body_nodes, ~]     = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
+        [trachea_nodes, ~]  = Get_Tet_Nodes(nodes, organ_connects{trachea});
+        % Check if the difference between the top of the trachea and the top of the body is less than 2 mm
+        % Using the percentage of height doesn't work for short subjects
+        if abs(max(trachea_nodes(:,3)) - max(body_nodes(:,3))) > 2
+            if flags.verbose == 1
+                fprintf("   Rotating Body Rightside Up\n")
+            end
+            theta = pi;
+            rotationMatrix = [cos(theta), 0, -sin(theta);...
+                              0,          1,  0;...
+                              sin(theta), 0,  cos(theta)];
+        
+            % Rotate and shift the body
+            nodes      = nodes*rotationMatrix;
+            nodes(:,1) = nodes(:,1) * -1;
+            nodes(:,3) = nodes(:,3) + abs(min(nodes(:,3)));
         end
-        theta = pi;
-        rotationMatrix = [cos(theta), 0, -sin(theta);...
-                          0,          1,  0;...
-                          sin(theta), 0,  cos(theta)];
-    
-        % Rotate and shift the body
-        nodes      = nodes*rotationMatrix;
-        nodes(:,1) = nodes(:,1) * -1;
-        nodes(:,3) = nodes(:,3) + abs(min(nodes(:,3)));
-    end
     
 % ----------------------------------------------------------------------- %
 %%                              Face Forward                              %
 % ----------------------------------------------------------------------- %
-    % Determine if the body is not facing towards y (anterior) side
-    [heart_nodes, ~]   = Get_Tet_Nodes(nodes, organ_connects{heart});
-    [body_nodes, ~]    = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
-    [trachea_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects{trachea});
     
-    heart_center       = range(heart_nodes)/2 + min(heart_nodes);
-    body_center        = range(body_nodes)/2 + min(body_nodes);
-    trachea_center     = range(trachea_nodes)/2 + min(trachea_nodes);
+        % Determine if the body is not facing towards y (anterior) side
+        [heart_nodes, ~]   = Get_Tet_Nodes(nodes, organ_connects{heart});
+        [body_nodes, ~]    = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
+        [trachea_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects{trachea});
+        
+        heart_center       = range(heart_nodes)/2 + min(heart_nodes);
+        body_center        = range(body_nodes)/2 + min(body_nodes);
+        trachea_center     = range(trachea_nodes)/2 + min(trachea_nodes);
+        
+        heart_diff = (heart_center   - body_center);
+        trach_diff = (trachea_center - body_center);
+        heart_range = range(heart_nodes);
+        if ~(heart_diff(2) > 0.05*heart_range(2)) || ~(-trach_diff(2) > 0.05*heart_range(2)) % Check if the heart/trachea is on the wrong side
+            % Facing -y (posterior) 
+            if (-heart_diff(2) > 0.05*heart_range(2)) || (trach_diff(2) > 0.05*heart_range(2)) 
+                theta = pi;
+            % Facing x (right)
+            elseif (heart_diff(1) > 0.05*heart_range(1)) || (-trach_diff(1) > 0.05*heart_range(1)) 
+                theta = -pi / 2;
+            % Facing -x (left)
+            elseif (-heart_diff(1) > 0.05*heart_range(1)) || (trach_diff(1) > 0.05*heart_range(1)) 
+                theta = pi / 2;
+            end
     
-    heart_diff = (heart_center   - body_center);
-    trach_diff = (trachea_center - body_center);
-    heart_range = range(heart_nodes);
-    if ~(heart_diff(2) > 0.05*heart_range(2)) || ~(-trach_diff(2) > 0.05*heart_range(2)) % Check if the heart/trachea is on the wrong side
-        % Facing -y (posterior) 
-        if (-heart_diff(2) > 0.05*heart_range(2)) || (trach_diff(2) > 0.05*heart_range(2)) 
-            theta = pi;
-        % Facing x (right)
-        elseif (heart_diff(1) > 0.05*heart_range(1)) || (-trach_diff(1) > 0.05*heart_range(1)) 
-            theta = -pi / 2;
-        % Facing -x (left)
-        elseif (-heart_diff(1) > 0.05*heart_range(1)) || (trach_diff(1) > 0.05*heart_range(1)) 
-            theta = pi / 2;
+            if flags.verbose == 1
+                fprintf("   Rotating the Chest Forward\n")
+            end
+            rotationMatrix = [cos(theta), -sin(theta), 0;...
+                              sin(theta),  cos(theta), 0;...
+                              0,           0,          1];
+        
+            % Rotate and shift the body
+            nodes      = nodes*rotationMatrix;
+            nodes(:,1) = nodes(:,1) + abs(min(nodes(:,1)));
+            nodes(:,2) = nodes(:,2) + abs(min(nodes(:,2)));
         end
-
-        if flags.verbose == 1
-            fprintf("   Rotating the Chest Forward\n")
-        end
-        rotationMatrix = [cos(theta), -sin(theta), 0;...
-                          sin(theta),  cos(theta), 0;...
-                          0,           0,          1];
-    
-        % Rotate and shift the body
-        nodes      = nodes*rotationMatrix;
-        nodes(:,1) = nodes(:,1) + abs(min(nodes(:,1)));
-        nodes(:,2) = nodes(:,2) + abs(min(nodes(:,2)));
     end
     
 % % ----------------------------------------------------------------------- %

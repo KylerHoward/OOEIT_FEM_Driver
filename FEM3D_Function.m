@@ -120,6 +120,8 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
         sbj_sheet = readtable("CT Data Boundaries.xlsx", "Sheet","MCR Set");
     elseif contains(sbj_name, "Mean")
         sbj_sheet = readtable("CT Data Boundaries.xlsx", "Sheet","Means");
+    elseif contains(sbj_name, "Cylinder")
+        sbj_sheet = readtable("CT Data Boundaries.xlsx", "Sheet","Cylinders");
     else
         error("No excel file for subject %s\n", sbj_name)
     end
@@ -150,6 +152,10 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
             heart       = 5;
         elseif length(unique(labels)) == 4
             heart = 4;
+        elseif length(unique(labels)) == 3
+            soft_tissue = 2;
+            heart       = 3;
+            trachea     = NaN;
         end
     end
     
@@ -181,15 +187,19 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
 %%                              Surface Nodes                             %
 % ----------------------------------------------------------------------- %
     if flags.verbose == 1
-        fprintf("   Extracting Trachea and Surface Nodes\n")
+        fprintf("   Extracting Surface Faces and Nodes\n")
     end
 
     % Find the surface shells of each organ
     body_faces      = Get_Unique_Faces(organ_connects{soft_tissue});
     lung_faces      = Get_Unique_Faces(organ_connects{lung});
-    trachea_faces   = Get_Unique_Faces(organ_connects{trachea});
     heart_faces     = Get_Unique_Faces(organ_connects{heart});
-    try
+    try % Account for subjects without a trachea
+        trachea_faces   = Get_Unique_Faces(organ_connects{trachea});
+    catch
+        trachea_faces = [];
+    end
+    try % Account for subjects without an esophagus
         esophagus_faces = Get_Unique_Faces(organ_connects{esophagus});
     catch
         esophagus_faces = [];
@@ -200,9 +210,13 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
     
     % Find the intersection of each internal organ and the soft tissue
     lung_intersect      = intersect(sort(body_faces,2),  sort(lung_faces,2),      "rows");
-    trachea_intersect   = intersect(sort(body_faces,2),  sort(trachea_faces,2),   "rows");
     heart_intersect     = intersect(sort(body_faces,2),  sort(heart_faces,2),     "rows");
-    try
+    try % Account for subjects without a trachea
+        trachea_intersect = intersect(sort(body_faces,2),  sort(trachea_faces,2), "rows");
+    catch
+        trachea_intersect = [];
+    end
+    try % Account for subjects without an esophagus
         esophagus_intersect = intersect(sort(body_faces,2),  sort(esophagus_faces,2), "rows");
     catch
         esophagus_intersect = [];
@@ -220,11 +234,13 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
     surface_faces    = setdiff(sort(body_faces,2), sort(inner_intersects,2), "rows");
     
     % Extract desired organ nodes
-    [trachea_nodes, ~]  = Get_Tet_Nodes(nodes, organ_connects{trachea});
+    if ~isnan(trachea)
+        [trachea_nodes, ~]  = Get_Tet_Nodes(nodes, organ_connects{trachea});
+    end
     [lung_nodes, ~]     = Get_Tet_Nodes(nodes, organ_connects{lung});
     [boundary_nodes, ~] = Get_Surface_Nodes(nodes, surface_faces);
     
-    if flags.plot_trachea == 1
+    if flags.plot_trachea == 1 && ~isnan(trachea)
         figure()
         subplot(1,2,1)
             scatter3(trachea_nodes(:,1), trachea_nodes(:,2), trachea_nodes(:,3), "MarkerEdgeAlpha", 0.2)
@@ -299,7 +315,11 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
             hold on
             % scatter3(boundary_nodes(:,1), boundary_nodes(:,2), boundary_nodes(:,3), "MarkerEdgeColor", [0.3010 0.7450 0.9330], "LineWidth",0.05)
             scatter3(boundary_nodes(:,1), boundary_nodes(:,2), boundary_nodes(:,3), "MarkerEdgeColor", [0.21 0.71 0.52], "LineWidth",0.05)
-            scatter3(trachea_nodes(:,1),trachea_nodes(:,2),trachea_nodes(:,3),"y","filled")
+            if ~isnan(trachea)
+                scatter3(trachea_nodes(:,1),trachea_nodes(:,2),trachea_nodes(:,3),"y","filled")
+            end
+            [heart_nodes, ~]         = Get_Tet_Nodes(nodes, organ_connects{heart});
+            scatter3(heart_nodes(:,1),heart_nodes(:,2),heart_nodes(:,3),"m","filled")
             scatter3(lung_nodes(:,1), lung_nodes(:,2), lung_nodes(:,3), "b")
             for i = 1:length(E_connect)
                 trimesh(E_connect{i}, nodes(:,1), nodes(:,2), nodes(:,3), "FaceColor", "r", "edgeColor", "r");
@@ -477,14 +497,14 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
         else % Act 5
             if flags.const_zeta == 1
                 zeta = mean([0.023, 0.070, 0.090]);
-                % zeta = 0.070;
+                zeta = 0.023;
                 flags.zeta = zeta*ones(L,1);
             else
                 % Contact impedance per current pattern based on Sbj42/R1097, EIT103/R1221, and CSU401/case129952
                 zeta = [0.027, 0.023, 0.018, 0.017, 0.021, 0.026, 0.025, 0.025, 0.028, 0.027, 0.021, 0.015, 0.021, 0.028, 0.027, 0.028, 0.021, 0.022, 0.023, 0.019, 0.023, 0.024, 0.027, 0.019, 0.021, 0.026, 0.023, 0.019, 0.024, 0.030, 0.024, 0.030;...
                         0.077, 0.065, 0.059, 0.057, 0.064, 0.064, 0.077, 0.069, 0.070, 0.081, 0.071, 0.064, 0.060, 0.095, 0.073, 0.074, 0.095, 0.064, 0.055, 0.066, 0.065, 0.066, 0.070, 0.060, 0.073, 0.088, 0.090, 0.081, 0.079, 0.095, 0.086, 0.072;...
-                        0.120, 0.075, 0.073, 0.110, 0.080, 0.099, 0.090, 0.086, 0.081, 0.087, 0.120, 0.090, 0.088, 0.090, 0.083, 0.104, 0.101, 0.063, 0.081, 0.055, 0.073, 0.102, 0.096, 0.080, 0.090, 0.120, 0.112, 0.096, 0.094, 0.117, 0.113, 0.091];
-                % zeta = [0.077, 0.065, 0.059, 0.057, 0.064, 0.064, 0.077, 0.069, 0.070, 0.081, 0.071, 0.064, 0.060, 0.095, 0.073, 0.074, 0.095, 0.064, 0.055, 0.066, 0.065, 0.066, 0.070, 0.060, 0.073, 0.088, 0.090, 0.081, 0.079, 0.095, 0.086, 0.072];
+                        0.120, 0.075, 0.074, 0.110, 0.080, 0.099, 0.090, 0.086, 0.083, 0.088, 0.120, 0.090, 0.088, 0.090, 0.083, 0.105, 0.102, 0.064, 0.081, 0.055, 0.073, 0.102, 0.096, 0.081, 0.091, 0.120, 0.112, 0.096, 0.094, 0.117, 0.113, 0.092];
+                zeta = [0.027, 0.023, 0.018, 0.017, 0.021, 0.026, 0.025, 0.025, 0.028, 0.027, 0.021, 0.015, 0.021, 0.028, 0.027, 0.028, 0.021, 0.022, 0.023, 0.019, 0.023, 0.024, 0.027, 0.019, 0.021, 0.026, 0.023, 0.019, 0.024, 0.030, 0.024, 0.030];
                 flags.zeta = mean(zeta,1)';
             end
         end
@@ -499,7 +519,7 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
     % % DELETE ME: TESTING CONTACT IMPEDANCES
     % flags2 = flags;
     % solver2 = solver;
-    % zeta = [0.01:0.01:.1];
+    % zeta = [0.055:0.001:.120];
     % for ii = 1:length(zeta)
     % 
     %     % Create local copies of the flags and the solver
@@ -602,9 +622,9 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
             frame_info.num_permutations = num_permutations;
 
             % Run the function to assign conductivities and solve the forward problem
-            if flags.do_parfor == 1
-                % parfor bframe = 1:n_bframes
-                for bframe = 1:n_bframes
+            if flags.do_parfor == 1 && flags.solve_problem == 1
+                parfor bframe = 1:n_bframes
+                % for bframe = 1:n_bframes
     
                     frame_info_local = frame_info;
                     frame_info_local.bframe = bframe;

@@ -61,7 +61,7 @@ flags.permutations = {{10, 0.125, 0.000};... Regular Baby Inspiration
 flags.set_complex       = 0; % Choice of complex (1) or real (0) conductivities
 flags.const_body        = 0; % Decide if you want a solid/constant body (1) or not (0)
 flags.do_conditions     = 0; % Decide if you want to run multiple conditions (1), or just the programed condition below (0)
-    flags.max_inspiration   = 0.15; % Decide if the lungs should be at inspiration (1), expiration (0), or somewhere in-between. Also controls esoph in esoph_intubate.
+    flags.max_inspiration   = 0.5; % Decide if the lungs should be at inspiration (1), expiration (0), or somewhere in-between. Also controls esoph in esoph_intubate.
     flags.cardiac_cycle     = 1;   % Decide if the heart should be at diastole (1), systole (0), or somewhere in-between
     flags.lung_range        = 0.125; % Decide what percentage of inspiration range you are okay with. Default is 0.25/25%
     flags.esoph_range       = 0.125; % Decide what percentage of inspiration range for the lungs for esoph intubation
@@ -96,8 +96,8 @@ flags.E_choice        = 5; % Choice of Electrode configuration
 
 % Custom Electrode Settings
 flags.E_type          = "belt";   % Choice between "patch" and "belt"
-flags.E_shape         = "rectangle"; % Choice between "circle" and "rectangle"
-flags.E_dia           = 22;       % Diameter of electrode in mm (for circle) / 22
+flags.E_shape         = "circle"; % Choice between "circle" and "rectangle"
+flags.E_dia           = 20;       % Diameter of electrode in mm (for circle) / 22
 flags.E_width         = 20;       % Width  of electrode in mm (for rectangle) / 22
 flags.E_height        = 17;       % Height of electrode in mm (for rectangle / 29
 flags.gap_width       = 20;   % Gap between electrodes horizontally in mm (edge-edge) (for patch) %2.5 / 46.675

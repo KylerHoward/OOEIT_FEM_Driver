@@ -205,68 +205,134 @@ classdef ParForwardMesh1st < handle
             sg    = self.g;
             sng   = self.ng;
             
-            parfor jj = 1:sng
-                %compute the derivative of the FEM matrix w.r.t
-                %conductivity of node jj.
+            try
+                parfor jj = 1:sng
+                    %compute the derivative of the FEM matrix w.r.t
+                    %conductivity of node jj.
+        
+                    %get the elements that contain the support of basis 
+                    %function jj, i.e. have the non-zero gradient dot products
+                    %in the derivative of the FEM matrix:
+                    temp   = sEC; % Remove broadcast variables
+                    El     = temp(jj, sEC(jj,:) > 0);
+                    len_El = length(El);
+                    %due to how this info is stored (in a matrix), there may be
+                    %zeros on some (many) rows. They are to be omitted.
+                    
+                    %Initialize the matrices for collecting the indices and values
+                    %for creating a sparse matrix.
+                    ar = zeros(len_El*(sgDim + 1), sgDim + 1);
+                    ac = zeros(len_El*(sgDim + 1), sgDim + 1);
+                    av = zeros(len_El*(sgDim + 1), sgDim + 1);
+                    
+                    %index for collecting values to the matrices
+                    rid = 1;
     
-                %get the elements that contain the support of basis 
-                %function jj, i.e. have the non-zero gradient dot products
-                %in the derivative of the FEM matrix:
-                temp   = sEC; % Remove broadcast variables
-                El     = temp(jj, sEC(jj,:) > 0);
-                len_El = length(El);
-                %due to how this info is stored (in a matrix), there may be
-                %zeros on some (many) rows. They are to be omitted.
-                
-                %Initialize the matrices for collecting the indices and values
-                %for creating a sparse matrix.
-                ar = zeros(len_El*(sgDim + 1), sgDim + 1);
-                ac = zeros(len_El*(sgDim + 1), sgDim + 1);
-                av = zeros(len_El*(sgDim + 1), sgDim + 1);
-                
-                %index for collecting values to the matrices
-                rid = 1;
-
-                % Remove broadcast variables
-                ssH = sH;
-                ssg = sg;
-                for ii = 1:len_El %Go through the relevant elements  
-                    ind = ssH(El(ii),:); % Indices of the element
-                    gg  = ssg(ind,:);%the node coordinates
+                    % Remove broadcast variables
+                    ssH = sH;
+                    ssg = sg;
+                    for ii = 1:len_El %Go through the relevant elements  
+                        ind = ssH(El(ii),:); % Indices of the element
+                        gg  = ssg(ind,:);%the node coordinates
+                        
+                        idc = repmat(ind, sgDim + 1, 1);%The row and column indices of the values in the derivative matrix
+                        idr = idc';
+                        
+                        % difference matrix of the (linear) basis functions
+                        L    = [-ones(sgDim,1) eye(sgDim)];
+                        Jt   = L*gg;
+                        dJt  = abs(det(Jt)); % Triangle/tetrahedra volume
+                        G    = Jt\L; % Gradients of each basis function
+                        GdJt = G'*G*dJt;
+                        if sgDim == 3
+                            int = 1/24*GdJt;
+                        elseif sgDim == 2
+                            int = 1/6*GdJt;
+                        end
+                        %now int contains integrals of grad(phi_i) dot grad(phi_j)
+                        %for i and j in nodes in ind
+                        
+                        % temporary storage
+                        ar(rid:rid+sgDim, :) = idr;
+                        ac(rid:rid+sgDim, :) = idc;
+                        av(rid:rid+sgDim, :) = int;
+                        rid = rid + 1 + sgDim;      
+                    end     
                     
-                    idc = repmat(ind, sgDim + 1, 1);%The row and column indices of the values in the derivative matrix
-                    idr = idc';
+                    %Create the sparse derivative matrix of the FEM matrix
+                    S = sparse(ar,ac,av,sng,sng);
+                    %find non-zero rows/columns
+                    [I,~] = find(S);
                     
-                    % difference matrix of the (linear) basis functions
-                    L    = [-ones(sgDim,1) eye(sgDim)];
-                    Jt   = L*gg;
-                    dJt  = abs(det(Jt)); % Triangle/tetrahedra volume
-                    G    = Jt\L; % Gradients of each basis function
-                    GdJt = G'*G*dJt;
-                    if sgDim == 3
-                        int = 1/24*GdJt;
-                    elseif sgDim == 2
-                        int = 1/6*GdJt;
-                    end
-                    %now int contains integrals of grad(phi_i) dot grad(phi_j)
-                    %for i and j in nodes in ind
+                    L = unique(I);  %remove duplicates  
+                    % symmetric assumption => no columns needed
+                    Ai{jj} = L;     %store the indices
+                    Av{jj} = full(S(L,L));%store the values located at the indices
+                end
+            catch
+                for jj = 1:sng
+                    %compute the derivative of the FEM matrix w.r.t
+                    %conductivity of node jj.
+        
+                    %get the elements that contain the support of basis 
+                    %function jj, i.e. have the non-zero gradient dot products
+                    %in the derivative of the FEM matrix:
+                    temp   = sEC; % Remove broadcast variables
+                    El     = temp(jj, sEC(jj,:) > 0);
+                    len_El = length(El);
+                    %due to how this info is stored (in a matrix), there may be
+                    %zeros on some (many) rows. They are to be omitted.
                     
-                    % temporary storage
-                    ar(rid:rid+sgDim, :) = idr;
-                    ac(rid:rid+sgDim, :) = idc;
-                    av(rid:rid+sgDim, :) = int;
-                    rid = rid + 1 + sgDim;      
-                end     
-                
-                %Create the sparse derivative matrix of the FEM matrix
-                S = sparse(ar,ac,av,sng,sng);
-                %find non-zero rows/columns
-                [I,~] = find(S);
-                
-                L = unique(I);  %remove duplicates  
-                % symmetric assumption => no columns needed
-                Ai{jj} = L;     %store the indices
-                Av{jj} = full(S(L,L));%store the values located at the indices
+                    %Initialize the matrices for collecting the indices and values
+                    %for creating a sparse matrix.
+                    ar = zeros(len_El*(sgDim + 1), sgDim + 1);
+                    ac = zeros(len_El*(sgDim + 1), sgDim + 1);
+                    av = zeros(len_El*(sgDim + 1), sgDim + 1);
+                    
+                    %index for collecting values to the matrices
+                    rid = 1;
+    
+                    % Remove broadcast variables
+                    ssH = sH;
+                    ssg = sg;
+                    for ii = 1:len_El %Go through the relevant elements  
+                        ind = ssH(El(ii),:); % Indices of the element
+                        gg  = ssg(ind,:);%the node coordinates
+                        
+                        idc = repmat(ind, sgDim + 1, 1);%The row and column indices of the values in the derivative matrix
+                        idr = idc';
+                        
+                        % difference matrix of the (linear) basis functions
+                        L    = [-ones(sgDim,1) eye(sgDim)];
+                        Jt   = L*gg;
+                        dJt  = abs(det(Jt)); % Triangle/tetrahedra volume
+                        G    = Jt\L; % Gradients of each basis function
+                        GdJt = G'*G*dJt;
+                        if sgDim == 3
+                            int = 1/24*GdJt;
+                        elseif sgDim == 2
+                            int = 1/6*GdJt;
+                        end
+                        %now int contains integrals of grad(phi_i) dot grad(phi_j)
+                        %for i and j in nodes in ind
+                        
+                        % temporary storage
+                        ar(rid:rid+sgDim, :) = idr;
+                        ac(rid:rid+sgDim, :) = idc;
+                        av(rid:rid+sgDim, :) = int;
+                        rid = rid + 1 + sgDim;      
+                    end     
+                    
+                    %Create the sparse derivative matrix of the FEM matrix
+                    S = sparse(ar,ac,av,sng,sng);
+                    %find non-zero rows/columns
+                    [I,~] = find(S);
+                    
+                    L = unique(I);  %remove duplicates  
+                    % symmetric assumption => no columns needed
+                    Ai{jj} = L;     %store the indices
+                    Av{jj} = full(S(L,L));%store the values located at the indices
+                end
             end
         end
         
