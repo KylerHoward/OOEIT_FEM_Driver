@@ -150,10 +150,14 @@ classdef EITFEM < handle
             
             self.A = A0 + self.S; %Combine parts to make the full FEM matrix
 
-            % Apply Dirichlet BCs
+            % Apply Dirichlet 
             for i_BC = 1:length(dirichlet_vals)
-                % First zero out rows/cols from Dirichlet
+                % First adjust for nonzero Dirichlet EBCs
+                self.b = self.b - self.A(:,dirichlet_nodes{i_BC})*dirichlet_vals(i_BC);
+
+                % Then zero out rows/cols from Dirichlet
                 self.A(dirichlet_nodes{i_BC},:) = 0;
+                self.A(:,dirichlet_nodes{i_BC}) = 0;
     
                 % Set the diagonal as ones
                 dirichlet_indices         = sub2ind(size(self.A), dirichlet_nodes{i_BC}, dirichlet_nodes{i_BC});
