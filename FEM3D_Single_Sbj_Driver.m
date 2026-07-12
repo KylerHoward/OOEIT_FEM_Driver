@@ -25,10 +25,10 @@ addpath(fullfile("Utility_Functions"))
 flags.do_pauses       = 0; % Decide to include pauses to check things or not
 flags.solve_problem   = 1; % Decide if you want to setup (0), or fully solve (1)
 flags.use_GE          = 0; % Decide if you want to use GE (1) or ACT5 (0) current patterns/conductivities
-flags.do_parfor       = 1; % Decide if you want to paralize (1) or not (0)
-flags.inject_current  = 1; % Decide if you want to inject ANY current (1) or only measure voltages (0)
-flags.heart_BCs       = 0; % Decide if you want to include heart BCs (1) or not (0)
-flags.save_heart_mesh = 0; % Decide if you want to generate and save a heart mesh (1) or not (0)
+flags.do_parfor       = 0; % Decide if you want to paralize (1) or not (0)
+flags.inject_current  = 0; % Decide if you want to inject ANY current (1) or only measure voltages (0)
+flags.heart_BCs       = 1; % Decide if you want to include heart BCs (1) or not (0)
+flags.save_heart_mesh = 1; % Decide if you want to generate and save a heart mesh (1) or not (0)
 flags.do_beeps        = 1; % Decide if you want the code to beep after each simulation (1) or not (0)
 flags.verbose         = 1; % Decide if you want to print status updates along the way (1) or not (0)
 flags.const_zeta      = 1; % Decide if you want a constant contact impedance (1) or different contact impedance per electrode (0)
@@ -79,7 +79,7 @@ flags.plot_conds      = 0; % Plotting of conductivities
 flags.plot_GTs        = 1; % Plot ground truth images
 flags.plot_internal   = 0; % Plotting of internal nodes
 flags.plot_volts      = 1; % Plotting of nodal voltages
-flags.plot_heart      = 0; % Plot heart BCs
+flags.plot_heart      = 1; % Plot heart BCs
 flags.plot_breath     = 1; % Plot the breathing and cardiac curves
 flags.fixed_range     = 1; % Set GT plots to be a standard range
 
@@ -184,7 +184,7 @@ if flags.solve_problem == 1
     end
     
     % Check if the user isn't just saving to the results folder
-    if contains(save_path, fullfile("OOEIT_FEM_Driver","Results")) ~= 1
+    if contains(save_path, fullfile("OOEIT_FEM_Driver","Results")) ~= 1 && flags.do_conditions == 1
         % Create the subject specific save path if the user didn't select it
         if contains(save_path, sbj_name) == 0
             sbj_save_path = fullfile(save_path, sbj_name);
