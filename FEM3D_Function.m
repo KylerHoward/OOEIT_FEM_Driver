@@ -691,14 +691,14 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
                 volt_metadata = Make_Metadata("Volt");
                 cond_metadata = Make_Metadata("Cond");
             
-                % Check if the user isn't just saving to the results folder
-                if contains(sbj_save_path, fullfile("OOEIT_FEM_Driver","Results")) ~= 1
-                    cond_save_path = fullfile(sbj_save_path, flags.E_type, "conductivities", condition_name);
-                    volt_save_path = fullfile(sbj_save_path, flags.E_type, "voltages",       condition_name);
-                else
-                    cond_save_path = sbj_save_path;
-                    volt_save_path = sbj_save_path;
-                end
+                % % Check if the user isn't just saving to the results folder
+                % if contains(sbj_save_path, fullfile("OOEIT_FEM_Driver","Results")) ~= 1
+                %     cond_save_path = fullfile(sbj_save_path, flags.E_type, "conductivities", condition_name);
+                %     volt_save_path = fullfile(sbj_save_path, flags.E_type, "voltages",       condition_name);
+                % else
+                %     cond_save_path = sbj_save_path;
+                %     volt_save_path = sbj_save_path;
+                % end
     
                 % Save the voltages and conductivties
                 volt_name = sprintf("%s-Volt%s.mat", sbj_name, save_suffix);
