@@ -72,6 +72,7 @@ classdef ParForwardMesh1st < handle
             
             % Transform to forward mesh basis
             sigma = self.ItoF(sigma);
+            sigma = sigma(:); % ensure this is a column vector
 
             % Gauss quadrature points for integration
             if self.gDim == 3
@@ -114,9 +115,9 @@ classdef ParForwardMesh1st < handle
             end  
 
             % Combine cell arrays into full matrices
-            Arow = cell2mat(ArowCell);
-            Acol = cell2mat(AcolCell);
-            Aval = cell2mat(AvalCell);
+            Arow = vertcat(ArowCell{:});
+            Acol = vertcat(AcolCell{:});
+            Aval = vertcat(AvalCell{:});
             
             % The output:
             A = sparse(Arow,Acol,Aval,self.ng+self.nEl-1,self.ng+self.nEl-1);
@@ -398,7 +399,8 @@ classdef ParForwardMesh1st < handle
             % iJt = inv(Jt);
             % G   = iJt*L;
             dJt = abs(det(Jt));
-            G   = Jt\L; % KH: Swapped to faster inverse
+            % G   = Jt\L; % KH: Swapped to faster inverse
+            G = inv(Jt) * L;
             GdJt = G'*G*dJt/factorial(self.gDim+1);
             int = sum(sigma)*GdJt;
             % int is a 3-by-3 or 4-by-4 matrix whose element (i,j) is the
