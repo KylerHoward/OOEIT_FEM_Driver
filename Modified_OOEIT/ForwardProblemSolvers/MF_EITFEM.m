@@ -242,7 +242,7 @@ Editted: 10/10/24 - Kyler Howard
             % This self.eps can be computed e.g. by SolveEpsilonCorrection.m
         end % end solveForwardVec
         
-        function res = OptimizationFunction(self, sigma)
+        function res = OptimizationFunction(self, sigma, dirichlet_nodes, dirichlet_vals)
             %{
             Calculate the residual of the forward problem, which is to be
             minimized (in addition to the regularization) when solving the
@@ -250,7 +250,7 @@ Editted: 10/10/24 - Kyler Howard
             problem solver (e.g. SolverGN.m)    
             %}   
            
-            [elVal, ~] = self.SolveForwardVec(sigma); % The electrode potentials or currents
+            [elVal, ~] = self.SolveForwardVec(sigma, dirichlet_nodes, dirichlet_vals); % The electrode potentials or currents
             if strcmp(self.mode, 'potential')
                 if ~self.Iadded % Check if measurements have not been added, i.e. we try to solve with the default injection pattern as measurements
                     warning('Attempting optimization with the default injection pattern as data! Did you forget to load the measurement data to EITFEM object?');
@@ -421,8 +421,8 @@ Editted: 10/10/24 - Kyler Howard
             Jleftpar = parallel.pool.Constant(Jleft);
             Jrightpar = parallel.pool.Constant(Jright);
             parfor ii=1:ng
-              Jid = selfAi{ii}; % The non-zero indices of dA/dsigma for node ii
-              Jtemp   = Jleftpar(:,Jid)*selfAv{ii}*Jrightpar(Jid,:); % This corresponds to a single column of the Jacobian
+              Jid = selfAi.Value{ii}; % The non-zero indices of dA/dsigma for node ii
+              Jtemp   = Jleftpar.Value(:,Jid)*selfAv.Value{ii}*Jrightpar.Value(Jid,:); % This corresponds to a single column of the Jacobian
               Js(:,ii) = Jtemp(:);
             end
             
@@ -476,26 +476,27 @@ Editted: 10/10/24 - Kyler Howard
             par_ng   = parallel.pool.Constant(self.fmesh.ng);
             par_est  = parallel.pool.Constant(est.estimates);
             parfor ii=1:ng
-                rzeta = zeros(size(par_zeta));
+                rzeta = zeros(size(par_zeta.Value));
                 rzeta(ii) = 1;
-                tempM = par_intM*diag(rzeta);
-                if strcmp(par_mode, 'potential')
-                    tempS = [par_intS{ii} zeros(size(par_intS{ii},1), size(par_C,2));...
-                                    -par_C'*tempM' zeros(size(par_C,2))];
-                    ninj = numel(Inj)/(par_nEl);
+                tempM = par_intM.Value*diag(rzeta);
+                if strcmp(par_mode.Value, 'potential')
+                    tempS = [par_intS.Value{ii} zeros(size(par_intS.Value{ii},1), size(par_C.Value,2));...
+                                    -par_C.Value'*tempM' zeros(size(par_C.Value,2))];
+                    ninj = numel(Inj)/(par_nEl.Value);
                     tb = zeros(size(tempS,1), ninj);
-                    tb(1:par_ng,:) = tempM*Inj;
-                    tb(end-par_nEl+2:end,:) = ...
-                                              - par_C'*(diag(par_intB.*rzeta)*Inj);
-                    Jtemp   = -1/par_est{par_zInd}(ii)^2*Jleft*(tb - tempS*Jright);
-                elseif strcmp(par_mode, 'current')
-                    tempB = zeros(size(par_intB));
-                    tempB(ii) = par_intB(ii);
-                    tempS = [par_intS{ii} -tempM*par_C;...
-                                -par_C'*tempM' par_C'*diag(tempB)*par_C];
-                    Jtemp   = 1/par_est{par_zInd}(ii)^2*Jleft*tempS*Jright;
+                    tb(1:par_ng.Value,:) = tempM*Inj;
+                    tb(end-par_nEl.Value+2:end,:) = ...
+                                              - par_C.Value'*(diag(par_intB.Value.*rzeta)*Inj);
+                    Jtemp   = -1/par_est.Value{par_zInd.Value}(ii)^2*Jleft*(tb - tempS*Jright);
+                elseif strcmp(par_mode.Value, 'current')
+                    tempB = zeros(size(par_intB.Value));
+                    tempB(ii) = par_intB.Value(ii);
+                    tempS = [par_intS.Value{ii} -tempM*par_C.Value;...
+                                -par_C.Value'*tempM' par_C.Value'*diag(tempB)*par_C.Value];
+                    Jtemp   = 1/par_est.Value{par_zInd.Value}(ii)^2*Jleft*tempS*Jright;
                 else
-                    error(['Unrecognized solver mode: ' par_mode]);
+                    Jtemp = []; % Stopping temporary variable error
+                    error(['Unrecognized solver mode: ' par_mode.Value]);
                 end
                 Js(:,ii) = Jtemp(:);
             end

@@ -223,13 +223,13 @@ classdef EITFEM < handle
             %This self.eps can be computed e.g. by SolveEpsilonCorrection.m
         end %end solveForwardVec
         
-        function res = OptimizationFunction(self, sigma)
+        function res = OptimizationFunction(self, sigma, dirichlet_nodes, dirichlet_vals)
             %Calculate the residual of the forward problem, which is to be
             %minimized (in addition to the regularization) when solving the
             %inverse problem. This function is called by the inverse
             %problem solver (e.g. SolverGN.m)        
            
-            elVal = self.SolveForwardVec(sigma);%The electrode potentials or currents
+            elVal = self.SolveForwardVec(sigma, dirichlet_nodes, dirichlet_vals);%The electrode potentials or currents
             if strcmp(self.mode, 'potential')
                 if ~self.Iadded%Check if measurements have not been added, i.e. we try to solve with the default injection pattern as measurements
                     warning('Attempting optimization with the default injection pattern as data! Did you forget to load the measurement data to EITFEM object?');

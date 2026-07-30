@@ -70,6 +70,7 @@ classdef ForwardMesh1st < handle
             
             %Transform to forward mesh basis
             sigma = self.ItoF(sigma);
+            sigma = sigma(:); % ensure this is a column vector
 
             %initialize variables where to collect the integral values. The
             %values are stored in row/column/value format and stored in a
