@@ -49,7 +49,7 @@ function sigma_GT = Create_GT_Images(thickness, nodes, E_nodes, sigma, flags)
         rowStart = 1;
         plane_nodes = zeros(sum(cellfun(@sum, sigma_GT)),2);
         plane_sigma = zeros(sum(cellfun(@sum, sigma_GT)),size(sigma,2));
-        for k = 1:length(E_heights)
+        for k = 1:size(sigma_GT, 1)
             % Current matrices
             nodemat = [nodes(sigma_GT{k},1), nodes(sigma_GT{k},2)];
             nrows   = size(nodemat,1);
