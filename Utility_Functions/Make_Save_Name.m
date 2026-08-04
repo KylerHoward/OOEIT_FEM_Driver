@@ -35,12 +35,12 @@ function save_suffix = Make_Save_Name(condition_name, i_permutation, zeta, flags
             save_suffix = sprintf("%s-%.2fInsp", save_suffix, flags.max_inspiration);
         end
 
-        if flags.equal_vent == 1 && flags.left_only == 1
-            save_suffix = sprintf("%s-LeftOnly", save_suffix);
-        elseif flags.equal_vent == 1 && flags.right_only == 1
-            save_suffix = sprintf("%s-RightOnly", save_suffix);
-        elseif flags.esoph_intubate == 1
+        if flags.esoph_intubate == 1
             save_suffix = sprintf("%s-EsophInt", save_suffix);
+        elseif flags.right_only == 1
+            save_suffix = sprintf("%s-RightOnly", save_suffix);
+        elseif flags.left_only == 1
+            save_suffix = sprintf("%s-LeftOnly", save_suffix);
         end
     end
     
