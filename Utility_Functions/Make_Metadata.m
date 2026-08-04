@@ -12,6 +12,7 @@ function metadata = Make_Metadata(type)
         metadata.descriptions.Uall     = "Measured voltage at every node in the mesh. Saved as nxK, number of nodes by currents.";
         metadata.descriptions.cur_pat  = "Applied current pattern, scaled if needed. Saved as LxK (32x31).";
         metadata.descriptions.perim_mm = "Perimeter of the body at the carina height (patch), or T5 height (belt).";
+        metadata.descriptions.vert_gap = "Center-to-center vertical gap between electrodes.";
         metadata.descriptions.noise    = "Noise/Error vector. (1): relative noise, (2): absolute noise, (3): relative systematic error, (4): absolute systematic error.";
 
         % Set variable units
@@ -19,6 +20,7 @@ function metadata = Make_Metadata(type)
         metadata.units.Uall     = "mV";
         metadata.units.cur_pat  = "A";
         metadata.units.perim_mm = "mm";
+        metadata.units.vert_gap = "cm";
 
     elseif lower(type) == "cond"
         % Set variable descriptions
@@ -126,7 +128,7 @@ function metadata = Make_Metadata(type)
     metadata.computer_info.MATLAB_version = version;
 
     % Random metadata information
-    metadata.timestamp = datetime("now", "Format", "m_dd_y HH:mm:ss");
+    metadata.timestamp = datetime("now", "Format", "M_dd_y HH:mm:ss");
     
     % Get the username depending on the operating system
     if ispc
