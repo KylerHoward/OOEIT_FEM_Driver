@@ -273,7 +273,7 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
     end
 
     tic
-    [E_nodes, perim_mm] = Make_Electrodes3(boundary_nodes, nodes, body_faces, sbj_info, flags);
+    [E_nodes, perim_mm, vert_gap] = Make_Electrodes3(boundary_nodes, nodes, body_faces, sbj_info, flags);
     if iscell(E_nodes) == 0
         E_nodes = {E_nodes};
     end
@@ -289,7 +289,7 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
         flags.E_choice = flags.E_choice + 1;
         [~, flags]     = Construct_Electrode_Settings(flags);
 
-        [E_nodes, perim_mm] = Make_Electrodes3(boundary_nodes, nodes, body_faces, sbj_info, flags);
+        [E_nodes, perim_mm, vert_gap] = Make_Electrodes3(boundary_nodes, nodes, body_faces, sbj_info, flags);
         if iscell(E_nodes) == 0
             E_nodes = {E_nodes};
         end
@@ -305,6 +305,7 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
     if flags.verbose == 1
         fprintf("      It took %.2f seconds to make the electrodes\n", make_time)
         fprintf("      The perimeter is %.2f cm\n", perim_mm/10)
+        fprintf("      The vert gap  is %.2f cm (center-to-center)\n", vert_gap)
     end
     
     % Look at the electrodes and plot their number of faces & areas per electrode
@@ -588,7 +589,8 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
                         plot(1:n_bframes, flags.heart_curve)
                         xlim([0,n_bframes])
                         % xline([2,20,37],"k","LineWidth",2)
-                        legend(["Breath Curve", "Cardiac Curve","","",""],"Location","southoutside")
+                        % legend(["Breath Curve", "Cardiac Curve","","",""],"Location","southoutside")
+                        legend(["Breath Curve", "Cardiac Curve"],"Location","southoutside")
                         xlabel("Frame")
                         ylabel("% of Cycle")
                 end
@@ -598,20 +600,51 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
                 flags.breath_curve = flags.max_inspiration;
                 flags.heart_curve  = flags.cardiac_cycle;
             end
+% ----------------------------------------------------------------------- %
+%%                   Assign Conductivities and Plot GTs                   %
+% ----------------------------------------------------------------------- %
+            if flags.verbose == 1
+                fprintf("   Assigning Conductivities\n")
+            end
+
+            % Creating the conductivity vector at the nodes (IN SIEMENS PER METER)
+            sigma_start = tic;
+            sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, flags);
+            sigma_time  = toc(sigma_start);
+            if flags.verbose == 1
+                fprintf("      It took %.2f seconds to assign conductivities\n", sigma_time)
+            end
+            
+            % Plot the ground truth images at each row
+            GT_Thickness = 5; %mm
+            sigma_GT = Create_GT_Images(GT_Thickness, nodes, E_nodes, sigma, flags);
+
+    figure;
+    hold on
+    plot(sigma(83769,:))
+    plot(sigma(83655,:))
+    plot(sigma(109378,:))
+    ylabel("Conductivity (S/m)")
+    xlabel("Frame")
+    legend("Left Lung", "Right Lung", "Heart")
+
+    fprintf("Average  left lung cond is %.4f S/m\n", mean(sigma(83769,:)))
+    fprintf("Average right lung cond is %.4f S/m\n", mean(sigma(83655,:)))
+    fprintf("Average      heart cond is %.4f S/m\n", mean(sigma(109378,:)))
 
 % ----------------------------------------------------------------------- %
-%%                    Assign Conductivities and Solve                     %
+%%                         Solve Forward Problem                          %
 % ----------------------------------------------------------------------- %
-            % Initialize sigma, Umeas, and Uall
-            sigma = zeros(size(nodes,1), n_bframes);
+            % Initialize Umeas, and Uall
+            % sigma = zeros(size(nodes,1), n_bframes);
             Umeas_cell = cell(n_bframes, 1);
             Uall_cell  = cell(n_bframes, 1);
 
             % Set up structures to pass into the function instead of everything as individual variables
-            mesh_info.nodes = nodes;
-            mesh_info.connect = connectivity;
-            mesh_info.labels  = labels;
-            mesh_info.lung_nodes = lung_nodes;
+            % mesh_info.nodes = nodes;
+            % mesh_info.connect = connectivity;
+            % mesh_info.labels  = labels;
+            % mesh_info.lung_nodes = lung_nodes;
             mesh_info.L          = L;
             mesh_info.K          = K;
             mesh_info.cur_pat    = cur_pat;
@@ -624,27 +657,29 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
             % Run the function to assign conductivities and solve the forward problem
             if flags.do_parfor == 1 && flags.solve_problem == 1
                 parfor bframe = 1:n_bframes
-                % for bframe = 1:n_bframes
     
-                    frame_info_local = frame_info;
-                    frame_info_local.bframe = bframe;
-
                     % Set local versions for the parfor
-                    solver_local = solver;
-                    flags_local  = flags;
+                    frame_info_local        = frame_info;
+                    frame_info_local.bframe = bframe;
+                    solver_local            = solver;
+                    flags_local             = flags;
     
-                    [Umeas_local, Uall_local, sigma(:,bframe)] = Assign_and_Solve(mesh_info, frame_info_local, heart_BC, solver_local, fmesh, noise, flags_local);
+                    % Solve the problem
+                    % [Umeas_local, Uall_local, sigma(:,bframe)] = Assign_and_Solve(mesh_info, frame_info_local, heart_BC, solver_local, fmesh, noise, flags_local);
+                    [Umeas_local, Uall_local] = Solve_Forward_Problem(sigma(:,bframe), mesh_info, frame_info_local, heart_BC, solver_local, fmesh, noise, flags_local);
                     
                     % Combine all the heart solutions into a cell array
                     Umeas_cell{bframe} = Umeas_local; 
                     Uall_cell{bframe} = Uall_local;
                 end % end looping over each video
-            else
+            elseif flags.do_parfor == 0 && flags.solve_problem == 1
                 for bframe = 1:n_bframes
    
                     frame_info.bframe = bframe;
     
-                    [Umeas_local, Uall_local, sigma(:,bframe)] = Assign_and_Solve(mesh_info, frame_info, heart_BC, solver, fmesh, noise, flags);
+                    % Solve the problem
+                    % [Umeas_local, Uall_local, sigma(:,bframe)] = Assign_and_Solve(mesh_info, frame_info, heart_BC, solver, fmesh, noise, flags);
+                    [Umeas_local, Uall_local] = Solve_Forward_Problem(sigma(:,bframe), mesh_info, frame_info, heart_BC, solver, fmesh, noise, flags);
                     
                     % Combine all the heart solutions into a cell array
                     Umeas_cell{bframe} = Umeas_local; 
@@ -657,7 +692,7 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
             Uall  = cat(3, Uall_cell{:});
                     
     % ----------------------------------------------------------------------- %
-    %%                                Plotting                                %
+    %%                                Plot Global Voltages                                %
     % ----------------------------------------------------------------------- %
             % Plot global nodal voltages
             if flags.solve_problem == 1 && flags.plot_volts > 0
@@ -668,10 +703,6 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
                     pause
                 end
             end
-            
-            % Plot the ground truth images at each row
-            GT_Thickness = 5; %mm
-            sigma_GT = Create_GT_Images(GT_Thickness, nodes, E_nodes, sigma, flags);
 
 % ----------------------------------------------------------------------- %
 %%                               Save Data                                %
@@ -691,19 +722,19 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
                 volt_metadata = Make_Metadata("Volt");
                 cond_metadata = Make_Metadata("Cond");
             
-                % % Check if the user isn't just saving to the results folder
-                % if contains(sbj_save_path, fullfile("OOEIT_FEM_Driver","Results")) ~= 1
-                %     cond_save_path = fullfile(sbj_save_path, flags.E_type, "conductivities", condition_name);
-                %     volt_save_path = fullfile(sbj_save_path, flags.E_type, "voltages",       condition_name);
-                % else
-                %     cond_save_path = sbj_save_path;
-                %     volt_save_path = sbj_save_path;
-                % end
+                % Check if the user isn't just saving to the results folder
+                if contains(sbj_save_path, fullfile("OOEIT_FEM_Driver","Results")) ~= 1
+                    cond_save_path = fullfile(sbj_save_path, flags.E_type, "conductivities", condition_name);
+                    volt_save_path = fullfile(sbj_save_path, flags.E_type, "voltages",       condition_name);
+                else
+                    cond_save_path = sbj_save_path;
+                    volt_save_path = sbj_save_path;
+                end
     
                 % Save the voltages and conductivties
                 volt_name = sprintf("%s-Volt%s.mat", sbj_name, save_suffix);
                 cond_name = sprintf("%s-Cond%s.mat", sbj_name, save_suffix);
-                saveData(volt_save_path, cond_save_path, volt_name, cond_name,  Umeas_NoNoise, Uall_NoNoise, Umeas, Uall, cur_pat, perim_mm, noise, flags, volt_metadata, sigma, sigma_GT, nodes, E_connect, cond_metadata)
+                saveData(volt_save_path, cond_save_path, volt_name, cond_name,  Umeas_NoNoise, Uall_NoNoise, Umeas, Uall, cur_pat, perim_mm, vert_gap, noise, flags, volt_metadata, sigma, sigma_GT, nodes, E_connect, cond_metadata)
             end % end saving data
         end % end looping over permutations
     end % end looping through conditions
@@ -742,11 +773,11 @@ function updateHeartFrame(ax1, framenum, heart_BC_vals, heart_surface_nodes, hea
 end
 
 
-function saveData(volt_save_path, cond_save_path, volt_name, cond_name, Umeas_NoNoise, Uall_NoNoise, Umeas, Uall, cur_pat, perim_mm, noise, flags, volt_metadata, sigma, sigma_GT, nodes, E_connect, cond_metadata)
+function saveData(volt_save_path, cond_save_path, volt_name, cond_name, Umeas_NoNoise, Uall_NoNoise, Umeas, Uall, cur_pat, perim_mm, vert_gap, noise, flags, volt_metadata, sigma, sigma_GT, nodes, E_connect, cond_metadata)
     if noise(1) == 0 || noise(2) == 0
-        save(fullfile(volt_save_path, volt_name), "Umeas_NoNoise", "Uall_NoNoise", "cur_pat", "perim_mm", "noise", "flags", "volt_metadata", "-v7.3")
+        save(fullfile(volt_save_path, volt_name), "Umeas_NoNoise", "Uall_NoNoise", "cur_pat", "perim_mm", "vert_gap", "noise", "flags", "volt_metadata", "-v7.3")
     else
-        save(fullfile(volt_save_path,volt_name), "Umeas", "Uall", "cur_pat", "perim_mm", "noise", "flags", "volt_metadata", "-v7.3")
+        save(fullfile(volt_save_path,volt_name), "Umeas", "Uall", "cur_pat", "perim_mm", "vert_gap", "noise", "flags", "volt_metadata", "-v7.3")
     end
     save(fullfile(cond_save_path,cond_name), "sigma", "sigma_GT", "nodes", "E_connect", "flags", "cond_metadata", "-v7.3")
 end

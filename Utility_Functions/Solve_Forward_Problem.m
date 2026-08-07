@@ -1,9 +1,11 @@
-function [Umeas, Uall, sigma] = Assign_and_Solve(mesh_info, frame_info, heart_BC, solver, fmesh, noise, flags)
+function [Umeas, Uall] = Solve_Forward_Problem(sigma, mesh_info, frame_info, heart_BC, solver, fmesh, noise, flags)
     %{
-    In order to run either a parfor or a regular for loop, assigning
-    conductivites and solving the problem is sent to a separate function
+    In order to run either a parfor or a regular for loop, solving the 
+    forward problem is sent to a separate function
     5/22/26 - Kyler Howard
+    8/3/26  - Edited by Kyler Howard
 
+    param: sigma      - Assigned conducitvity on every node [nN x 1]. 
     param: mesh_info  - Structure containing variables about the forwrd mesh. 
                         nodes, connectivity, labels, lung_nodes, L, K, and cur_pat
     param: frame_info - Structure containing variables about the frames to be solved on. 
@@ -18,14 +20,13 @@ function [Umeas, Uall, sigma] = Assign_and_Solve(mesh_info, frame_info, heart_BC
 
     return: Umeas - Measured voltages on the electrdoes for each current pattern and frame [L x K x nF].
     return: Uall  - Global voltages on all nodes for each current pattern and frame [nN x K x nF].
-    return: Sigma - Assigned conductivity on all nodes [nN x 1].
     %}
 
     % Unpack structures back to local individual variables
-    nodes        = mesh_info.nodes; 
-    connectivity = mesh_info.connect;
-    labels       = mesh_info.labels;
-    lung_nodes   = mesh_info.lung_nodes;
+    % nodes        = mesh_info.nodes; 
+    % connectivity = mesh_info.connect;
+    % labels       = mesh_info.labels;
+    % lung_nodes   = mesh_info.lung_nodes;
     L            = mesh_info.L;
     K            = mesh_info.K;
     cur_pat      = mesh_info.cur_pat;
@@ -39,28 +40,17 @@ function [Umeas, Uall, sigma] = Assign_and_Solve(mesh_info, frame_info, heart_BC
     heart_BC_indices = heart_BC.indices;
     heart_BC_vals    = heart_BC.vals;
 
-    % Extract which point on the breath curve we want to simulate
-    flags.max_inspiration = flags.breath_curve(bframe);
-    flags.cardiac_cycle   = flags.heart_curve(bframe);
 
-    if flags.verbose == 1
-        fprintf("   Assigning Conductivities\n")
-    end
-
-    % Creating the conductivity vector at the nodes (IN SIEMENS PER METER)
-    sigma_start = tic;
-    sigma       = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, flags);
-    sigma_time  = toc(sigma_start);
-    if flags.verbose == 1
-        fprintf("      It took %.2f seconds to assign conductivities\n", sigma_time)
-    end
+    % if flags.verbose == 1
+    %     fprintf("   Assigning Conductivities\n")
+    % end
 
 % ----------------------------------------------------------------------- %
 %%                                 Solve                                  %
 % ----------------------------------------------------------------------- %                
     % Make a local version for each core
     Umeas = zeros(L, K, n_hframes);
-    Uall  = zeros(size(nodes,1), K, n_hframes);
+    Uall  = zeros(fmesh.ng, K, n_hframes);
 
     for hframe = 1:n_hframes
         if flags.solve_problem == 1
@@ -86,9 +76,7 @@ function [Umeas, Uall, sigma] = Assign_and_Solve(mesh_info, frame_info, heart_BC
 
             % Save the local frame
             Umeas(:,:,hframe) = reshape(Umeas_frame, L, K); 
-            Uall(:,:,hframe) = Uall_frame(1:size(nodes,1),:);
-            % Umeas(:,:,(bframe-1)*n_hframes + hframe) = reshape(Umeas_frame, L, K);
-            % Uall(:,:,(bframe-1)*n_hframes + hframe)  = Uall_frame(1:size(nodes,1),:);
+            Uall(:,:,hframe) = Uall_frame(1:fmesh.ng,:);
         end% end running a solve
     end % end looping over heart frames
 end
