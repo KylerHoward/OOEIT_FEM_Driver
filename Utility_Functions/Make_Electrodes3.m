@@ -1,4 +1,4 @@
-function [E_nodes, perim_mm_high] = Make_Electrodes3(boundary_nodes, all_nodes, body_faces, sbj_info, flags)
+function [E_nodes, perim_mm_high, vert_gap] = Make_Electrodes3(boundary_nodes, all_nodes, body_faces, sbj_info, flags)
     %{
     Find the nodes that make up all 32 electrodes, for either a belt or patch configuration
     Updated to compute area of each electrode, and make sure they are the correct sizes
@@ -125,10 +125,36 @@ function [E_nodes, perim_mm_high] = Make_Electrodes3(boundary_nodes, all_nodes, 
         back_nodes  = create_patch(middle_back_nodes, back,  E, "back", all_nodes, body_faces);
         E_nodes     = [front_nodes; back_nodes];
 
+        % Find vertical gap
+        n_gaps = flags.E_count(1) - 1;
+        vert_gap = zeros(n_gaps, 1);
+        for ii = 1:n_gaps
+            nEl_p_row = flags.E_count(2);
+            % Extract top nodes from front/back
+            bot_nodes = [front_nodes(nEl_p_row*(ii-1) + 1 : nEl_p_row*ii); back_nodes(nEl_p_row*(ii-1) + 1 : nEl_p_row*ii)];
+            top_nodes = [front_nodes(nEl_p_row*ii + 1 : nEl_p_row*(ii+1)); back_nodes(nEl_p_row*ii + 1 : nEl_p_row*(ii+1))];
+
+            meanTop = mean(cellfun(@(A) mean(A(:,3)), top_nodes));
+            meanBot = mean(cellfun(@(A) mean(A(:,3)), bot_nodes));
+            vert_gap(ii) = abs(meanTop - meanBot)/10; % Center-to-center gap in cm
+
+            meanTopFront = mean(cellfun(@(A) mean(A(:,3)), front_nodes(nEl_p_row*ii + 1 : nEl_p_row*(ii+1))));
+            meanTopBack  = mean(cellfun(@(A) mean(A(:,3)), back_nodes(nEl_p_row*ii + 1 : nEl_p_row*(ii+1))));
+            meanBotFront = mean(cellfun(@(A) mean(A(:,3)), front_nodes(nEl_p_row*(ii-1) + 1 : nEl_p_row*ii)));
+            meanBotBack  = mean(cellfun(@(A) mean(A(:,3)), back_nodes(nEl_p_row*(ii-1) + 1 : nEl_p_row*ii)));
+            vert_gap(ii) = mean([abs(meanTopFront - meanBotFront)/10, abs(meanTopBack - meanBotBack)/10]); % Center-to-center gap in cm
+        end
+        vert_gap = mean(vert_gap);
+
     elseif E.type == "belt"
         top_nodes = create_belt(boundary_nodes, plane_high, E, all_nodes, body_faces, flags, perim_mm_high);
         bot_nodes = create_belt(boundary_nodes, plane_low,  E, all_nodes, body_faces, flags, perim_mm_low);
         E_nodes   = cat(1, bot_nodes,   top_nodes)';
+
+        % Find vertical gap
+        meanTop = mean(cellfun(@(A) mean(A(:,3)), top_nodes));
+        meanBot = mean(cellfun(@(A) mean(A(:,3)), bot_nodes));
+        vert_gap = abs(meanTop - meanBot)/10; % Center-to-center gap in cm
     end
 
     % Reorder electrode placement if using the 4x8 pattern
