@@ -56,14 +56,14 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
 
         % Dictionary of complex conductivities (S/m). TFC gives multiples of Permittivity of free space
         % First value is the mean, second is the allowable ± range
-        suscs.background  = freq*eps0*[0;        0]      * ones([1, nframes]);   % 0.0,  0.0
-        suscs.soft_tissue = freq*eps0*[2.40e4;   3.00e3] * ones([1, nframes]);   % 0.2,  0.0
-        suscs.trachea     = freq*eps0*[2.55e4;   2.26e3] * ones([1, nframes]);   % 0.05, 0.05
-        suscs.bone        = freq*eps0*[5.20e2;   3.00e1] * ones([1, nframes]);   % 0.05, 0.05
-        suscs.heart       = freq*eps0*[5.25e3;   4.50e4] * ones([1, nframes]);   % 0.4,  0.2
-        suscs.esophagus   = freq*eps0*[8.70e3;   3.00e2] * ones([1, nframes]);   % 0,    0
-        suscs.lung        = freq*eps0*[ls_eq;    ls_range];                      % 0.4,  0.4
-        suscs.lung_tissue = freq*eps0*[ls_empty; 1.15e4] * ones([1, nframes]);
+        suscs.background  = 2*pi*freq*eps0*[0;        0]      * ones([1, nframes]);   % 0.0,  0.0
+        suscs.soft_tissue = 2*pi*freq*eps0*[2.40e4;   3.00e3] * ones([1, nframes]);   % 0.2,  0.0
+        suscs.trachea     = 2*pi*freq*eps0*[2.55e4;   2.26e3] * ones([1, nframes]);   % 0.05, 0.05
+        suscs.bone        = 2*pi*freq*eps0*[5.20e2;   3.00e1] * ones([1, nframes]);   % 0.05, 0.05
+        suscs.heart       = 2*pi*freq*eps0*[5.25e3;   4.50e4] * ones([1, nframes]);   % 0.4,  0.2
+        suscs.esophagus   = 2*pi*freq*eps0*[8.70e3;   3.00e2] * ones([1, nframes]);   % 0,    0
+        suscs.lung        = 2*pi*freq*eps0*[ls_eq;    ls_range];                      % 0.4,  0.4
+        suscs.lung_tissue = 2*pi*freq*eps0*[ls_empty; 1.15e4] * ones([1, nframes]);
 
     else % ACT5 System    
         freq = 93750; % Hz
@@ -101,14 +101,14 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
 
         % Dictionary of complex conductivities (S/m). TFC gives multiples of Permittivity of free space
         % First value is the mean, second is the allowable ± range
-        suscs.background  = freq*eps0*[0;        0]      * ones([1, nframes]);   % 0.0,  0.0
-        suscs.soft_tissue = freq*eps0*[8.00e3;   2.00e2] * ones([1, nframes]);   % 0.2,  0.0
-        suscs.trachea     = freq*eps0*[2.55e4;   2.26e3] * ones([1, nframes]);   % 0.05, 0.05
-        suscs.bone        = freq*eps0*[5.20e2;   3.00e1] * ones([1, nframes]);   % 0.05, 0.05
-        suscs.heart       = freq*eps0*[5.25e3;   4.50e4] * ones([1, nframes]);   % 0.4,  0.2
-        suscs.esophagus   = freq*eps0*[8.70e3;   3.00e2] * ones([1, nframes]);   % 0,    0
-        suscs.lung        = freq*eps0*[ls_eq;    ls_range];                      % 0.4,  0.4
-        suscs.lung_tissue = freq*eps0*[ls_empty; 1.15e4] * ones([1, nframes]);
+        suscs.background  = 2*pi*freq*eps0*[0;        0]      * ones([1, nframes]);   % 0.0,  0.0
+        suscs.soft_tissue = 2*pi*freq*eps0*[8.00e3;   2.00e2] * ones([1, nframes]);   % 0.2,  0.0
+        suscs.trachea     = 2*pi*freq*eps0*[2.55e4;   2.26e3] * ones([1, nframes]);   % 0.05, 0.05
+        suscs.bone        = 2*pi*freq*eps0*[5.20e2;   3.00e1] * ones([1, nframes]);   % 0.05, 0.05
+        suscs.heart       = 2*pi*freq*eps0*[5.25e3;   4.50e4] * ones([1, nframes]);   % 0.4,  0.2
+        suscs.esophagus   = 2*pi*freq*eps0*[8.70e3;   3.00e2] * ones([1, nframes]);   % 0,    0
+        suscs.lung        = 2*pi*freq*eps0*[ls_eq;    ls_range];                      % 0.4,  0.4
+        suscs.lung_tissue = 2*pi*freq*eps0*[ls_empty; 1.15e4] * ones([1, nframes]);
     end
 
     % Real Conductivities (S/m)
