@@ -132,41 +132,31 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
     T5_height     = sbj_sheet.T5FromST_mm(row_num);
     T8_height     = sbj_sheet.T8FromST_mm(row_num);
     
+    % Create a structure with each individual organ's connectivity matrix
+    organ_connects.lung        = connectivity(labels==1, :);
+    organ_connects.trachea     = connectivity(labels==2, :);
+    organ_connects.soft_tissue = connectivity(labels==3, :);
     if flags.are_bones == 1
-        lung        = 1;
-        trachea     = 2;
-        soft_tissue = 3;
-        bone        = 4;
+        organ_connects.bone = connectivity(labels==4, :);
         if length(unique(labels)) == 6
-            esophagus   = 5;
-            heart       = 6;
+            organ_connects.esophagus = connectivity(labels==5, :);
+            organ_connects.heart     = connectivity(labels==6, :);
         elseif length(unique(labels)) == 5
-            heart = 5;
+            organ_connects.heart = connectivity(labels==5, :);
         end
     else
-        lung        = 1;
-        trachea     = 2;
-        soft_tissue = 3;
+        organ_connects.bone = [];
         if length(unique(labels)) == 5
-            esophagus   = 4;
-            heart       = 5;
+            organ_connects.esophagus = connectivity(labels==4, :);
+            organ_connects.heart     = connectivity(labels==5, :);
         elseif length(unique(labels)) == 4
-            heart = 4;
+            organ_connects.heart = connectivity(labels==4, :);
         elseif length(unique(labels)) == 3
-            soft_tissue = 2;
-            heart       = 3;
-            trachea     = NaN;
+            organ_connects.soft_tissue = connectivity(labels==2, :);
+            organ_connects.heart       = connectivity(labels==3, :);
+            organ_connects.trachea     = [];
         end
-    end
-    
-    % Create a cell array with each individual organ mesh
-    organ_connects = cell(6,1);
-    i = 1;
-    for label = 1:6
-        organ_connects{i} = connectivity(labels==label, :);
-        i = i + 1;
-    end
-    clear i
+    end    
     
 % ----------------------------------------------------------------------- %
 %%                        Rotation and Translation                        %
@@ -176,7 +166,7 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
         % Superior is positive z
         % Right    is positive x
     if contains(sbj_name, "Mean") == 0 % Means are already in right orientation
-        [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, labels, organ_connects, carina_height, T5_height, T8_height, flags);
+        [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, organ_connects, carina_height, T5_height, T8_height, flags);
     else
         sbj_info.carina = carina_height;
         sbj_info.T5     = T5_height;
@@ -190,81 +180,13 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
         fprintf("   Extracting Surface Faces and Nodes\n")
     end
 
-    % Find the surface shells of each organ
-    body_faces      = Get_Unique_Faces(organ_connects{soft_tissue});
-    lung_faces      = Get_Unique_Faces(organ_connects{lung});
-    heart_faces     = Get_Unique_Faces(organ_connects{heart});
-    try % Account for subjects without a trachea
-        trachea_faces   = Get_Unique_Faces(organ_connects{trachea});
-    catch
-        trachea_faces = [];
-    end
-    try % Account for subjects without an esophagus
-        esophagus_faces = Get_Unique_Faces(organ_connects{esophagus});
-    catch
-        esophagus_faces = [];
-    end
-    if flags.are_bones == 1
-        bone_faces = Get_Unique_Faces(organ_connects{bone});
-    end
+    % Pull the nodes and faces of wanted organs, then split them out of the structure
+    [organ_nodes, organ_faces] = Get_Organ_Nodes(nodes, connectivity, labels, organ_connects, flags);
+    trachea_nodes              = organ_nodes.trachea;
+    lung_nodes                 = organ_nodes.lung;
+    boundary_nodes             = organ_nodes.boundary;
+    body_faces                 = organ_faces.body;
     
-    % Find the intersection of each internal organ and the soft tissue
-    lung_intersect      = intersect(sort(body_faces,2),  sort(lung_faces,2),      "rows");
-    heart_intersect     = intersect(sort(body_faces,2),  sort(heart_faces,2),     "rows");
-    try % Account for subjects without a trachea
-        trachea_intersect = intersect(sort(body_faces,2),  sort(trachea_faces,2), "rows");
-    catch
-        trachea_intersect = [];
-    end
-    try % Account for subjects without an esophagus
-        esophagus_intersect = intersect(sort(body_faces,2),  sort(esophagus_faces,2), "rows");
-    catch
-        esophagus_intersect = [];
-    end
-    if flags.are_bones == 1
-        bone_intersect = intersect(sort(body_faces,2),  sort(bone_faces,2), "rows");
-    end
-    
-    % Find the difference between the organs to only keep body surface faces
-    if flags.are_bones == 1
-        inner_intersects = vertcat(lung_intersect, trachea_intersect, heart_intersect, esophagus_intersect, bone_intersect);
-    else
-        inner_intersects = vertcat(lung_intersect, trachea_intersect, heart_intersect, esophagus_intersect);
-    end
-    surface_faces    = setdiff(sort(body_faces,2), sort(inner_intersects,2), "rows");
-    
-    % Extract desired organ nodes
-    if ~isnan(trachea)
-        [trachea_nodes, ~]  = Get_Tet_Nodes(nodes, organ_connects{trachea});
-    end
-    [lung_nodes, ~]     = Get_Tet_Nodes(nodes, organ_connects{lung});
-    [boundary_nodes, ~] = Get_Surface_Nodes(nodes, surface_faces);
-    
-    if flags.plot_trachea == 1 && ~isnan(trachea)
-        figure()
-        subplot(1,2,1)
-            scatter3(trachea_nodes(:,1), trachea_nodes(:,2), trachea_nodes(:,3), "MarkerEdgeAlpha", 0.2)
-            hold on
-            scatter3(mean(trachea_nodes(:,1)), mean(trachea_nodes(:,2)), sbj_info.carina, "r", "filled")
-            scatter3(trachea_nodes(startsWith(string(trachea_nodes(:,3)), sprintf("%.1f", sbj_info.carina)), 1), trachea_nodes(startsWith(string(trachea_nodes(:,3)), sprintf("%.1f", sbj_info.carina)), 2), sbj_info.carina, "r", "filled")
-            % constantplane("z", sbj_info.carina) R2024b
-            title(sprintf("Carina: %.2f mm", sbj_info.carina))
-            axis equal
-        subplot(1,2,2)
-            pdeplot3D(nodes.', organ_connects{lung}.')
-    end
-    
-    if flags.save_heart_mesh == 1
-        [heart_nodes, ~]         = Get_Tet_Nodes(nodes, organ_connects{heart});
-        [heart_surface_nodes, ~] = Get_Surface_Nodes(nodes, heart_faces);
-    
-        heart_name = sprintf("%s_Heart_Mesh.mat", sbj_name);
-        save(fullfile("Heart_Meshes", heart_name), "nodes", "connectivity", "labels", "heart_faces", "heart_nodes", "heart_surface_nodes")
-    end
-    
-    clear trachea_faces heart_faces esophagus_faces lung_faces bone_faces
-    clear lung_intersect trachea_intersect heart_intersect esophagus_intersect inner_intersects bone_intersect
-    clear surface_faces
 % ----------------------------------------------------------------------- %
 %%                             Make Electrodes                            %
 % ----------------------------------------------------------------------- %
@@ -316,10 +238,10 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
             hold on
             % scatter3(boundary_nodes(:,1), boundary_nodes(:,2), boundary_nodes(:,3), "MarkerEdgeColor", [0.3010 0.7450 0.9330], "LineWidth",0.05)
             scatter3(boundary_nodes(:,1), boundary_nodes(:,2), boundary_nodes(:,3), "MarkerEdgeColor", [0.21 0.71 0.52], "LineWidth",0.05)
-            if ~isnan(trachea)
+            if ~isempty(organ_connects.trachea)
                 scatter3(trachea_nodes(:,1),trachea_nodes(:,2),trachea_nodes(:,3),"y","filled")
             end
-            [heart_nodes, ~]         = Get_Tet_Nodes(nodes, organ_connects{heart});
+            [heart_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects.heart);
             scatter3(heart_nodes(:,1),heart_nodes(:,2),heart_nodes(:,3),"m","filled")
             scatter3(lung_nodes(:,1), lung_nodes(:,2), lung_nodes(:,3), "b")
             for i = 1:length(E_connect)
@@ -618,19 +540,6 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
             % Plot the ground truth images at each row
             GT_Thickness = 5; %mm
             sigma_GT = Create_GT_Images(GT_Thickness, nodes, E_nodes, sigma, flags);
-
-    figure;
-    hold on
-    plot(sigma(83769,:))
-    plot(sigma(83655,:))
-    plot(sigma(109378,:))
-    ylabel("Conductivity (S/m)")
-    xlabel("Frame")
-    legend("Left Lung", "Right Lung", "Heart")
-
-    fprintf("Average  left lung cond is %.4f S/m\n", mean(sigma(83769,:)))
-    fprintf("Average right lung cond is %.4f S/m\n", mean(sigma(83655,:)))
-    fprintf("Average      heart cond is %.4f S/m\n", mean(sigma(109378,:)))
 
 % ----------------------------------------------------------------------- %
 %%                         Solve Forward Problem                          %
