@@ -1,4 +1,4 @@
-function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, flags)
+    function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, flags)
     %{
     Assign complex conductivities to each node
     8/20/24 - Kyler Howard
@@ -24,8 +24,8 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
         freq = 10000; % Hz
 
         % Heart equations
-        hc_full  = 0.75;
-        hc_empty = 0.55;
+        hc_full  = 0.72;
+        hc_empty = 0.68;
         hc_m     = (hc_full - hc_empty) / (1-0);
         hc_eq    = hc_m * flags.heart_curve + hc_empty; % Updated to range from 0.55 - 0.75
         hc_range = 0.05 * ones([1, nframes]);
@@ -69,8 +69,8 @@ function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, 
         freq = 93750; % Hz
 
         % Heart equations
-        hc_full  = 0.75; % 0.75 or 0.72
-        hc_empty = 0.55; % 0.55 or 0.68
+        hc_full  = 0.72; % 0.75 or 0.72
+        hc_empty = 0.68; % 0.55 or 0.68
         hc_m     = (hc_full - hc_empty) / (1-0);
         hc_eq    = flags.heart_curve*hc_m + hc_empty; % Updated to range from 0.55 - 0.75
         hc_range = 0.05 * ones([1, nframes]);
