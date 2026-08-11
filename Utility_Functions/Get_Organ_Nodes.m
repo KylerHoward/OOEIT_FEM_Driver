@@ -43,6 +43,8 @@ function [organ_nodes, organ_faces] = Get_Organ_Nodes(nodes, connectivity, label
     % Extract desired organ nodes
     if ~isempty(organ_connects.trachea)
         [organ_nodes.trachea, ~]  = Get_Tet_Nodes(nodes, organ_connects.trachea);
+    else
+        organ_nodes.trachea = [];
     end
     [organ_nodes.lung, ~]     = Get_Tet_Nodes(nodes, organ_connects.lung);
     [organ_nodes.boundary, ~] = Get_Surface_Nodes(nodes, surface_faces);

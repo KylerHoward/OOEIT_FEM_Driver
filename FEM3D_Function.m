@@ -143,6 +143,10 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
             organ_connects.heart     = connectivity(labels==6, :);
         elseif length(unique(labels)) == 5
             organ_connects.heart = connectivity(labels==5, :);
+            organ_connects.esophagus   = [];
+
+            % Update labels (BACKWARDS) to match assigning conds
+            labels(labels==5) = 6;
         end
     else
         organ_connects.bone = [];
@@ -151,10 +155,19 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
             organ_connects.heart     = connectivity(labels==5, :);
         elseif length(unique(labels)) == 4
             organ_connects.heart = connectivity(labels==4, :);
+            organ_connects.esophagus   = [];
+
+            % Update labels (BACKWARDS) to match assigning conds
+            labels(labels==4) = 5;
         elseif length(unique(labels)) == 3
             organ_connects.soft_tissue = connectivity(labels==2, :);
             organ_connects.heart       = connectivity(labels==3, :);
             organ_connects.trachea     = [];
+            organ_connects.esophagus   = [];
+
+            % Update labels (BACKWARDS) to match assigning conds
+            labels(labels==3) = 5;
+            labels(labels==2) = 3;
         end
     end    
     
