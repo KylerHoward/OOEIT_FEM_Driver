@@ -1,4 +1,4 @@
-function [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, labels, organ_connects, carina_height, T5_height, T8_height, flags)
+function [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, organ_connects, carina_height, T5_height, T8_height, flags)
     %{
     Assess if a torso is rotated or shifted, and put it back in a standard
     orientation where:
@@ -21,40 +21,12 @@ function [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, labels, organ_conn
     return: sbj_info - Structure containing translated carina, T5, and T8 heights
     %}
 
-    % Create the organ numbering for reference 
-    if flags.are_bones == 1
-        lung        = 1;
-        trachea     = 2;
-        soft_tissue = 3;
-        bone        = 4;
-        if length(unique(labels)) == 6
-            esophagus   = 5;
-            heart       = 6;
-        elseif length(unique(labels)) == 5
-            heart = 5;
-        end
-    else
-        lung        = 1;
-        trachea     = 2;
-        soft_tissue = 3;
-        if length(unique(labels)) == 5
-            esophagus   = 4;
-            heart       = 5;
-        elseif length(unique(labels)) == 4
-            heart = 4;
-        elseif length(unique(labels)) == 3
-            soft_tissue = 2;
-            heart       = 3;
-            trachea     = NaN;
-        end
-    end
-
 % ----------------------------------------------------------------------- %
 %%                            Sit Body Upright                            %
 % ----------------------------------------------------------------------- %
-    if ~isnan(trachea) % Only possible if there is a trachea to begin with
+    if ~isempty(organ_connects.trachea) % Only possible if there is a trachea to begin with
         % Determine if the body is on its side
-        [trachea_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects{trachea});
+        [trachea_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects.trachea);
         [~, min_index]     = min(range(trachea_nodes));
         [~, max_index]     = max(range(trachea_nodes));
         % Check if the minimm range of the trachea is on the z axis -> laying down
@@ -77,8 +49,8 @@ function [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, labels, organ_conn
 %%                           Flip Rightside Up                            %
 % ----------------------------------------------------------------------- %
         % Determine if the body is upside down
-        [body_nodes, ~]     = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
-        [trachea_nodes, ~]  = Get_Tet_Nodes(nodes, organ_connects{trachea});
+        [body_nodes, ~]     = Get_Tet_Nodes(nodes, organ_connects.soft_tissue);
+        [trachea_nodes, ~]  = Get_Tet_Nodes(nodes, organ_connects.trachea);
         % Check if the difference between the top of the trachea and the top of the body is less than 2 mm
         % Using the percentage of height doesn't work for short subjects
         if abs(max(trachea_nodes(:,3)) - max(body_nodes(:,3))) > 2
@@ -101,9 +73,9 @@ function [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, labels, organ_conn
 % ----------------------------------------------------------------------- %
     
         % Determine if the body is not facing towards y (anterior) side
-        [heart_nodes, ~]   = Get_Tet_Nodes(nodes, organ_connects{heart});
-        [body_nodes, ~]    = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
-        [trachea_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects{trachea});
+        [heart_nodes, ~]   = Get_Tet_Nodes(nodes, organ_connects.heart);
+        [body_nodes, ~]    = Get_Tet_Nodes(nodes, organ_connects.soft_tissue);
+        [trachea_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects.trachea);
         
         heart_center       = range(heart_nodes)/2 + min(heart_nodes);
         body_center        = range(body_nodes)/2 + min(body_nodes);
@@ -242,7 +214,7 @@ function [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, labels, organ_conn
     if flags.verbose == 1
         fprintf("   Translating to the Origin\n")
     end
-    [body_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects{soft_tissue});
+    [body_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects.soft_tissue);
 
     nodes           = nodes         - min(body_nodes);
     sbj_info.carina = carina_height;

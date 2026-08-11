@@ -98,9 +98,8 @@ Editted: 10/10/24 - Kyler Howard
             % (SetObservable)-block properties, to know when to set the
             % reCalc flag to 1.
             mc                 = metaclass(obj);
-            % metaprops          = findobj([mc.Properties{:}], 'SetObservable', true);
-            % obj.reCalcListener = event.proplistener(obj, metaprops, 'PostSet', @obj.SetRecalc);
-            obj.reCalcListener = [];
+            metaprops          = findobj([mc.Properties{:}], 'SetObservable', true);
+            obj.reCalcListener = event.proplistener(obj, metaprops, 'PostSet', @obj.SetRecalc);
             obj.Iadded = 0; % Also keep track of whether measurement data has been added
             obj.Uadded = 0;
         end % end constructor

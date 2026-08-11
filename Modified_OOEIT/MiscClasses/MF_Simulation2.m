@@ -84,7 +84,6 @@ Edited: Kyler Howard  1.22.2025
 
     end %end reference measurements
         
-        
     %The actual measurements:
     if strcmp(mode, 'potential')
         [Imeas, Iall] = fsolver.SolveForwardVec(sigma, dirichlet_nodes, dirichlet_vals);%these are the results

@@ -249,6 +249,9 @@ classdef ParForwardMesh1st < handle
                             int = 1/24*GdJt;
                         elseif sgDim == 2
                             int = 1/6*GdJt;
+                        else
+                            int = NaN;
+                            error("Wrong order mesh")
                         end
                         %now int contains integrals of grad(phi_i) dot grad(phi_j)
                         %for i and j in nodes in ind
@@ -313,6 +316,9 @@ classdef ParForwardMesh1st < handle
                             int = 1/24*GdJt;
                         elseif sgDim == 2
                             int = 1/6*GdJt;
+                        else
+                            int = NaN;
+                            error("Wrong order mesh")
                         end
                         %now int contains integrals of grad(phi_i) dot grad(phi_j)
                         %for i and j in nodes in ind

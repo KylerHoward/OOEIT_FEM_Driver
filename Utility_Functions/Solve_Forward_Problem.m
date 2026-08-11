@@ -23,13 +23,9 @@ function [Umeas, Uall] = Solve_Forward_Problem(sigma, mesh_info, frame_info, hea
     %}
 
     % Unpack structures back to local individual variables
-    % nodes        = mesh_info.nodes; 
-    % connectivity = mesh_info.connect;
-    % labels       = mesh_info.labels;
-    % lung_nodes   = mesh_info.lung_nodes;
-    L            = mesh_info.L;
-    K            = mesh_info.K;
-    cur_pat      = mesh_info.cur_pat;
+    L       = mesh_info.L;
+    K       = mesh_info.K;
+    cur_pat = mesh_info.cur_pat;
 
     n_hframes        = frame_info.n_hframes;
     n_bframes        = frame_info.n_bframes ;
@@ -39,11 +35,6 @@ function [Umeas, Uall] = Solve_Forward_Problem(sigma, mesh_info, frame_info, hea
 
     heart_BC_indices = heart_BC.indices;
     heart_BC_vals    = heart_BC.vals;
-
-
-    % if flags.verbose == 1
-    %     fprintf("   Assigning Conductivities\n")
-    % end
 
 % ----------------------------------------------------------------------- %
 %%                                 Solve                                  %
