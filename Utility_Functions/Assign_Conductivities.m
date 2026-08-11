@@ -30,18 +30,24 @@
         hc_eq    = hc_m * flags.heart_curve + hc_empty; % Updated to range from 0.55 - 0.75
         hc_range = 0.05 * ones([1, nframes]);
 
+        hs_full  = 7.34e4; % 0.85 µF/m. Now 0.65
+        hs_empty = 6.21e4; % 0.75 µF/m. Now 0.55
+        hs_m     = (hs_full - hs_empty) / (1-0);
+        hs_eq    = flags.heart_curve*hs_m + hs_empty;
+        hs_range = 0.03 * ones([1, nframes]);
+
         % Lung equations
         lc_full  = 0.0932;
         lc_empty = 0.243;
         lc_m     = (lc_full - lc_empty) / (1-0);
         lc_eq    = lc_m * flags.breath_curve + lc_empty; % Linear range between empty/full
-        lc_range = abs(lc_m * flags.lung_range) * ones([1, nframes]); 
+        lc_range = abs(lc_m * flags.lung_range) * ones([1, nframes]);
 
-        ls_full  = 1.72e4;
-        ls_empty = 3.40e4;
+        ls_full  = 2.03e4; % 0.22 µF/m. Now 0.18
+        ls_empty = 4.52e4; % 0.44 µF/m. Now 0.40
         ls_m     = (ls_full - ls_empty) / (1-0);
-        ls_eq    = ls_m * flags.breath_curve+ ls_empty; % Linear range between empty/full
-        ls_range = abs(ls_m * flags.lung_range) * ones([1, nframes]); 
+        ls_eq    = ls_m * flags.breath_curve + ls_empty; % Linear range between empty/full
+        ls_range = (ls_m * flags.lung_range) * ones([1, nframes]); 
     
         % Dictionary of conductivities (S/m) from TFC. 
         % First value is the mean, second value is the allowable ± range
@@ -57,11 +63,11 @@
         % Dictionary of complex conductivities (S/m). TFC gives multiples of Permittivity of free space
         % First value is the mean, second is the allowable ± range
         suscs.background  = 2*pi*freq*eps0*[0;        0]      * ones([1, nframes]);   % 0.0,  0.0
-        suscs.soft_tissue = 2*pi*freq*eps0*[2.40e4;   3.00e3] * ones([1, nframes]);   % 0.2,  0.0
+        suscs.soft_tissue = 2*pi*freq*eps0*[3.39e4;   5.65e3] * ones([1, nframes]);   % 0.2,  0.0
         suscs.trachea     = 2*pi*freq*eps0*[2.55e4;   2.26e3] * ones([1, nframes]);   % 0.05, 0.05
         suscs.bone        = 2*pi*freq*eps0*[5.20e2;   3.00e1] * ones([1, nframes]);   % 0.05, 0.05
-        suscs.heart       = 2*pi*freq*eps0*[5.25e3;   4.50e4] * ones([1, nframes]);   % 0.4,  0.2
         suscs.esophagus   = 2*pi*freq*eps0*[8.70e3;   3.00e2] * ones([1, nframes]);   % 0,    0
+        suscs.heart       = 2*pi*freq*eps0*[hs_eq;    hs_range];                      % 0.4,  0.2
         suscs.lung        = 2*pi*freq*eps0*[ls_eq;    ls_range];                      % 0.4,  0.4
         suscs.lung_tissue = 2*pi*freq*eps0*[ls_empty; 1.15e4] * ones([1, nframes]);
 
@@ -75,17 +81,23 @@
         hc_eq    = flags.heart_curve*hc_m + hc_empty; % Updated to range from 0.55 - 0.75
         hc_range = 0.05 * ones([1, nframes]);
 
+        hs_full  = 7.34e4; % 0.85 µF/m. Now 0.65
+        hs_empty = 6.21e4; % 0.75 µF/m. Now 0.55
+        hs_m     = (hs_full - hs_empty) / (1-0);
+        hs_eq    = flags.heart_curve*hs_m + hs_empty;
+        hs_range = 0.03 * ones([1, nframes]);
+
         % Lung equations
         lc_full  = 0.0932;
         lc_empty = 0.243;
         lc_m     = (lc_full - lc_empty) / (1-0);
         lc_eq    = flags.breath_curve*lc_m + lc_empty; % Linear range between empty/full
-        lc_range = (lc_m * flags.lung_range) * ones([1, nframes]); 
+        lc_range = (lc_m * flags.lung_range) * ones([1, nframes]);
 
-        ls_full  = 2.70e3;
-        ls_empty = 5.38e3;
+        ls_full  = 2.03e4; % 0.22 µF/m. Now 0.18
+        ls_empty = 4.52e4; % 0.44 µF/m. Now 0.40
         ls_m     = (ls_full - ls_empty) / (1-0);
-        ls_eq    = ls_m * flags.breath_curve+ ls_empty; % Linear range between empty/full
+        ls_eq    = ls_m * flags.breath_curve + ls_empty; % Linear range between empty/full
         ls_range = (ls_m * flags.lung_range) * ones([1, nframes]); 
     
         % Dictionary of conductivity values from TFC. First value is the
@@ -102,11 +114,11 @@
         % Dictionary of complex conductivities (S/m). TFC gives multiples of Permittivity of free space
         % First value is the mean, second is the allowable ± range
         suscs.background  = 2*pi*freq*eps0*[0;        0]      * ones([1, nframes]);   % 0.0,  0.0
-        suscs.soft_tissue = 2*pi*freq*eps0*[8.00e3;   2.00e2] * ones([1, nframes]);   % 0.2,  0.0
+        suscs.soft_tissue = 2*pi*freq*eps0*[3.39e4;   5.65e3] * ones([1, nframes]);   % 0.2,  0.0
         suscs.trachea     = 2*pi*freq*eps0*[2.55e4;   2.26e3] * ones([1, nframes]);   % 0.05, 0.05
         suscs.bone        = 2*pi*freq*eps0*[5.20e2;   3.00e1] * ones([1, nframes]);   % 0.05, 0.05
-        suscs.heart       = 2*pi*freq*eps0*[5.25e3;   4.50e4] * ones([1, nframes]);   % 0.4,  0.2
         suscs.esophagus   = 2*pi*freq*eps0*[8.70e3;   3.00e2] * ones([1, nframes]);   % 0,    0
+        suscs.heart       = 2*pi*freq*eps0*[hs_eq;    hs_range];                      % 0.4,  0.2
         suscs.lung        = 2*pi*freq*eps0*[ls_eq;    ls_range];                      % 0.4,  0.4
         suscs.lung_tissue = 2*pi*freq*eps0*[ls_empty; 1.15e4] * ones([1, nframes]);
     end
