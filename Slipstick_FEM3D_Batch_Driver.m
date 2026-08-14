@@ -26,7 +26,7 @@ total_start_time = tic();
 % ----------------------------------------------------------------------- %
 % User settings
 flags.do_pauses       = 0; % Decide to include pauses to check things or not
-flags.solve_problem   = 1; % Decide if you want to setup (0), or fully solve (1)
+flags.solve_problem   = 0; % Decide if you want to setup (0), or fully solve (1)
 flags.use_GE          = 1; % Decide if you want to use GE (1) or ACT5 (0) current patterns/conductivities
 flags.do_parfor       = 1; % Decide if you want to paralize (1) or not (0)
 flags.inject_current  = 1; % Decide if you want to inject ANY current (1) or only measure voltages (0)
@@ -50,7 +50,7 @@ flags.conditions   = {{0.500, 0, 0, 0, 0, "Reg_Intubate"};...   Regular Baby Ins
                     % {1.500, 1, 0, 0, 0, "Deep_Insp"},...      Deep Inspiration
                       {0.500, 0, 0, 1, 0, "Left_Intubate"};...  Left Bronchus Intubation
                       {0.500, 0, 1, 0, 0, "Right_Intubate"};... Right Bronchus Intubation
-                      {0.000, 1, 0, 0, 1, "Esoph_Intubate"}}; % Esophageal Intubation
+                      {0.000, 0, 0, 0, 1, "Esoph_Intubate"}}; % Esophageal Intubation
     % Permutations are a cell array, where each cell contains its own permutation settings
     % Perumutation is {num_perm, lung_range, esoph_range}
 flags.permutations = {{10, 0.125, 0.000};... Regular Baby Inspiration
@@ -247,7 +247,7 @@ for sbj_i = 1 + sbj_per_node*node_i : sbj_per_node + sbj_per_node*node_i
     
     % RUN THE 3D FEM 
     fprintf("Running %s\n", sbj_name)
-    [nodes, n_bframes] = FEM3D_Function(msh_path, msh_name, sbj_name, sbj_save_path, flags, noise);
+    [~, n_bframes] = FEM3D_Function(msh_path, msh_name, sbj_name, sbj_save_path, flags, noise);
     
     sbj_stop_time = toc(sbj_start_time);
     fprintf("\n   It took %.2f hours to solve the forward problem\n", sbj_stop_time / 3600)
