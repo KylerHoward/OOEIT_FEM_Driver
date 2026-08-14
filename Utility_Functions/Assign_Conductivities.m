@@ -129,8 +129,8 @@
     trachea_cond     = conds.trachea(1,:);       trachea_cond_range     = conds.trachea(2,:);
     bone_cond        = conds.bone(1,:);          bone_cond_range        = conds.bone(2,:);
     heart_cond       = conds.heart(1,:);         heart_cond_range       = conds.heart(2,:);
-    lung_cond        = conds.lung(1,:);          lung_cond_range        = conds.lung(2,:);
-    lung_tissue_cond = conds.lung_tissue(1,:);   lung_tissue_cond_range = conds.lung_tissue(2,:);
+    % lung_cond        = conds.lung(1,:);          lung_cond_range        = conds.lung(2,:);
+    % lung_tissue_cond = conds.lung_tissue(1,:);   lung_tissue_cond_range = conds.lung_tissue(2,:);
 
     % Complex Conductivities (S/m)
     background_susc  = suscs.background(1,:);    background_susc_range  = suscs.background(2,:);
@@ -138,18 +138,35 @@
     trachea_susc     = suscs.trachea(1,:);       trachea_susc_range     = suscs.trachea(2,:);
     bone_susc        = suscs.bone(1,:);          bone_susc_range        = suscs.bone(2,:);
     heart_susc       = suscs.heart(1,:);         heart_susc_range       = suscs.heart(2,:);
-    lung_susc        = suscs.lung(1,:);          lung_susc_range        = suscs.lung(2,:);
-    lung_tissue_susc = suscs.lung_tissue(1,:);   lung_tissue_susc_range = suscs.lung_tissue(2,:);
+    % lung_susc        = suscs.lung(1,:);          lung_susc_range        = suscs.lung(2,:);
+    % lung_tissue_susc = suscs.lung_tissue(1,:);   lung_tissue_susc_range = suscs.lung_tissue(2,:);
+
+    % Mixing of lungs & heart for perfusion
+    beta_L = 0.9; beta_H = 1 - beta_L;
+    lung_cond        = beta_L*conds.lung(1,:)        + beta_H*(-conds.heart(1,:)+1);   lung_cond_range        = conds.lung(2,:);
+    lung_tissue_cond = beta_L*conds.lung_tissue(1,:) + beta_H*(-conds.heart(1,:)+1);   lung_tissue_cond_range = conds.lung_tissue(2,:);
+    lung_susc        = beta_L*suscs.lung(1,:)        + beta_H*(-suscs.heart(1,:)+1);   lung_susc_range        = suscs.lung(2,:);
+    lung_tissue_susc = beta_L*suscs.lung_tissue(1,:) + beta_H*(-suscs.heart(1,:)+1);   lung_tissue_susc_range = suscs.lung_tissue(2,:);
 
     % Real & complex values for if we are doing esophageal intubation
     if flags.esoph_intubate == 1
-        esophagus_cond       = conds.lung(1,:);          esophagus_cond_range = lc_m * flags.esoph_range;
-        esophagus_susc       = suscs.lung(1,:);          esophagus_susc_range = ls_m * flags.esoph_range;
-        lung_cond            = conds.lung_tissue(1,:);   lung_cond_range      = conds.lung_tissue(2,:);
-        lung_susc            = suscs.lung_tissue(1,:);   lung_susc_range      = suscs.lung_tissue(2,:);
+        esophagus_cond = conds.lung(1,:);          esophagus_cond_range = lc_m * flags.esoph_range;
+        esophagus_susc = suscs.lung(1,:);          esophagus_susc_range = ls_m * flags.esoph_range;
+
+        % Reset lung values to the lung tissue
+        lung_cond      = lung_tissue_cond;         lung_cond_range      = conds.lung_tissue(2,:);
+        lung_susc      = lung_tissue_susc;         lung_susc_range      = suscs.lung_tissue(2,:);
+
+        % % Make a linearly increasing amount of air in the lungs
+        % lc_m           = (lc_full - lc_empty) / nframes;
+        % lc_eq          = (0:nframes)*lc_m + lc_empty;
+        % ls_m           = (ls_full - ls_empty) / nframes;
+        % ls_eq          = 2*pi*freq*eps0*((0:nframes)*ls_m + ls_empty);
+        % lung_cond      = lc_eq;                    lung_cond_range      = conds.lung_tissue(2,:);
+        % lung_susc      = ls_eq;                    lung_susc_range      = suscs.lung_tissue(2,:);
     else
-        esophagus_cond       = conds.esophagus(1,:);     esophagus_cond_range = conds.esophagus(2,:);
-        esophagus_susc       = suscs.esophagus(1,:);     esophagus_susc_range = suscs.esophagus(2,:);
+        esophagus_cond = conds.esophagus(1,:);     esophagus_cond_range = conds.esophagus(2,:);
+        esophagus_susc = suscs.esophagus(1,:);     esophagus_susc_range = suscs.esophagus(2,:);
     end
     
     if flags.permute_conds == 1
