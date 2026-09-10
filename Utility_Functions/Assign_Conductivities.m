@@ -34,7 +34,7 @@
         hs_empty = 6.21e4; % 0.75 µF/m. Now 0.55
         hs_m     = (hs_full - hs_empty) / (1-0);
         hs_eq    = flags.heart_curve*hs_m + hs_empty;
-        hs_range = 0.03 * ones([1, nframes]);
+        hs_range = 5.39e4 * ones([1, nframes]); % goal of 0.03 S/m permutation
 
         % Lung equations
         lc_full  = 0.0932;
@@ -85,7 +85,7 @@
         hs_empty = 6.21e4; % 0.75 µF/m. Now 0.55
         hs_m     = (hs_full - hs_empty) / (1-0);
         hs_eq    = flags.heart_curve*hs_m + hs_empty;
-        hs_range = 0.03 * ones([1, nframes]);
+        hs_range = 5.75e3 * ones([1, nframes]); % goal of 0.03 S/m permutation
 
         % Lung equations
         lc_full  = 0.0932;

@@ -76,7 +76,12 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
             % current_pat = load(fullfile("Current_Patterns", "CP32_16x2_M1.mat"), "Cur_pat3D").Cur_pat3D; % Normalized CP
             if flags.use_GE == 1
                 % Current pattern from GE is in uA
-                cur_pat = load(fullfile("Current_Patterns", "clinical_belt_CP.mat"), "CP_belt_16x2").CP_belt_16x2;
+                if size(flags.E_count, 2) == 2
+                    cur_pat = load(fullfile("Current_Patterns", "clinical_belt_CP.mat"), "CP_belt_16x2").CP_belt_16x2;
+                else
+                    fprintf(2, "   WARNING: NO CURRENT FOR %d ROW(S) OF ELECTRODES\n", size(flags.E_count,2))
+                    cur_pat = load(fullfile("Current_Patterns", "clinical_belt_CP.mat"), "CP_belt_16x2").CP_belt_16x2;
+                end
         
                 % Scale the current pattern
                 CP_scale        = load(fullfile("Current_Patterns", "clinical_belt_CP.mat"), "CPscale_belt_16x2").CPscale_belt_16x2;
@@ -87,7 +92,12 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
                 cur_pat = cur_pat * 1e-6;
             else
                 % Current pattern from ACT5 is in Amps
-                cur_pat = load(fullfile("Current_Patterns", "ACT5_CP32_2x16.mat"), "cur_pattern").cur_pattern;
+                if size(flags.E_count, 2) == 2
+                    cur_pat = load(fullfile("Current_Patterns", "ACT5_CP32_2x16.mat"), "cur_pattern").cur_pattern;
+                else
+                    fprintf(2, "   WARNING: NO CURRENT FOR %d ROW(S) OF ELECTRODES\n", size(flags.E_count,2))
+                    cur_pat = load(fullfile("Current_Patterns", "ACT5_CP32_2x16.mat"), "cur_pattern").cur_pattern;
+                end
                 cur_pat = cur_pat(:,1:31);
             end
         end
@@ -97,13 +107,20 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
         elseif flags.E_type == "patch"
             L = flags.E_count(1)*flags.E_count(2) * 2;
         elseif flags.E_type == "belt"
-            L = flags.E_count * 2;
+            L = sum(flags.E_count);
+            if L ~= 32
+                error("%d electrodes is currently not supported\n",L)
+            end
         end
         cur_pat = zeros(L, 1);
     end
     
     L = size(cur_pat, 1); % Number of electrodes
     K = size(cur_pat, 2); % Number of current patterns
+    if L ~= sum(flags.E_count)
+        % Check to make sure the preloaded current pattern and the number of electrodes line up
+        error("%d electrodes is currently not supported\n",L)
+    end
     
     % Load the table
     if contains(sbj_name, "R1")

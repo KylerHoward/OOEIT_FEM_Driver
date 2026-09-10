@@ -92,7 +92,7 @@ function metadata = Make_Metadata(type)
     metadata.descriptions.flags.E_area          = "Area of electrodes.";
     metadata.descriptions.flags.gap_width       = "Gap between electrodes horizontally (edge-edge) (for patch electrodes).";
     metadata.descriptions.flags.gap_height      = "Gap between electrodes vertically (edge-edge) (for patch electrodes).";
-    metadata.descriptions.flags.E_count         = "Number of electrodes per row (for belt), or matrix of how many rows and columns (for patch).";
+    metadata.descriptions.flags.E_count         = "Column vector with number of electrodes per row in each column (for belt), or matrix of how many rows and columns (for patch).";
     metadata.descriptions.flags.equal_space     = "If the electrodes should be equally spaced (1) or start at the armpit and 'rolled' on like GE (0).";
     metadata.descriptions.flags.E_space         = "Edge-to-edge spacing between electrodes in mm for unequal belt spacing.";
     
