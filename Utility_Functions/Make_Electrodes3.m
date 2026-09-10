@@ -1,6 +1,6 @@
-function [E_nodes, perim_mm_high, vert_gap] = Make_Electrodes3(boundary_nodes, all_nodes, body_faces, sbj_info, flags)
+function [E_nodes, perim_mm, vert_gap] = Make_Electrodes3(boundary_nodes, all_nodes, body_faces, sbj_info, flags)
     %{
-    Find the nodes that make up all 32 electrodes, for either a belt or patch configuration
+    Find the nodes that make up all L electrodes, for either a belt or patch configuration
     Updated to compute area of each electrode, and make sure they are the correct sizes
     1/29/25 - Kyler Howard
 
@@ -10,7 +10,7 @@ function [E_nodes, perim_mm_high, vert_gap] = Make_Electrodes3(boundary_nodes, a
     param: sbj_info       - Heights of anatomical markers for electrode placement
     param: flags          - Various flags controlling plotting and other parameters
 
-    return: E_nodes       - 1x32 Cell array containing electrode nodes
+    return: E_nodes       - 1xL Cell array containing electrode nodes
     return: perim_mm_high - The perimeter around the body in mm
     %}
 
@@ -25,8 +25,10 @@ function [E_nodes, perim_mm_high, vert_gap] = Make_Electrodes3(boundary_nodes, a
 % ----------------------------------------------------------------------- %
     % Find the plane in which the center lies
     if E.type == "patch"
-        [front, plane_high] = find_center(boundary_nodes, sbj_info.carina, E, "front");
-        [back,  ~]          = find_center(boundary_nodes, sbj_info.carina, E, "back");
+        nheights            = 1;
+        heights             = sbj_info.carina;
+        [front, E_plane{1}] = find_center(boundary_nodes, heights, E, "front");
+        [back,  ~]          = find_center(boundary_nodes, heights, E, "back");
 
         % KH: 1/14/26 front/back were the center of the second row. 
         % Adjusting so carina is the center of the third row from now on.
@@ -39,78 +41,88 @@ function [E_nodes, perim_mm_high, vert_gap] = Make_Electrodes3(boundary_nodes, a
         end
 
     elseif E.type == "belt"
-        [~, plane_high] = find_center(boundary_nodes, sbj_info.T5, E);
-        [~, plane_low]  = find_center(boundary_nodes, sbj_info.T8, E);
+        nheights = size(E.E_count,2);
+        E_plane = cell(1,nheights);
+        if nheights == 1
+            heights         = mean([sbj_info.T5, sbj_info.T8]);
+            [~, E_plane{1}] = find_center(boundary_nodes,  heights, E);
+        elseif nheights == 2
+            heights         = [sbj_info.T5, sbj_info.T8];
+            [~, E_plane{1}] = find_center(boundary_nodes, heights(1), E);
+            [~, E_plane{2}] = find_center(boundary_nodes, heights(2), E);
+        else
+            error("%d rows of electrodes are unsupported\n", nheights)
+        end
     end
 
 % ----------------------------------------------------------------------- %
 %% ------------------------- Finding Perimeter -------------------------- %
 % ----------------------------------------------------------------------- %
-    center_high = (max(plane_high,[],1) + min(plane_high,[],1)) / 2;
-    if E.type == "belt"
-        center_low = (max(plane_low,[],1) + min(plane_low,[],1)) / 2;
+    if flags.verbose
+        make_param_string = '      Parameterizing the boundary...';
+        fprintf("%s", make_param_string)
     end
+    param_start   = tic;
+    body_center   = cell(1,nheights);
+    bdry_parm_pts = cell(1,nheights);
+    perim_mm      = cell(1,nheights);
+    for i = 1:nheights
+        % Find the center of the body for each electrode height
+        body_center{i} = (max(E_plane{i},[],1) + min(E_plane{i},[],1)) / 2;
 
-    i = 1;
-    n_points      = 2000;
-    boundary_low  = zeros(n_points, 3);
-    boundary_high = zeros(n_points, 3);
-    perim_mm_low  = 0;
-    perim_mm_high = 0;
-    param_terms   = 40;
-    for theta = 0 : (2*pi)/n_points : 2*pi - (2*pi)/n_points 
-        radius_high =  Parameratize_Bdry(plane_high, param_terms, theta);
+        % Parameratize
+        j = 1;
+        n_points         = 2000;
+        param_terms      = 40;
+        bdry_parm_pts{i} = zeros(n_points, 3);
+        perim_mm{i}      = 0;
+        for theta = 0 : (2*pi)/n_points : 2*pi - (2*pi)/n_points 
+            % Find the radius based on Fourier parameterization at set theta
+            radius =  Parameratize_Bdry(E_plane{i}, param_terms, theta);
 
-        boundary_high(i,:) = [center_high(1) + radius_high*cos(theta), center_high(2) + radius_high*sin(theta), center_high(3)];
+            % Calculate parameratized points
+            bdry_parm_pts{i}(j,:) = [body_center{i}(1) + radius*cos(theta), body_center{i}(2) + radius*sin(theta), body_center{i}(3)];
 
-        if i >= 2  
-            dist_high = sqrt((boundary_high(i-1,1) - boundary_high(i,1))^2 + (boundary_high(i-1,2) - boundary_high(i,2))^2);
-            perim_mm_high = perim_mm_high + dist_high;
-        end
-
-        % Repeat for the lower belt
-        if E.type == "belt"
-            radius_low =  Parameratize_Bdry(plane_low, param_terms, theta);
-
-            boundary_low(i,:) = [center_low(1) + radius_low*cos(theta), center_low(2) + radius_low*sin(theta), center_low(3)];
-            
-            if i >= 2  
-                dist_low = sqrt((boundary_low(i-1,1) - boundary_low(i,1))^2 + (boundary_low(i-1,2) - boundary_low(i,2))^2);
-                perim_mm_low = perim_mm_low + dist_low;
+            % If this isn't the first point, calculate the distance traveled between points
+            if j >= 2  
+                dist        = norm(bdry_parm_pts{i}(j-1,:) - bdry_parm_pts{i}(j,:));
+                perim_mm{i} = perim_mm{i}  + dist;
             end
-        end
 
-        i = i + 1;
+            j = j + 1;
+        end
+    end
+    param_stop   = toc(param_start);
+
+    if flags.verbose == 1
+        for ii = 1:length(make_param_string)
+            fprintf("\b")
+        end
+        fprintf("      Parameterized the boundary in %.2f seconds\n", param_stop)
     end
 
+    % Plot the parameterized boundary
     if flags.plot_slices && flags.plot_electrodes
         figure()
-            if flags.E_choice <= 2 || (flags.E_choice == 5 && flags.E_type == "patch")
+        for i = 1:nheights
+            subplot(nheights, 1, i)
                 hold on
-                scatter(plane_high(:,1), plane_high(:,2))
-                plot(boundary_high(:,1),   boundary_high(:,2), 'r', 'linewidth', 1.5)
+                scatter(E_plane{i}(:,1), E_plane{i}(:,2))
+                plot(bdry_parm_pts{i}(:,1),   bdry_parm_pts{i}(:,2), 'r', 'linewidth', 1.5)
                 legend("Exact Points", "Parameratized Boundary", 'location','southoutside')
-                title("Center of Patch")
-            else
-                subplot(2,1,1)
-                    hold on
-                    scatter(plane_high(:,1), plane_high(:,2))
-                    plot(boundary_high(:,1),   boundary_high(:,2), 'r', 'linewidth', 1.5)
-                    legend("Exact Points", "Parameratized Boundary", 'location','southoutside')
-                    title("Top Row")
-                subplot(2,1,2)
-                    hold on
-                    scatter(plane_low(:,1), plane_low(:,2))
-                    plot(boundary_low(:,1),   boundary_low(:,2), 'r', 'linewidth', 1.5)
-                    legend("Exact Points", "Parameratized Boundary", 'location','southoutside')
-                    title("Bottom Row")
-            end
+                title(sprintf("Height %d: %.2f mm", i, heights(i)))
+        end
     end
 
 % ----------------------------------------------------------------------- %
 %% ---------------------- Finding Electrode Nodes ----------------------- %
 % ----------------------------------------------------------------------- %
+    if flags.verbose
+        make_elec_string = '      Making electrodes...';
+        fprintf("%s", make_elec_string)
+    end
     if E.type == "patch"
+        elec_start = tic;
         % Adjust boundary nodes to not include the top/bottom plane. Remove top/bot 0.5 mm
         tube_nodes = boundary_nodes(boundary_nodes(:,3)>0.5 & boundary_nodes(:,3)<max(boundary_nodes(:,3))-0.5, :);
         
@@ -122,7 +134,7 @@ function [E_nodes, perim_mm_high, vert_gap] = Make_Electrodes3(boundary_nodes, a
 
         % Find the corners of the electrodes
         front_nodes = create_patch(middle_front_nodes, front, E, "front", all_nodes, body_faces);
-        back_nodes  = create_patch(middle_back_nodes, back,  E, "back", all_nodes, body_faces);
+        back_nodes  = create_patch(middle_back_nodes,  back,  E, "back",  all_nodes, body_faces);
         E_nodes     = [front_nodes; back_nodes];
 
         % Find vertical gap
@@ -145,28 +157,53 @@ function [E_nodes, perim_mm_high, vert_gap] = Make_Electrodes3(boundary_nodes, a
             vert_gap(ii) = mean([abs(meanTopFront - meanBotFront)/10, abs(meanTopBack - meanBotBack)/10]); % Center-to-center gap in cm
         end
         vert_gap = mean(vert_gap);
+        elec_stop = toc(elec_start);
 
     elseif E.type == "belt"
-        top_nodes = create_belt(boundary_nodes, plane_high, E, all_nodes, body_faces, flags, perim_mm_high);
-        bot_nodes = create_belt(boundary_nodes, plane_low,  E, all_nodes, body_faces, flags, perim_mm_low);
-        E_nodes   = cat(1, bot_nodes,   top_nodes)';
+        elec_start = tic;
+        temp_E_nodes = create_belts(boundary_nodes, E_plane, E, all_nodes, body_faces, flags, perim_mm);
+        % bot_nodes = create_belts(boundary_nodes, plane_low,  E, all_nodes, body_faces, flags, perim_mm_low);
+        % E_nodes   = cat(1, bot_nodes,   top_nodes)';
+        E_nodes = [];
+        for i = 1:nheights
+            E_nodes = cat(1, E_nodes, temp_E_nodes{i});
+        end
+        E_nodes = E_nodes';
 
         % Find vertical gap
-        meanTop = mean(cellfun(@(A) mean(A(:,3)), top_nodes));
-        meanBot = mean(cellfun(@(A) mean(A(:,3)), bot_nodes));
-        vert_gap = abs(meanTop - meanBot)/10; % Center-to-center gap in cm
+        meanZs = zeros(1,nheights);
+        for i = 1:nheights
+            meanZs(i) = mean(cellfun(@(A) mean(A(:,3)), temp_E_nodes{i}));
+        end
+
+        % Find the average of adjacent absolute differences of row heights in cm
+        % Center-to-center gap
+        if nheights == 1
+            vert_gap = meanZs/10;
+        else
+            abs_difs = abs(diff(meanZs));
+            vert_gap = mean(abs_difs)/10;
+        end
+        elec_stop = toc(elec_start);
+    end
+    if flags.verbose
+        for ii = 1:length(make_elec_string)
+            fprintf("\b")
+        end
+        fprintf("      Made electrodes in %.2f seconds\n", elec_stop)
     end
 
     % Reorder electrode placement if using the 4x8 pattern
     if flags.CP_choice == 2 && E.type == "patch"
-        fprintf("   Placing 4x8 Electrode Arrays\n")
+        fprintf("   Placing 4x8 electrode arrays\n")
         % 1/1/26 KH: GE updated the order for the patch array
         % new_ind = [13,14,15,16,32,31,30,29,9,10,11,12,28,27,26,25,5,6,7,8,24,23,22,21,1,2,3,4,20,19,18,17]; % KH 12/5/25 - GE Changed the 4x8 patch configuration
         new_ind = [31,32,16,15,14,13,29,30,27,28,12,11,10,9,25,26,23,24,8,7,6,5,21,22,19,20,4,3,2,1,17,18];
         E_nodes = E_nodes(new_ind);
     end
 
-
+    % Find average perimeter
+    perim_mm = mean(cat(3, perim_mm{:}));
 % ----------------------------------------------------------------------- %
 %% ------------------------------ Plotting ------------------------------ %
 % ----------------------------------------------------------------------- %
@@ -208,8 +245,9 @@ function [E_nodes, perim_mm_high, vert_gap] = Make_Electrodes3(boundary_nodes, a
             ylabel('Y (mm)')
             zlabel('Z (mm)')
             axis equal
-            plot3(boundary_low(:,1),boundary_low(:,2),boundary_low(:,3), 'r')
-            plot3(boundary_high(:,1),boundary_high(:,2),boundary_high(:,3), 'r')
+            for i = 1:nheights
+                plot3(bdry_parm_pts{i}(:,1),bdry_parm_pts{i}(:,2),bdry_parm_pts{i}(:,3), 'r')
+            end
     end
 end
 % ----------------------------------------------------------------------- %
@@ -528,9 +566,9 @@ function E_nodes = create_patch(local_nodes, row_center3, E, FoB, all_nodes, bod
     end
 end
 
-function E_nodes = create_belt(local_nodes, E_plane, E, all_nodes, body_faces, flags, perim_mm)
+function E_nodes = create_belts(local_nodes, E_plane, E, all_nodes, body_faces, flags, perim_mm)
     %{
-    Create a belt of electrodes and find the nodes/connectivity
+    Create belts of electrodes and find the nodes/connectivity
     9/27/24 - Kyler Howard
 
     param: local_nodes - All nodes on to look at for making the electrode
@@ -540,145 +578,148 @@ function E_nodes = create_belt(local_nodes, E_plane, E, all_nodes, body_faces, f
     return: E_nodes   - Coordinates of the electrodes
     %}
 
-    E_nodes   = cell(E.E_count, 1);
-
-    center = (max(E_plane,[],1) + min(E_plane,[],1)) / 2;
-
-    if E.equal_space == 1 
-
-        % KH: Equal Arc Length Electrodes
-        i = 1;
-        j = 1;
-        arc_length = 0;
-        n_points   = 2000;
-        point      = zeros(n_points, 3);
+    nheights = size(E.E_count,2);
+    E_nodes  = cell(1,nheights);
+    for i = 1:size(E.E_count,2)
+        E_nodes{i} = cell(E.E_count(i), 1);
     
-        % Determine the order to place the electrodes
-        if flags.use_GE == 1
-            tht_i = 3*pi/2;
-            d_tht = -(2*pi)/n_points;
-            tht_f = -pi/2;
-        elseif flags.use_GE == 0
-            tht_i = pi;
-            d_tht = 2*pi/n_points;
-            tht_f = 3*pi;
-        end
+        center = (max(E_plane{i},[],1) + min(E_plane{i},[],1)) / 2;
     
-        for theta = tht_i : d_tht : tht_f - d_tht
-            radius =  Parameratize_Bdry(E_plane, 40, theta);
-            point(j,:) = [center(1) + radius*cos(theta), center(2) + radius*sin(theta), center(3)];
-            
-            % Make the first electrode
-            if theta == tht_i
-                c_point    = point(j,:);
-                E_center   = E_plane(dsearchn(E_plane,c_point),:);
-                E_nodes{i} = create_electrode(local_nodes, E_center, E, all_nodes, body_faces);
-                i = i + 1;
+        if E.equal_space == 1 
+    
+            % KH: Equal Arc Length Electrodes
+            ii = 1;
+            jj = 1;
+            arc_length = 0;
+            n_points   = 2000;
+            point      = zeros(n_points, 3);
+        
+            % Determine the order to place the electrodes
+            if flags.use_GE == 1
+                tht_i = 3*pi/2;
+                d_tht = -(2*pi)/n_points;
+                tht_f = -pi/2;
+            elseif flags.use_GE == 0
+                tht_i = pi;
+                d_tht = 2*pi/n_points;
+                tht_f = 3*pi;
             end
-    
-            % Measure the distance between sweeps
-            if j >= 2  
-                dist = sqrt((point(j-1,1) - point(j,1))^2 + (point(j-1,2) - point(j,2))^2);
-                arc_length = arc_length + dist;
-            end
-    
-            % Check if we have moved around enough
-            % goal_arc_length = perim_mm / (E.E_count + 0.5);
-            goal_arc_length = perim_mm / (E.E_count + 0);
-            if arc_length >= goal_arc_length
-                % Reset arc length
-                arc_length = 0;
-    
-                % Find the electrode
-                c_point    = point(j,:);
-                E_center   = E_plane(dsearchn(E_plane,c_point),:);
-                E_nodes{i} = create_electrode(local_nodes, E_center, E, all_nodes, body_faces);
-                i = i + 1;
-    
-                % if i > E.E_count
-                %     break
-                % end
-            end
-    
-            % Update the point index
-            j = j + 1;
-        end
-    
-    else % Unequal spacing for GE
-        % KH: One Quarter at a time effectively
-        i = 1;
-        j = 1;
-        n_points   = 2000;
-        point      = zeros(n_points, 3);
-    
-        % Determine the order to place the electrodes
-        if flags.use_GE == 1
-            tht_is = [pi, pi, 0, 0];
-            d_tht = (2*pi)/n_points;
-            tht_fs = [3*pi/2, pi/2, pi/2, -pi/2];
-
-            thetas = [tht_is(1):d_tht:tht_fs(1)-d_tht, tht_is(2):-d_tht:tht_fs(2)+d_tht, tht_is(3):d_tht:tht_fs(3)-d_tht, tht_is(4):-d_tht:tht_fs(4)+d_tht];
-        elseif flags.use_GE == 0
-            error("Why are you using unequal spacing for ACT 5?")
-        end
-    
-        for theta = thetas
-
-            radius =  Parameratize_Bdry(E_plane, 40, theta);
-            point(j,:) = [center(1) + radius*cos(theta), center(2) + radius*sin(theta), center(3)];
-            
-            if theta == tht_is(ceil(i/4))
-                k = 1;
-                arc_length = 0;
-            else % Measure the distance between sweeps 
-                dist = sqrt((point(j-1,1) - point(j,1))^2 + (point(j-1,2) - point(j,2))^2);
-                arc_length = arc_length + dist;
-            end
-    
-            % Check if we have moved around enough. First electrode for each quadrant has to be shorter distance
-            if mod(i,4) == 1 % First electrode for each quadrant
-                if E.shape == "circle"
-                    goal_arc_length = E.E_space / 2 + E.E_rad;
-                elseif E.shape == "rectangle"
-                    goal_arc_length = E.E_space / 2 + E.E_width / 2;
+        
+            for theta = tht_i : d_tht : tht_f - d_tht
+                radius =  Parameratize_Bdry(E_plane{i}, 40, theta);
+                point(jj,:) = [center(1) + radius*cos(theta), center(2) + radius*sin(theta), center(3)];
+                
+                % Make the first electrode
+                if theta == tht_i
+                    c_point       = point(jj,:);
+                    E_center      = E_plane{i}(dsearchn(E_plane{i},c_point),:);
+                    E_nodes{i}{ii} = create_electrode(local_nodes, E_center, E, all_nodes, body_faces);
+                    ii = ii + 1;
                 end
-            else % Remaning 3 electrodes
-                if E.shape == "circle"
-                    goal_arc_length = E.E_space + E.E_dia;
-                elseif E.shape == "rectangle"
-                    goal_arc_length = E.E_space + E.E_width;
+        
+                % Measure the distance between sweeps
+                if jj >= 2  
+                    dist = norm(point(jj-1,1:2) - point(jj,1:2));
+                    % dist = sqrt((point(j-1,1) - point(j,1))^2 + (point(j-1,2) - point(j,2))^2);
+                    arc_length = arc_length + dist;
                 end
-            end
-
-            if arc_length > goal_arc_length
-                % Reset arc length
-                arc_length = 0;
-    
-                % Find the electrode
-                c_point    = point(j,:);
-                E_center   = E_plane(dsearchn(E_plane,c_point),:);
-                E_nodes{i} = create_electrode(local_nodes, E_center, E, all_nodes, body_faces);
-                i = i + 1;
-                k = k + 1;
-    
-                if i > E.E_count
-                    break
+        
+                % Check if we have moved around enough
+                % goal_arc_length = perim_mm{i} / (E.E_count(i) + 0.5);
+                goal_arc_length = perim_mm{i} / (E.E_count(i) + 0);
+                if arc_length >= goal_arc_length
+                    % Reset arc length
+                    arc_length = 0;
+        
+                    % Find the electrode
+                    c_point       = point(jj,:);
+                    E_center      = E_plane{i}(dsearchn(E_plane{i},c_point),:);
+                    E_nodes{i}{ii} = create_electrode(local_nodes, E_center, E, all_nodes, body_faces);
+                    ii = ii + 1;
+        
+                    % if i > E.E_count(i)
+                    %     break
+                    % end
                 end
+        
+                % Update the point index
+                jj = jj + 1;
             end
-
-            if k == 5 && mod(i,4) == 1
-                arc_length = 0;
+        
+        else % Unequal spacing for GE
+            % KH: One Quarter at a time effectively
+            ii = 1;
+            jj = 1;
+            n_points   = 2000;
+            point      = zeros(n_points, 3);
+        
+            % Determine the order to place the electrodes
+            if flags.use_GE == 1
+                tht_is = [pi, pi, 0, 0];
+                d_tht = (2*pi)/n_points;
+                tht_fs = [3*pi/2, pi/2, pi/2, -pi/2];
+    
+                thetas = [tht_is(1):d_tht:tht_fs(1)-d_tht, tht_is(2):-d_tht:tht_fs(2)+d_tht, tht_is(3):d_tht:tht_fs(3)-d_tht, tht_is(4):-d_tht:tht_fs(4)+d_tht];
+            elseif flags.use_GE == 0
+                error("Why are you using unequal spacing for ACT 5?")
+            end
+        
+            for theta = thetas
+    
+                radius =  Parameratize_Bdry(E_plane{i}, 40, theta);
+                point(jj,:) = [center(1) + radius*cos(theta), center(2) + radius*sin(theta), center(3)];
+                
+                if theta == tht_is(ceil(ii/4))
+                    k = 1;
+                    arc_length = 0;
+                else % Measure the distance between sweeps 
+                    dist = sqrt((point(jj-1,1) - point(jj,1))^2 + (point(jj-1,2) - point(jj,2))^2);
+                    arc_length = arc_length + dist;
+                end
+        
+                % Check if we have moved around enough. First electrode for each quadrant has to be shorter distance
+                if mod(ii,4) == 1 % First electrode for each quadrant
+                    if E.shape == "circle"
+                        goal_arc_length = E.E_space / 2 + E.E_rad;
+                    elseif E.shape == "rectangle"
+                        goal_arc_length = E.E_space / 2 + E.E_width / 2;
+                    end
+                else % Remaning 3 electrodes
+                    if E.shape == "circle"
+                        goal_arc_length = E.E_space + E.E_dia;
+                    elseif E.shape == "rectangle"
+                        goal_arc_length = E.E_space + E.E_width;
+                    end
+                end
+    
+                if arc_length > goal_arc_length
+                    % Reset arc length
+                    arc_length = 0;
+        
+                    % Find the electrode
+                    c_point    = point(jj,:);
+                    E_center   = E_plane{i}(dsearchn(E_plane{i},c_point),:);
+                    E_nodes{i}{ii} = create_electrode(local_nodes, E_center, E, all_nodes, body_faces);
+                    ii = ii + 1;
+                    k = k + 1;
+        
+                    if ii > E.E_count(i)
+                        break
+                    end
+                end
+    
+                if k == 5 && mod(ii,4) == 1
+                    arc_length = 0;
+                end
+        
+                % Update the point index
+                jj = jj + 1;
             end
     
-            % Update the point index
-            j = j + 1;
+            % Reorder the electrodes to be in the right order from the back, instead of going out from each side
+            new_ind = [4:-1:1, 5:8, 12:-1:9, 13:16];
+            E_nodes{i} = E_nodes{i}(new_ind);
         end
-
-        % Reorder the electrodes to be in the right order from the back, instead of going out from each side
-        new_ind = [4:-1:1, 5:8, 12:-1:9, 13:16];
-        E_nodes = E_nodes(new_ind);
     end
-
-
 end
 
