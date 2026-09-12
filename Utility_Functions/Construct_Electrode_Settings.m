@@ -79,7 +79,7 @@ function [E, flags] = Construct_Electrode_Settings(flags)
     belt_100_ACT5.E_count     = [16, 16];              % Electrodes per row
     belt_100_ACT5.gap_width   = NaN;
     belt_100_ACT5.gap_height  = NaN;
-    belt_100_ACT5.equal_space = 0;
+    belt_100_ACT5.equal_space = 1;
 
     % Constructing custom electrode setup
     E_custom.type  = flags.E_type;

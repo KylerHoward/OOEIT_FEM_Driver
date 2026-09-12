@@ -580,7 +580,7 @@ function E_nodes = create_belts(local_nodes, E_plane, E, all_nodes, body_faces, 
 
     nheights = size(E.E_count,2);
     E_nodes  = cell(1,nheights);
-    for i = 1:size(E.E_count,2)
+    for i = 1:nheights
         E_nodes{i} = cell(E.E_count(i), 1);
     
         center = (max(E_plane{i},[],1) + min(E_plane{i},[],1)) / 2;
