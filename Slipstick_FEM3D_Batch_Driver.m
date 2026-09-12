@@ -93,7 +93,8 @@ flags.E_choice        = 3; % Choice of Electrode configuration
     % 2: Small patch front back  (GE Patch)
     % 3: Two rows of large belts (GE Belt)
     % 4: Two rows of small belts (GE Belt)
-    % 5: Custom electrodes
+    % 5: Two rows of Series 100 electrodes (ACT5 Belt)
+    % 6: Custom electrodes
 
 % Custom Electrode Settings
 flags.E_type          = "belt";   % Choice between "patch" and "belt"
