@@ -1,4 +1,4 @@
-function E_connect = Align_Electrode_Faces2(G_nodes, surface_faces, E_nodes)
+function E_connect = Align_Individual_Electrode_Faces(G_nodes, surface_faces, E_nodes)
     %{
     Go through and find all faces on the original mesh that contain the electrode nodes
     10/4/24 - Kyler Howard

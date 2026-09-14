@@ -347,7 +347,7 @@ function E_nodes = create_electrode(local_nodes, coord, E, all_nodes, body_faces
             E_nodes(iii,:) = local_nodes(ind(iii),:);
         end
 
-        E_connect = Align_Electrode_Faces2(all_nodes, body_faces, E_nodes);
+        E_connect = Align_Individual_Electrode_Faces(all_nodes, body_faces, E_nodes);
 
         E_area = 0;
         for j = 1:size(E_connect,1)
