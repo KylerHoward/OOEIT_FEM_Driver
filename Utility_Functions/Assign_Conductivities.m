@@ -10,7 +10,6 @@
 
     return: Sigma - Assigned complex conductivity of each node for the entire mesh at each frame (nNodes x nFrames)
     %}
-    tic
 %% ------------------------------- Setup -------------------------------- %
 
     % Set up Ventilation Lung Complex Conductivity settings. Averaging both frequencies from TFC
@@ -143,10 +142,12 @@
 
     % Mixing of lungs & heart for perfusion
     beta_L = 0.9; beta_H = 1 - beta_L;
-    lung_cond        = beta_L*conds.lung(1,:)        + beta_H*(-conds.heart(1,:)+1);   lung_cond_range        = conds.lung(2,:);
-    lung_tissue_cond = beta_L*conds.lung_tissue(1,:) + beta_H*(-conds.heart(1,:)+1);   lung_tissue_cond_range = conds.lung_tissue(2,:);
-    lung_susc        = beta_L*suscs.lung(1,:)        + beta_H*(-suscs.heart(1,:)+1);   lung_susc_range        = suscs.lung(2,:);
-    lung_tissue_susc = beta_L*suscs.lung_tissue(1,:) + beta_H*(-suscs.heart(1,:)+1);   lung_tissue_susc_range = suscs.lung_tissue(2,:);
+    blood_cond       = -conds.heart(1,:)+1;
+    blood_susc       = -suscs.heart(1,:)+1;
+    lung_cond        = beta_L*conds.lung(1,:)        + beta_H*(blood_cond);   lung_cond_range        = conds.lung(2,:);
+    lung_tissue_cond = beta_L*conds.lung_tissue(1,:) + beta_H*(blood_cond);   lung_tissue_cond_range = conds.lung_tissue(2,:);
+    lung_susc        = beta_L*suscs.lung(1,:)        + beta_H*(blood_susc);   lung_susc_range        = suscs.lung(2,:);
+    lung_tissue_susc = beta_L*suscs.lung_tissue(1,:) + beta_H*(blood_susc);   lung_tissue_susc_range = suscs.lung_tissue(2,:);
 
     % Real & complex values for if we are doing esophageal intubation
     if flags.esoph_intubate == 1
@@ -167,6 +168,19 @@
     else
         esophagus_cond = conds.esophagus(1,:);     esophagus_cond_range = conds.esophagus(2,:);
         esophagus_susc = suscs.esophagus(1,:);     esophagus_susc_range = suscs.esophagus(2,:);
+    end
+
+    if flags.plot_breath 
+        % Find inspiration frame and one frame either side for systole/diastole
+        [~, max_insp] = max(flags.breath_curve);
+        max_bloods = find(flags.heart_curve == max(flags.heart_curve));
+        min_bloods = find(flags.heart_curve == min(flags.heart_curve));
+        max_blood  = max([max_bloods, min_bloods]);
+        min_blood  = min([max_bloods, min_bloods]);
+
+        % Plot full lung and heart statistics
+        frames = [min_blood, max_insp, max_blood]; % Set frames to put a vertical line on
+        Plot_Lung_Heart_Stats(nframes, conds, lung_cond, blood_cond, heart_cond, flags, frames)
     end
     
     if flags.permute_conds == 1
@@ -279,7 +293,12 @@
     % REMEMBER: LABELS ARE [0,8], NOT [1,9]. NEED A COND_VALS(LABEL + 1);
 
 %% ----------------------------- Lung Prep ------------------------------ %
+    split_start   = tic;
     split_correct = false;
+    msg = '      Splitting lungs into left/right...';
+    if flags.verbose == 1
+        fprintf(msg)
+    end
     while split_correct == false
         [clusters, centroids] = kmeans(lung_nodes(:, [1,2]), 2, "Distance","cityblock");
         
@@ -299,12 +318,20 @@
         y_diff = abs(centroids(1,2) - centroids(2,2));
         if x_diff > y_diff
             if flags.verbose == 1
-                fprintf("      Split lungs correctly\n")
+                for b = 1:length(msg)
+                    fprintf("\b")
+                end
+                split_stop = toc(split_start);
+                fprintf("      Split lungs correctly in %.2f seconds\n", split_stop)
             end
             split_correct = true;
         else
             if flags.verbose == 1
-                fprintf("      Split lungs failed\n")
+                for b = 1:length(msg)
+                    fprintf("\b")
+                end
+                msg = '      Split lungs failed. Trying again...';
+                fprintf(msg)
             end
         end
     end
@@ -324,6 +351,11 @@
 
 %% ----------------------------- Assigning ------------------------------ %
 
+    assign_start = tic;
+    msg = sprintf('      Assigning conductivities to %d frames...', nframes);
+    if flags.verbose == 1
+        fprintf(msg)
+    end
     % determine counts for each node
     [~,~,idx] = unique(connectivity);
     counts    = accumarray(idx(:), 1);
@@ -381,6 +413,14 @@
     if flags.const_body == 1
         % Find all nodes that are not background
         sigma(~(real(sigma) == 0 & imag(sigma) == 0)) = cond_vals{4};
+    end
+
+    assign_stop = toc(assign_start);
+    if flags.verbose == 1
+        for b = 1:length(msg)
+            fprintf("\b")
+        end
+        fprintf("      Assigned conductivity values in %.2f seconds\n         Average of %.2f seconds per frame\n", assign_stop, assign_stop/nframes)
     end
 
 %% ----------------------------- Plotting ------------------------------- %
