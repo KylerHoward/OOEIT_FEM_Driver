@@ -1,4 +1,4 @@
-function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, noise)
+function [nodes, n_bframes, flags] = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, noise)
     %{
     Run a 3D FEM simulation on the subject selected with the given settings
     The driver expects the subject to have the origin at the bottom, posterior,

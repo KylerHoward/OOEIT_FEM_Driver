@@ -23,8 +23,8 @@ addpath(fullfile("Utility_Functions"))
 % ----------------------------------------------------------------------- %
 % User settings
 flags.do_pauses       = 0; % Decide to include pauses to check things or not
-flags.solve_problem   = 0; % Decide if you want to setup (0), or fully solve (1)
-flags.use_GE          = 1; % Decide if you want to use GE (1) or ACT5 (0) current patterns/conductivities
+flags.solve_problem   = 1; % Decide if you want to setup (0), or fully solve (1)
+flags.use_GE          = 0; % Decide if you want to use GE (1) or ACT5 (0) current patterns/conductivities
 flags.do_parfor       = 1; % Decide if you want to paralize (1) or not (0)
 flags.inject_current  = 1; % Decide if you want to inject ANY current (1) or only measure voltages (0)
 flags.heart_BCs       = 0; % Decide if you want to include heart BCs (1) or not (0)
@@ -35,8 +35,8 @@ flags.const_zeta      = 1; % Decide if you want a constant contact impedance (1)
 
 % Video settings
 flags.make_video  = 1;              % Decide if you want to make a video (1), or a single frame (0)
-flags.breath_rate = 44;             % Breath rate in breaths per minute / 44 / 20
-flags.heart_rate  = 120;            % heart  rate in beats   per minute / 120 / 98
+flags.breath_rate = 20;             % Breath rate in breaths per minute / 44 / 20
+flags.heart_rate  = 98;            % heart  rate in beats   per minute / 120 / 98
 flags.fps         = 28;             % Frame rate to reconstruct the video with
 % flags.insp_range  = [0.375 0.625]; % Min and max inspiration percentages / [0.375 0.625] / [0.15, 0.85]
 flags.insp_range  = [0.15, 0.85]; % Min and max inspiration percentages
@@ -236,7 +236,7 @@ start_time = tic;
 
 % RUN THE 3D FEM 
 fprintf("Running %s\n", sbj_name)
-[nodes, n_bframes] = FEM3D_Function(msh_path, msh_name, sbj_name, sbj_save_path, flags, noise);
+[nodes, n_bframes, flags] = FEM3D_Function(msh_path, msh_name, sbj_name, sbj_save_path, flags, noise);
 
 stop_time = toc(start_time);
 
