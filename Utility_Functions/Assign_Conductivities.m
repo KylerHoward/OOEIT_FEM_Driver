@@ -141,9 +141,9 @@
     % lung_tissue_susc = suscs.lung_tissue(1,:);   lung_tissue_susc_range = suscs.lung_tissue(2,:);
 
     % Mixing of lungs & heart for perfusion
-    beta_L = 0.9; beta_H = 1 - beta_L;
-    blood_cond       = -conds.heart(1,:)+1;
-    blood_susc       = -suscs.heart(1,:)+1;
+    beta_L = 0.95; beta_H = 1 - beta_L;
+    blood_cond       = -conds.heart(1,:)+2*mean(conds.heart(1,:));
+    blood_susc       = -suscs.heart(1,:)+2*mean(suscs.heart(1,:));
     lung_cond        = beta_L*conds.lung(1,:)        + beta_H*(blood_cond);   lung_cond_range        = conds.lung(2,:);
     lung_tissue_cond = beta_L*conds.lung_tissue(1,:) + beta_H*(blood_cond);   lung_tissue_cond_range = conds.lung_tissue(2,:);
     lung_susc        = beta_L*suscs.lung(1,:)        + beta_H*(blood_susc);   lung_susc_range        = suscs.lung(2,:);
