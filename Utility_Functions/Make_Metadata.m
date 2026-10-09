@@ -82,7 +82,7 @@ function metadata = Make_Metadata(type)
     metadata.descriptions.flags.fixed_range     = "Set GT plots to be a standard range.";
 
     metadata.descriptions.flags.CP_choice       = "Choice of current pattern for patches. 1 is the standard pattern, 2 is a 4x8 pattern for the patch.";
-    metadata.descriptions.flags.E_choice        = "Choice of Electrode configuration. 1 is the large GE patch. 2 is the small GE patch. 3 is the large GE belt. 4 is the small GE belt. 5 is custom.";
+    metadata.descriptions.flags.E_choice        = "Choice of Electrode configuration. 1 is the large GE patch. 2 is the small GE patch. 3 is the large GE belt. 4 is the small GE belt. 5 is ACT5 Series 100 electrode belt. 6 is custom.";
     metadata.descriptions.flags.E_type          = "Choice between 'patch' and 'belt'.";
     metadata.descriptions.flags.E_shape         = "Choice between 'circle' and 'rectangle'.";
     metadata.descriptions.flags.E_dia           = "Diameter of electrode (for circle electrodes).";

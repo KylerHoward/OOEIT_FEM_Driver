@@ -24,6 +24,9 @@ function [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, organ_connects, ca
 % ----------------------------------------------------------------------- %
 %%                            Sit Body Upright                            %
 % ----------------------------------------------------------------------- %
+    if flags.verbose == 1
+        fprintf("   Orienting the body to standard orientation\n")
+    end
     if ~isempty(organ_connects.trachea) % Only possible if there is a trachea to begin with
         % Determine if the body is on its side
         [trachea_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects.trachea);
@@ -33,7 +36,7 @@ function [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, organ_connects, ca
         % KH: 1/8/26. Swapping to a max index not being z instead
         if min_index == 3 || max_index ~= 3
             if flags.verbose == 1
-                fprintf("   Sitting Body Upright\n")
+                fprintf("      Sitting body upright\n")
             end
             theta = pi/2;
             rotationMatrix = [1, 0,           0;...
@@ -55,7 +58,7 @@ function [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, organ_connects, ca
         % Using the percentage of height doesn't work for short subjects
         if abs(max(trachea_nodes(:,3)) - max(body_nodes(:,3))) > 2
             if flags.verbose == 1
-                fprintf("   Rotating Body Rightside Up\n")
+                fprintf("      Rotating body rightside up\n")
             end
             theta = pi;
             rotationMatrix = [cos(theta), 0, -sin(theta);...
@@ -97,7 +100,7 @@ function [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, organ_connects, ca
             end
     
             if flags.verbose == 1
-                fprintf("   Rotating the Chest Forward\n")
+                fprintf("      Rotating the chest forward\n")
             end
             rotationMatrix = [cos(theta), -sin(theta), 0;...
                               sin(theta),  cos(theta), 0;...
@@ -212,7 +215,7 @@ function [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, organ_connects, ca
 % ----------------------------------------------------------------------- %
 
     if flags.verbose == 1
-        fprintf("   Translating to the Origin\n")
+        fprintf("      Translating to the Origin\n")
     end
     [body_nodes, ~] = Get_Tet_Nodes(nodes, organ_connects.soft_tissue);
 

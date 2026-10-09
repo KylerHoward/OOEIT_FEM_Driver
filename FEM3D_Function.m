@@ -1,4 +1,4 @@
-function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, noise)
+function [nodes, n_bframes, flags] = FEM3D_Function(filepath, filename, sbj_name, sbj_save_path, flags, noise)
     %{
     Run a 3D FEM simulation on the subject selected with the given settings
     The driver expects the subject to have the origin at the bottom, posterior,
@@ -35,7 +35,7 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
 %%                                 Setup                                  %
 % ----------------------------------------------------------------------- %
     if flags.verbose == 1
-        fprintf("   Defining Variables\n")
+        fprintf("   Defining variables\n")
     end
 
     % Load the mesh & split the structure
@@ -207,7 +207,7 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
 %%                              Surface Nodes                             %
 % ----------------------------------------------------------------------- %
     if flags.verbose == 1
-        fprintf("   Extracting Surface Faces and Nodes\n")
+        fprintf("   Extracting surface faces and nodes\n")
     end
 
     % Pull the nodes and faces of wanted organs, then split them out of the structure
@@ -221,7 +221,7 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
 %%                             Make Electrodes                            %
 % ----------------------------------------------------------------------- %
     if flags.verbose == 1
-        fprintf("   Making Electrodes\n")
+        fprintf("   Making electrodes\n")
     end
 
     tic
@@ -405,7 +405,7 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
     if flags.solve_problem == 1
         % Create a mesh-object from nodes, connections, and electrode connections (NODES IN METERS)
         if flags.verbose == 1
-            fprintf("   Making Forward Mesh\n")
+            fprintf("   Making forward mesh\n")
         end
         if flags.do_parfor == 1
             fmesh = ParForwardMesh1st(nodes*1e-3, connectivity, E_connect);
@@ -417,7 +417,7 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
         % (utilizing the mesh-object given to it) computes forward problem solutions
         % using the FEM approximation of the complete electrode model (CEM).
         if flags.verbose == 1
-            fprintf("   Initializing FEM Solver\n")
+            fprintf("   Initializing FEM solver\n")
         end
         init_start = tic;
         if flags.do_parfor == 1
@@ -556,7 +556,7 @@ function [nodes, n_bframes] = FEM3D_Function(filepath, filename, sbj_name, sbj_s
 %%                   Assign Conductivities and Plot GTs                   %
 % ----------------------------------------------------------------------- %
             if flags.verbose == 1
-                fprintf("   Assigning Conductivities\n")
+                fprintf("   Assigning conductivities\n")
             end
 
             % Creating the conductivity vector at the nodes (IN SIEMENS PER METER)

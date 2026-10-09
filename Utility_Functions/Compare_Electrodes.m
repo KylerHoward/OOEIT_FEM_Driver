@@ -25,7 +25,7 @@ function Compare_Electrodes(L, nodes, E_connect, flags)
     end
     clear i j
     
-    if flags.E_choice < 3 || (flags.E_choice == 5 && flags.E_type == "patch")
+    if flags.E_choice < 3 || (flags.E_choice == 6 && flags.E_type == "patch")
         if flags.CP_choice == 1
             front = 1:16;
             back  = 17:32;

@@ -23,8 +23,8 @@ addpath(fullfile("Utility_Functions"))
 % ----------------------------------------------------------------------- %
 % User settings
 flags.do_pauses       = 0; % Decide to include pauses to check things or not
-flags.solve_problem   = 0; % Decide if you want to setup (0), or fully solve (1)
-flags.use_GE          = 1; % Decide if you want to use GE (1) or ACT5 (0) current patterns/conductivities
+flags.solve_problem   = 1; % Decide if you want to setup (0), or fully solve (1)
+flags.use_GE          = 0; % Decide if you want to use GE (1) or ACT5 (0) current patterns/conductivities
 flags.do_parfor       = 1; % Decide if you want to paralize (1) or not (0)
 flags.inject_current  = 1; % Decide if you want to inject ANY current (1) or only measure voltages (0)
 flags.heart_BCs       = 0; % Decide if you want to include heart BCs (1) or not (0)
@@ -35,8 +35,8 @@ flags.const_zeta      = 1; % Decide if you want a constant contact impedance (1)
 
 % Video settings
 flags.make_video  = 1;              % Decide if you want to make a video (1), or a single frame (0)
-flags.breath_rate = 44;             % Breath rate in breaths per minute / 44 / 20
-flags.heart_rate  = 120;            % heart  rate in beats   per minute / 120 / 98
+flags.breath_rate = 20;             % Breath rate in breaths per minute / 44 / 20
+flags.heart_rate  = 98;            % heart  rate in beats   per minute / 120 / 98
 flags.fps         = 28;             % Frame rate to reconstruct the video with
 % flags.insp_range  = [0.375 0.625]; % Min and max inspiration percentages / [0.375 0.625] / [0.15, 0.85]
 flags.insp_range  = [0.15, 0.85]; % Min and max inspiration percentages
@@ -93,17 +93,18 @@ flags.E_choice        = 5; % Choice of Electrode configuration
     % 2: Small patch front back  (GE Patch)
     % 3: Two rows of large belts (GE Belt)
     % 4: Two rows of small belts (GE Belt)
-    % 5: Custom electrodes
+    % 5: Two rows of Series 100 electrodes (ACT5 Belt)
+    % 6: Custom electrodes
 
 % Custom Electrode Settings
 flags.E_type          = "belt";   % Choice between "patch" and "belt"
 flags.E_shape         = "circle"; % Choice between "circle" and "rectangle"
-flags.E_dia           = 10;       % Diameter of electrode in mm (for circle) / 22
+flags.E_dia           = 20;       % Diameter of electrode in mm (for circle) / 22
 flags.E_width         = 20;       % Width  of electrode in mm (for rectangle) / 22
 flags.E_height        = 20;       % Height of electrode in mm (for rectangle / 29
 flags.gap_width       = 20;   % Gap between electrodes horizontally in mm (edge-edge) (for patch) %2.5 / 46.675
 flags.gap_height      = 20;   % Gap between electrodes vertically in mm (edge-edge) (for patch) %2.5 / 32.3875
-flags.E_count         = [8, 8, 8, 8];     % Column vector with number of electrodes per row in each column (for belt), or matrix of how many rows and columns (for patch)
+flags.E_count         = [16, 16];     % Column vector with number of electrodes per row in each column (for belt), or matrix of how many rows and columns (for patch)
 flags.equal_space     = 1;        % If the electrodes should be equally spaced (1) or start at the armpit and "rolled" on like GE (0)
 flags.E_space         = 25;        % Edge-to-edge spacing between electrodes in mm for unequal belt spacing
 
@@ -235,7 +236,7 @@ start_time = tic;
 
 % RUN THE 3D FEM 
 fprintf("Running %s\n", sbj_name)
-[nodes, n_bframes] = FEM3D_Function(msh_path, msh_name, sbj_name, sbj_save_path, flags, noise);
+[nodes, n_bframes, flags] = FEM3D_Function(msh_path, msh_name, sbj_name, sbj_save_path, flags, noise);
 
 stop_time = toc(start_time);
 

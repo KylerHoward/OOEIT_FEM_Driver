@@ -53,6 +53,8 @@ function save_suffix = Make_Save_Name(condition_name, i_permutation, zeta, flags
         save_suffix = sprintf("%s-LBelt", save_suffix);
     elseif flags.E_choice == 4
         save_suffix = sprintf("%s-SBelt", save_suffix);
+    elseif flags.E_choice == 5
+        save_suffix = sprintf("%s-Series100Belt", save_suffix);
     else
         % Custom Electrode Settings
         if flags.E_type == "belt"
