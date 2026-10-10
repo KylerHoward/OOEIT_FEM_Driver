@@ -19,6 +19,7 @@ function [E_nodes, E_connect, perim_mm] = Make_Electrodes2(boundary_nodes, sbj_i
 % ----------------------------------------------------------------------- %
 %% ------------------------------- Setup -------------------------------- %
 % ----------------------------------------------------------------------- %
+    error("RUNNING MAKE_ELECTRODES2 SCRIPT!! WHAT THE HECK")
     % 1: Large patch front back
     % 2: Small patch front back
     % 3: Two rows of large belts
