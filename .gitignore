@@ -9,10 +9,6 @@
 # Ignore all files in Clincal Data
 /Clinical_Data
 
-# Ignore mesh creation stuff
-/Mesh_Creation_and_Conversion
-/Mesh_Erosion
-
 # Ignore my Dataset exploration
 /Dataset_Exploration
 
@@ -26,5 +22,15 @@ Run_Times.xlsx
 Conditions.xlsx
 Heart_Perfusion_Testing.xlsx
 
-# Ignore old Cleaver file
+# Ignore old Cleaver files
 FEM3D_Function_Cleaver
+
+# Ignore Clinical Comparisons
+Compare_*.m
+
+# Ignore Random .m Files
+Cleaver_Mesh_Gen.m
+Detect_Respiration_Range.m
+plot_voltages.m
+runtimes.m
+runtimes2.m

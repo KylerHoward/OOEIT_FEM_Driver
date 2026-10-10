@@ -170,7 +170,7 @@
         esophagus_susc = suscs.esophagus(1,:);     esophagus_susc_range = suscs.esophagus(2,:);
     end
 
-    if flags.plot_breath 
+    if flags.plot_breath == 1 && flags.make_video == 1
         % Find inspiration frame and one frame either side for systole/diastole
         [~, max_insp] = max(flags.breath_curve);
         max_bloods = find(flags.heart_curve == max(flags.heart_curve));
@@ -179,7 +179,8 @@
         min_blood  = min([max_bloods, min_bloods]);
 
         % Plot full lung and heart statistics
-        frames = [min_blood, max_insp, max_blood]; % Set frames to put a vertical line on
+        frames = [min_blood, max_insp, max_blood]; % Automatically set frames to put a vertical line on
+        % frames = [20, 30, 42]; % Set specific frames to put a vertical line on
         Plot_Lung_Heart_Stats(nframes, conds, lung_cond, blood_cond, heart_cond, flags, frames)
     end
     

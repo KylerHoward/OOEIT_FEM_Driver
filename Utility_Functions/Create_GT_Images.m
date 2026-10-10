@@ -26,7 +26,7 @@ function sigma_GT = Create_GT_Images(thickness, nodes, E_nodes, sigma, flags)
     else
         E_heights = sort([mean(E_heights(1:16)), mean(E_heights(17:32))], "descend");
     end
-    
+    %%
     % Prep the size of the image
     if flags.E_type == "patch"
         sigma_GT = cell(4,1);

@@ -93,8 +93,12 @@ function [E, flags] = Construct_Electrode_Settings(flags)
         E_custom.equal_space = NaN;
     elseif E_custom.type == "belt"
         E_custom.E_count     = flags.E_count;
-        E_custom.E_space     = flags.E_space;
         E_custom.equal_space = flags.equal_space;
+        if E_custom.equal_space == 1
+            E_custom.E_space = NaN;
+        else
+            E_custom.E_space = flags.E_space;
+        end
 
         E_custom.gap_width  = NaN;
         E_custom.gap_height = NaN;

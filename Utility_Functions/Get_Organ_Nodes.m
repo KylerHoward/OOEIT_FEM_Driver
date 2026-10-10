@@ -37,8 +37,8 @@ function [organ_nodes, organ_faces] = Get_Organ_Nodes(nodes, connectivity, label
     heart_intersect = intersect(sort(organ_faces.body,2),  sort(organ_faces.heart,2),     "rows");
     
     % Find the difference between the organs to only keep body surface faces
-    inner_intersects = vertcat(lung_intersect, trachea_intersect, heart_intersect, esophagus_intersect, bone_intersect);
-    surface_faces    = setdiff(sort(organ_faces.body,2), sort(inner_intersects,2), "rows");
+    inner_intersects    = vertcat(lung_intersect, trachea_intersect, heart_intersect, esophagus_intersect, bone_intersect);
+    organ_faces.surface = setdiff(sort(organ_faces.body,2), sort(inner_intersects,2), "rows");
     
     % Extract desired organ nodes
     if ~isempty(organ_connects.trachea)
@@ -46,8 +46,30 @@ function [organ_nodes, organ_faces] = Get_Organ_Nodes(nodes, connectivity, label
     else
         organ_nodes.trachea = [];
     end
-    [organ_nodes.lung, ~]     = Get_Tet_Nodes(nodes, organ_connects.lung);
-    [organ_nodes.boundary, ~] = Get_Surface_Nodes(nodes, surface_faces);
+    [organ_nodes.lung, ~]       = Get_Tet_Nodes(nodes, organ_connects.lung);
+
+    % Extract all surface nodes
+    [organ_nodes.lung_bdry, ~]  = Get_Surface_Nodes(nodes, lung_intersect);
+    [organ_nodes.heart_bdry, ~] = Get_Surface_Nodes(nodes, heart_intersect);
+    [organ_nodes.boundary, ~]   = Get_Surface_Nodes(nodes, organ_faces.surface);
+    % Account for subjects without a trachea
+    if ~isempty(organ_connects.trachea) 
+        organ_nodes.trach_bdry = Get_Surface_Nodes(nodes, trachea_intersect);
+    else
+        organ_nodes.trach_bdry = [];
+    end
+    % Account for subjects without an esophagus
+    if ~isempty(organ_connects.esophagus) 
+        organ_nodes.esoph_bdry = Get_Surface_Nodes(nodes, esophagus_intersect);
+    else
+        organ_nodes.esoph_bdry = [];
+    end
+    % Account for subjects without bones
+    if ~isempty(organ_connects.bone) 
+        organ_nodes.bone_bdry = Get_Surface_Nodes(nodes, bone_intersect);
+    else
+        organ_nodes.bone_bdry = [];
+    end
     
     if flags.plot_trachea == 1 && ~isempty(organ_connects.trachea)
         figure()
@@ -64,17 +86,13 @@ function [organ_nodes, organ_faces] = Get_Organ_Nodes(nodes, connectivity, label
     end
     
     % Find and save the heart node information
+    [heart_nodes, ~]          = Get_Tet_Nodes(nodes, organ_connects.heart);
+    [heart_surface_nodes, ~]  = Get_Surface_Nodes(nodes, organ_faces.heart);
+    heart_faces               = organ_faces.heart;
+    organ_nodes.heart         = heart_nodes;
+    organ_nodes.heart_surface = heart_surface_nodes;
     if flags.save_heart_mesh == 1
-        [heart_nodes, ~]          = Get_Tet_Nodes(nodes, organ_connects.heart);
-        [heart_surface_nodes, ~]  = Get_Surface_Nodes(nodes, organ_faces.heart);
-        heart_faces               = organ_faces.heart;
-        organ_nodes.heart         = heart_nodes;
-        organ_nodes.heart_surface = heart_surface_nodes;
-    
         heart_name = sprintf("%s_Heart_Mesh.mat", sbj_name);
         save(fullfile("Heart_Meshes", heart_name), "nodes", "connectivity", "labels", "heart_faces", "heart_nodes", "heart_surface_nodes")
-    else
-        organ_nodes.heart         = [];
-        organ_nodes.heart_surface = [];
     end
 end

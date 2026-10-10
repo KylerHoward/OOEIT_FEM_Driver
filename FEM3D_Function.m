@@ -117,7 +117,7 @@ function [nodes, n_bframes, flags] = FEM3D_Function(filepath, filename, sbj_name
     
     L = size(cur_pat, 1); % Number of electrodes
     K = size(cur_pat, 2); % Number of current patterns
-    if L ~= sum(flags.E_count)
+    if strcmp(flags.E_type, "belt") && L ~= sum(flags.E_count)
         % Check to make sure the preloaded current pattern and the number of electrodes line up
         error("%d electrodes is currently not supported\n",L)
     end
@@ -186,7 +186,7 @@ function [nodes, n_bframes, flags] = FEM3D_Function(filepath, filename, sbj_name
             labels(labels==3) = 5;
             labels(labels==2) = 3;
         end
-    end    
+    end
     
 % ----------------------------------------------------------------------- %
 %%                        Rotation and Translation                        %
@@ -429,7 +429,7 @@ function [nodes, n_bframes, flags] = FEM3D_Function(filepath, filename, sbj_name
         if flags.verbose == 1
             fprintf("      It took %.2f seconds to initialize solver\n", init_time)
         end
-                
+        
         % Set solving mode to injecting current and measuring voltages
         % Set the contact impedance - had 2.4 originally in 2D FEM, then 4.8, then 0.05
         % Fine testing with closly matched rect. electrodes:  0.2475 for Subj011
@@ -449,15 +449,22 @@ function [nodes, n_bframes, flags] = FEM3D_Function(filepath, filename, sbj_name
             flags.zeta = zeta*ones(L,1);
         else % Act 5
             if flags.const_zeta == 1
-                zeta = mean([0.023, 0.070, 0.090]);
-                zeta = 0.023;
+                % Constant contact impedance based on Sbj42/R1097, EIT103/R1221, and CSU401/case129952
+                % zeta = mean([0.023, 0.070, 0.090]); % Before 9/16/26
+                zeta = mean([0.022, 0.071, 0.091]); % After 9/16/26
+                % zeta = 0.022;
+                % fprintf(2, "      WARNING: Using a specific subject's contact impedance\n")
                 flags.zeta = zeta*ones(L,1);
             else
-                % Contact impedance per current pattern based on Sbj42/R1097, EIT103/R1221, and CSU401/case129952
-                zeta = [0.027, 0.023, 0.018, 0.017, 0.021, 0.026, 0.025, 0.025, 0.028, 0.027, 0.021, 0.015, 0.021, 0.028, 0.027, 0.028, 0.021, 0.022, 0.023, 0.019, 0.023, 0.024, 0.027, 0.019, 0.021, 0.026, 0.023, 0.019, 0.024, 0.030, 0.024, 0.030;...
-                        0.077, 0.065, 0.059, 0.057, 0.064, 0.064, 0.077, 0.069, 0.070, 0.081, 0.071, 0.064, 0.060, 0.095, 0.073, 0.074, 0.095, 0.064, 0.055, 0.066, 0.065, 0.066, 0.070, 0.060, 0.073, 0.088, 0.090, 0.081, 0.079, 0.095, 0.086, 0.072;...
-                        0.120, 0.075, 0.074, 0.110, 0.080, 0.099, 0.090, 0.086, 0.083, 0.088, 0.120, 0.090, 0.088, 0.090, 0.083, 0.105, 0.102, 0.064, 0.081, 0.055, 0.073, 0.102, 0.096, 0.081, 0.091, 0.120, 0.112, 0.096, 0.094, 0.117, 0.113, 0.092];
-                zeta = [0.027, 0.023, 0.018, 0.017, 0.021, 0.026, 0.025, 0.025, 0.028, 0.027, 0.021, 0.015, 0.021, 0.028, 0.027, 0.028, 0.021, 0.022, 0.023, 0.019, 0.023, 0.024, 0.027, 0.019, 0.021, 0.026, 0.023, 0.019, 0.024, 0.030, 0.024, 0.030];
+                % Contact impedance per electrode based on Sbj42/R1097, EIT103/R1221, and CSU401/case129952
+                % zeta = [0.027, 0.023, 0.018, 0.017, 0.021, 0.026, 0.025, 0.025, 0.028, 0.027, 0.021, 0.015, 0.021, 0.028, 0.027, 0.028, 0.021, 0.022, 0.023, 0.019, 0.023, 0.024, 0.027, 0.019, 0.021, 0.026, 0.023, 0.019, 0.024, 0.030, 0.024, 0.030;...
+                %         0.077, 0.065, 0.059, 0.057, 0.064, 0.064, 0.077, 0.069, 0.070, 0.081, 0.071, 0.064, 0.060, 0.095, 0.073, 0.074, 0.095, 0.064, 0.055, 0.066, 0.065, 0.066, 0.070, 0.060, 0.073, 0.088, 0.090, 0.081, 0.079, 0.095, 0.086, 0.072;...
+                %         0.120, 0.075, 0.074, 0.110, 0.080, 0.099, 0.090, 0.086, 0.083, 0.088, 0.120, 0.090, 0.088, 0.090, 0.083, 0.105, 0.102, 0.064, 0.081, 0.055, 0.073, 0.102, 0.096, 0.081, 0.091, 0.120, 0.112, 0.096, 0.094, 0.117, 0.113, 0.092]; % Before 9/16/26
+                zeta = [0.022, 0.020, 0.018, 0.018, 0.020, 0.024, 0.023, 0.022, 0.022, 0.027, 0.023, 0.015, 0.022, 0.025, 0.025, 0.030, 0.023, 0.021, 0.021, 0.017, 0.019, 0.026, 0.024, 0.022, 0.027, 0.023, 0.023, 0.015, 0.026, 0.030, 0.028, 0.028;...
+                        0.077, 0.064, 0.057, 0.060, 0.064, 0.063, 0.078, 0.056, 0.068, 0.072, 0.071, 0.069, 0.063, 0.096, 0.080, 0.072, 0.096, 0.066, 0.054, 0.063, 0.061, 0.069, 0.072, 0.074, 0.076, 0.090, 0.089, 0.077, 0.079, 0.096, 0.081, 0.070;...
+                        0.121, 0.070, 0.064, 0.097, 0.080, 0.098, 0.091, 0.078, 0.084, 0.088, 0.121, 0.095, 0.091, 0.094, 0.092, 0.115, 0.099, 0.073, 0.085, 0.056, 0.071, 0.102, 0.090, 0.092, 0.090, 0.121, 0.109, 0.091, 0.092, 0.114, 0.109, 0.080];
+                % zeta = [0.022, 0.020, 0.018, 0.018, 0.020, 0.024, 0.023, 0.022, 0.022, 0.027, 0.023, 0.015, 0.022, 0.025, 0.025, 0.030, 0.023, 0.021, 0.021, 0.017, 0.019, 0.026, 0.024, 0.022, 0.027, 0.023, 0.023, 0.015, 0.026, 0.030, 0.028, 0.028];
+                % fprintf(2, "      WARNING: Using a specific subject's contact impedance\n")
                 flags.zeta = mean(zeta,1)';
             end
         end
@@ -472,7 +479,8 @@ function [nodes, n_bframes, flags] = FEM3D_Function(filepath, filename, sbj_name
     % % DELETE ME: TESTING CONTACT IMPEDANCES
     % flags2 = flags;
     % solver2 = solver;
-    % zeta = [0.055:0.001:.120];
+    % zeta = [0.054:0.001:0.121];
+    % fprintf(2, "      WARNING: Actually using demo contact impedances for testing\n")
     % for ii = 1:length(zeta)
     % 
     %     % Create local copies of the flags and the solver
@@ -519,12 +527,12 @@ function [nodes, n_bframes, flags] = FEM3D_Function(filepath, filename, sbj_name
             if flags.make_video == 1
                 % Find how many frames we are simulating
                 sec_per_breath = 1 / (flags.breath_rate/60);
-                n_bframes = ceil(sec_per_breath * flags.fps);
+                n_bframes = ceil(sec_per_breath * flags.fps * flags.num_breaths);
 
                 % Create cosine curve for ventilation
                 cosA = range(flags.insp_range)/2;
-                cosB = 2*pi / n_bframes;
-                cosC = n_bframes / 2; 
+                cosB = 2*pi / (n_bframes / flags.num_breaths);
+                cosC = (n_bframes / flags.num_breaths) / 2; 
                 cosD = mean(flags.insp_range);
 
                 flags.breath_curve = cosA * cos(cosB *((1:n_bframes) - cosC)) + cosD; 
@@ -552,6 +560,7 @@ function [nodes, n_bframes, flags] = FEM3D_Function(filepath, filename, sbj_name
                 flags.breath_curve = flags.max_inspiration;
                 flags.heart_curve  = flags.cardiac_cycle;
             end
+            
 % ----------------------------------------------------------------------- %
 %%                   Assign Conductivities and Plot GTs                   %
 % ----------------------------------------------------------------------- %
@@ -568,8 +577,9 @@ function [nodes, n_bframes, flags] = FEM3D_Function(filepath, filename, sbj_name
             end
             
             % Plot the ground truth images at each row
-            GT_Thickness = 5; %mm
-            sigma_GT = Create_GT_Images(GT_Thickness, nodes, E_nodes, sigma, flags);
+            % GT_Thickness = 5; %mm
+            % sigma_GT = Create_GT_Images(GT_Thickness, nodes, E_nodes, sigma, flags);'
+            sigma_GT = Create_GT_Images_Filled(nodes, organ_faces, organ_nodes, sigma, E_connect, flags);
 
 % ----------------------------------------------------------------------- %
 %%                         Solve Forward Problem                          %
@@ -677,9 +687,9 @@ function [nodes, n_bframes, flags] = FEM3D_Function(filepath, filename, sbj_name
             end % end saving data
         end % end looping over permutations
     end % end looping through conditions
-    end % Zeta testing end
+    % end % Zeta testing end
     
-% end % end function as a whole
+end % end function as a whole
     
 % ----------------------------------------------------------------------- %
 %%                            Custom Functions                            %
