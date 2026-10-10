@@ -49,6 +49,7 @@ function metadata = Make_Metadata(type)
     metadata.descriptions.flags.const_zeta      = "Decide if you want a constant contact impedance (1) or different contact impedance per electrode (0).";
 
     metadata.descriptions.flags.make_video      = "Decide if you want to make a video (1), or a single frame (0).";
+    metadata.descriptions.flags.num_breaths     = "Number of breaths to simulate. Default is 1.";
     metadata.descriptions.flags.breath_rate     = "Breath rate in breaths per minute.";
     metadata.descriptions.flags.heart_rate      = "heart  rate in beats   per minute.";
     metadata.descriptions.flags.fps             = "Frame rate to reconstruct the video with.";
