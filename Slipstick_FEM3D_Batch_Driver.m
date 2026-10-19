@@ -84,6 +84,7 @@ flags.plot_volts      = 0; % Plotting of nodal voltages
 flags.plot_heart      = 0; % Plot heart BCs
 flags.plot_breath     = 0; % Plot the breathing and cardiac curves
 flags.fixed_range     = 1; % Set GT plots to be a standard range
+flags.plot_diff       = 1; % Plot the difference of the ground truths
 
 flags.CP_choice       = 1; % Choice of current pattern for patches
     % 1: Standard pattern

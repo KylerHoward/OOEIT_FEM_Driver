@@ -33,12 +33,24 @@ function [organ_nodes, organ_faces] = Get_Organ_Nodes(nodes, connectivity, label
     end
     
     % Find the intersection of each internal organ and the soft tissue
-    lung_intersect  = intersect(sort(organ_faces.body,2),  sort(organ_faces.lung,2),      "rows");
-    heart_intersect = intersect(sort(organ_faces.body,2),  sort(organ_faces.heart,2),     "rows");
+    if ~isempty(organ_faces.lung)
+        lung_intersect  = intersect(sort(organ_faces.body,2),  sort(organ_faces.lung,2),      "rows");
+    else
+        lung_intersect = [];
+    end
+    if ~isempty(organ_faces.heart)
+        heart_intersect = intersect(sort(organ_faces.body,2),  sort(organ_faces.heart,2),     "rows");
+    else
+        heart_intersect = [];
+    end
     
     % Find the difference between the organs to only keep body surface faces
     inner_intersects    = vertcat(lung_intersect, trachea_intersect, heart_intersect, esophagus_intersect, bone_intersect);
-    organ_faces.surface = setdiff(sort(organ_faces.body,2), sort(inner_intersects,2), "rows");
+    if ~isempty(inner_intersects)
+        organ_faces.surface = setdiff(sort(organ_faces.body,2), sort(inner_intersects,2), "rows");
+    else
+        organ_faces.surface = organ_faces.body;
+    end
     
     % Extract desired organ nodes
     if ~isempty(organ_connects.trachea)
