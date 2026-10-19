@@ -87,29 +87,31 @@ function [nodes, sbj_info] = Rotate_and_Translate_Body(nodes, organ_connects, ca
         heart_diff = (heart_center   - body_center);
         trach_diff = (trachea_center - body_center);
         heart_range = range(heart_nodes);
-        if ~(heart_diff(2) > 0.05*heart_range(2)) || ~(-trach_diff(2) > 0.05*heart_range(2)) % Check if the heart/trachea is on the wrong side
-            % Facing -y (posterior) 
-            if (-heart_diff(2) > 0.05*heart_range(2)) || (trach_diff(2) > 0.05*heart_range(2)) 
-                theta = pi;
-            % Facing x (right)
-            elseif (heart_diff(1) > 0.05*heart_range(1)) || (-trach_diff(1) > 0.05*heart_range(1)) 
-                theta = -pi / 2;
-            % Facing -x (left)
-            elseif (-heart_diff(1) > 0.05*heart_range(1)) || (trach_diff(1) > 0.05*heart_range(1)) 
-                theta = pi / 2;
-            end
-    
-            if flags.verbose == 1
-                fprintf("      Rotating the chest forward\n")
-            end
-            rotationMatrix = [cos(theta), -sin(theta), 0;...
-                              sin(theta),  cos(theta), 0;...
-                              0,           0,          1];
+        if ~isempty(heart_range)
+            if ~(heart_diff(2) > 0.05*heart_range(2)) || ~(-trach_diff(2) > 0.05*heart_range(2)) % Check if the heart/trachea is on the wrong side
+                % Facing -y (posterior) 
+                if (-heart_diff(2) > 0.05*heart_range(2)) || (trach_diff(2) > 0.05*heart_range(2)) 
+                    theta = pi;
+                % Facing x (right)
+                elseif (heart_diff(1) > 0.05*heart_range(1)) || (-trach_diff(1) > 0.05*heart_range(1)) 
+                    theta = -pi / 2;
+                % Facing -x (left)
+                elseif (-heart_diff(1) > 0.05*heart_range(1)) || (trach_diff(1) > 0.05*heart_range(1)) 
+                    theta = pi / 2;
+                end
         
-            % Rotate and shift the body
-            nodes      = nodes*rotationMatrix;
-            nodes(:,1) = nodes(:,1) + abs(min(nodes(:,1)));
-            nodes(:,2) = nodes(:,2) + abs(min(nodes(:,2)));
+                if flags.verbose == 1
+                    fprintf("      Rotating the chest forward\n")
+                end
+                rotationMatrix = [cos(theta), -sin(theta), 0;...
+                                  sin(theta),  cos(theta), 0;...
+                                  0,           0,          1];
+            
+                % Rotate and shift the body
+                nodes      = nodes*rotationMatrix;
+                nodes(:,1) = nodes(:,1) + abs(min(nodes(:,1)));
+                nodes(:,2) = nodes(:,2) + abs(min(nodes(:,2)));
+            end
         end
     end
     

@@ -171,8 +171,8 @@ function [nodes, n_bframes, flags] = FEM3D_Function(filepath, filename, sbj_name
             organ_connects.esophagus = connectivity(labels==4, :);
             organ_connects.heart     = connectivity(labels==5, :);
         elseif length(unique(labels)) == 4
-            organ_connects.heart = connectivity(labels==4, :);
-            organ_connects.esophagus   = [];
+            organ_connects.heart     = connectivity(labels==4, :);
+            organ_connects.esophagus = [];
 
             % Update labels (BACKWARDS) to match assigning conds
             labels(labels==4) = 5;
@@ -185,6 +185,11 @@ function [nodes, n_bframes, flags] = FEM3D_Function(filepath, filename, sbj_name
             % Update labels (BACKWARDS) to match assigning conds
             labels(labels==3) = 5;
             labels(labels==2) = 3;
+        else % UNIFORM MESH CASE
+            organ_connects.soft_tissue = connectivity(labels==2, :);
+            organ_connects.heart       = [];
+            organ_connects.trachea     = [];
+            organ_connects.esophagus   = [];
         end
     end
     
@@ -216,7 +221,7 @@ function [nodes, n_bframes, flags] = FEM3D_Function(filepath, filename, sbj_name
     lung_nodes                 = organ_nodes.lung;
     boundary_nodes             = organ_nodes.boundary;
     body_faces                 = organ_faces.body;
-    
+
 % ----------------------------------------------------------------------- %
 %%                             Make Electrodes                            %
 % ----------------------------------------------------------------------- %
