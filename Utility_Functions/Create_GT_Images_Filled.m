@@ -28,26 +28,44 @@ function sigma_GT = Create_GT_Images_Filled(nodes, organ_faces, organ_nodes, sig
     for row = 1:length(E_heights)
         sigma_GT{row} = PrepOrgans(organ_faces, organ_nodes, nodes, sigma, E_heights(row));
     end
+    
+    % Create the plotted sigma as either absolutes or difference images
+    plot_sigma = sigma_GT;
+    if flags.plot_diff == 1
+        ref_img = cell(length(E_heights), 1);
+        % Make the GT to difference images
+        for row = 1:length(E_heights)
+            ref_img{row} = sigma_GT{row}(:,2);
+    
+            for c = 2:size(sigma_GT{row}, 2)
+                for r = 1:size(sigma_GT{row},1)
+                    if ~isempty(sigma_GT{row}{r,c})
+                        plot_sigma{row}{r,c} = sigma_GT{row}{r,c} - ref_img{row}{r,1};
+                    end
+                end
+            end
+        end
+    end
 
     % % Find electrode heights, and put each of these in Sigma_GT
     % sigma_GT{1} = PrepOrgans(organ_faces, organ_nodes, nodes, sigma, T5);
     % sigma_GT{2} = PrepOrgans(organ_faces, organ_nodes, nodes, sigma, T8);
 
-    % Create the image
+    %% Create the image
     if flags.plot_GTs == 1
         % Shift each row down. 0 shift for top row, and then increase shift
-        shift    = 0;
-        for row = 1:size(sigma_GT, 1)
+        shift   = 0;
+        for row = 1:size(plot_sigma, 1)
             % Apply shift to second column of each boundary
-            for i = 1:size(sigma_GT{row},1)
-                P = sigma_GT{row}{i,1};
+            for i = 1:size(plot_sigma{row},1)
+                P = plot_sigma{row}{i,1};
                 if ~isempty(P)
                     P.Vertices(:,2) = P.Vertices(:,2) - shift;
-                    sigma_GT{row}{i,1}  = P;
+                    plot_sigma{row}{i,1}  = P;
                 end
 
-                if i == size(sigma_GT{row}, 1) && row == 1
-                    bot_max_y = max(sigma_GT{row}{i,1}.Vertices(:,2));
+                if i == size(plot_sigma{row}, 1) && row == 1
+                    bot_max_y = max(plot_sigma{row}{i,1}.Vertices(:,2));
                 end
             end
     
@@ -55,12 +73,23 @@ function sigma_GT = Create_GT_Images_Filled(nodes, organ_faces, organ_nodes, sig
             shift = shift + 4/3*max(bot_max_y);
         end
 
+        %%
         if flags.fixed_range
-            sig_min = 0 + 0*1i;
-            sig_max = 0.8 + 0.8*1i;
+            if flags.plot_diff == 1
+                sig_min = -0.1;
+                sig_max = 0.04;
+            else
+                sig_min = 0 + 0*1i;
+                sig_max = 0.8 + 0.8*1i;
+            end
         else
-            sig_min = min(real(sigma),[],'all') + min(imag(sigma),[],'all')*1i;
-            sig_max = max(real(sigma),[],'all') + max(imag(sigma),[],'all')*1i;
+            allVals = [];
+            for i = 1:numel(plot_sigma)
+                data = plot_sigma{i}(:,2:end);
+                allVals = [allVals, data{~cellfun('isempty',data)}];
+            end
+            sig_min = min(real(allVals),[],'all') + min(imag(allVals),[],'all')*1i;
+            sig_max = max(real(allVals),[],'all') + max(imag(allVals),[],'all')*1i;
         end
 
         %%
@@ -96,16 +125,16 @@ function sigma_GT = Create_GT_Images_Filled(nodes, organ_faces, organ_nodes, sig
         end
 
         % Plot 1
-        plts1 = cell([size(sigma_GT,1), size(sigma_GT{1},1)]);
-        for row = 1:size(sigma_GT, 1)
-            for o = size(sigma_GT{row},1):-1:1
-                Poly         = sigma_GT{row}{o,1};
+        plts1 = cell([size(plot_sigma,1), size(plot_sigma{1},1)]);
+        for row = 1:size(plot_sigma, 1)
+            for o = size(plot_sigma{row},1):-1:1
+                Poly         = plot_sigma{row}{o,1};
                 if ~isempty(Poly) && ~isempty(Poly.Vertices)
-                    if o == size(sigma_GT{row}, 1)
-                        Poly = RemoveInsides(sigma_GT{row}, Poly, o);
+                    if o == size(plot_sigma{row}, 1)
+                        Poly = RemoveInsides(plot_sigma{row}, Poly, o);
                     end
 
-                    color         = FindColor(cmap, sigma_GT, 1, o, frame, sig_min, sig_max);
+                    color         = FindColor(cmap, plot_sigma, 1, o, frame, sig_min, sig_max);
                     plts1{row, o} = plot(ax1, Poly, 'FaceColor', real(color), 'EdgeColor', 'none','FaceAlpha',1);
                 end
             end
@@ -119,17 +148,17 @@ function sigma_GT = Create_GT_Images_Filled(nodes, organ_faces, organ_nodes, sig
         colormap(ax1, "jet")
 
         % Plot 2 (if complex)
-        plts2 = cell([size(sigma_GT,1), size(sigma_GT{1},1)]);
+        plts2 = cell([size(plot_sigma,1), size(plot_sigma{1},1)]);
         if flags.set_complex
-            for row = 1:size(sigma_GT, 1)
-                for o = size(sigma_GT{row},1):-1:1
-                    Poly         = sigma_GT{row}{o,1};
+            for row = 1:size(plot_sigma, 1)
+                for o = size(plot_sigma{row},1):-1:1
+                    Poly         = plot_sigma{row}{o,1};
                     if ~isempty(Poly) && ~isempty(Poly.Vertices)
-                        if o == size(sigma_GT{row}, 1)
-                            Poly = RemoveInsides(sigma_GT{row}, Poly, o);
+                        if o == size(plot_sigma{row}, 1)
+                            Poly = RemoveInsides(plot_sigma{row}, Poly, o);
                         end
 
-                        color         = FindColor(cmap, sigma_GT, 1, o, frame, sig_min, sig_max);
+                        color         = FindColor(cmap, plot_sigma, 1, o, frame, sig_min, sig_max);
                         plts2{row, o} = plot(ax2, Poly, 'FaceColor', imag(color), 'EdgeColor', 'none','FaceAlpha',1);
                     end
                 end
@@ -158,7 +187,7 @@ function sigma_GT = Create_GT_Images_Filled(nodes, organ_faces, organ_nodes, sig
                  "Value",1, ...
                  "MajorTicks",1:size(sigma,2), ...
                  "MinorTicks",[],...
-                 "ValueChangedFcn",@(src,evt) updateFrame(ax1, ax2, plts1, plts2, src.Value, sigma_GT, sig_min, sig_max, flags));
+                 "ValueChangedFcn",@(src,evt) updateFrame(ax1, ax2, plts1, plts2, src.Value, plot_sigma, sig_min, sig_max, flags));
     end
 
 end
@@ -198,7 +227,12 @@ function color = FindColor(cmap, sigma_GT, row, o, frame, sig_min, sig_max)
     % Normalize desired color value and range to 0-1
     c = real(sigma_GT{row}{o, frame+1} - sig_min)/real(sig_max - sig_min) + ...
         imag(sigma_GT{row}{o, frame+1} - sig_min)/imag(sig_max - sig_min)*1i;
-    c = max(0,min(1+1i,c));
+    if isnan(imag(c))
+        c = max(0,min(1,real(c)));
+    else
+        % c = max(0,min(1+1i,c));
+        c = max(0,min(1,real(c))) + max(0,min(1,imag(c)))*1i;
+    end
     
     % Find the row in the colormap that corresponds to this
     c_i   = round(1 + c*(size(cmap,1)-1));
