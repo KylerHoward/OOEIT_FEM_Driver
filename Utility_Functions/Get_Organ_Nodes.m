@@ -1,4 +1,4 @@
-function [organ_nodes, organ_faces] = Get_Organ_Nodes(nodes, connectivity, labels, organ_connects, flags)
+function [organ_nodes, organ_faces] = Get_Organ_Nodes(nodes, connectivity, labels, organ_connects, flags, sbj_info)
 
     % Find the surface shells of each organ
     organ_faces.body  = Get_Unique_Faces(organ_connects.soft_tissue);
@@ -61,24 +61,24 @@ function [organ_nodes, organ_faces] = Get_Organ_Nodes(nodes, connectivity, label
     [organ_nodes.lung, ~]       = Get_Tet_Nodes(nodes, organ_connects.lung);
 
     % Extract all surface nodes
-    [organ_nodes.lung_bdry, ~]  = Get_Surface_Nodes(nodes, lung_intersect);
-    [organ_nodes.heart_bdry, ~] = Get_Surface_Nodes(nodes, heart_intersect);
-    [organ_nodes.boundary, ~]   = Get_Surface_Nodes(nodes, organ_faces.surface);
+    [organ_nodes.lung_bdry, ~]  = Get_Tet_Nodes(nodes, lung_intersect);
+    [organ_nodes.heart_bdry, ~] = Get_Tet_Nodes(nodes, heart_intersect);
+    [organ_nodes.boundary, ~]   = Get_Tet_Nodes(nodes, organ_faces.surface);
     % Account for subjects without a trachea
     if ~isempty(organ_connects.trachea) 
-        organ_nodes.trach_bdry = Get_Surface_Nodes(nodes, trachea_intersect);
+        organ_nodes.trach_bdry = Get_Tet_Nodes(nodes, trachea_intersect);
     else
         organ_nodes.trach_bdry = [];
     end
     % Account for subjects without an esophagus
     if ~isempty(organ_connects.esophagus) 
-        organ_nodes.esoph_bdry = Get_Surface_Nodes(nodes, esophagus_intersect);
+        organ_nodes.esoph_bdry = Get_Tet_Nodes(nodes, esophagus_intersect);
     else
         organ_nodes.esoph_bdry = [];
     end
     % Account for subjects without bones
     if ~isempty(organ_connects.bone) 
-        organ_nodes.bone_bdry = Get_Surface_Nodes(nodes, bone_intersect);
+        organ_nodes.bone_bdry = Get_Tet_Nodes(nodes, bone_intersect);
     else
         organ_nodes.bone_bdry = [];
     end
@@ -99,7 +99,7 @@ function [organ_nodes, organ_faces] = Get_Organ_Nodes(nodes, connectivity, label
     
     % Find and save the heart node information
     [heart_nodes, ~]          = Get_Tet_Nodes(nodes, organ_connects.heart);
-    [heart_surface_nodes, ~]  = Get_Surface_Nodes(nodes, organ_faces.heart);
+    [heart_surface_nodes, ~]  = Get_Tet_Nodes(nodes, organ_faces.heart);
     heart_faces               = organ_faces.heart;
     organ_nodes.heart         = heart_nodes;
     organ_nodes.heart_surface = heart_surface_nodes;

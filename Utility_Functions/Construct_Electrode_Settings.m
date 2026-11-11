@@ -64,10 +64,8 @@ function [E, flags] = Construct_Electrode_Settings(flags)
     S_belt_GE.gap_width   = NaN;
     S_belt_GE.gap_height  = NaN;
     S_belt_GE.equal_space = 1;
-
-
     
-    % Constructing small GE belt
+    % Constructing ACT5 "normal" belt
     belt_100_ACT5.type        = "belt";
     belt_100_ACT5.shape       = "circle";
     belt_100_ACT5.E_space     = NaN;                     % mm (ACT5 electrodes are placed individually)
