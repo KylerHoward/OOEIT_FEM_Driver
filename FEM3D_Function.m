@@ -120,6 +120,9 @@ function [nodes, n_bframes, flags] = FEM3D_Function(filepath, filename, sbj_name
     if strcmp(flags.E_type, "belt") && L ~= sum(flags.E_count)
         % Check to make sure the preloaded current pattern and the number of electrodes line up
         error("%d electrodes is currently not supported\n",L)
+    elseif strcmp(flags.E_type, "patch") && L ~= 2*prod(flags.E_count)
+        % Check to make sure the preloaded current pattern and the number of electrodes line up
+        error("%d electrodes is currently not supported\n",L)
     end
     
     % Load the table
