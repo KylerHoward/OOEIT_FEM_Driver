@@ -32,55 +32,55 @@ flags.save_heart_mesh = 0; % Decide if you want to generate and save a heart mes
 flags.do_beeps        = 1; % Decide if you want the code to beep after each simulation (1) or not (0)
 flags.verbose         = 1; % Decide if you want to print status updates along the way (1) or not (0)
 flags.const_zeta      = 0; % Decide if you want a constant contact impedance (1) or different contact impedance per electrode (0)
+flags.save_Uall       = 0; % Decide if you want to save Uall (1) or not (0) to save storage space
 
 % Video settings
-flags.make_video  = 0;              % Decide if you want to make a video (1), or a single frame (0)
+flags.make_video  = 1;              % Decide if you want to make a video (1), or a single frame (0)
 flags.num_breaths = 1;              % Number of breaths to simulate. Default is 1
-flags.breath_rate = 44;             % Breath rate in breaths per minute / 44 / 20
-flags.heart_rate  = 120;            % heart  rate in beats   per minute / 120 / 98
+flags.breath_rate = 20;             % Breath rate in breaths per minute / 44 / 20
+flags.heart_rate  = 98;            % heart  rate in beats   per minute / 120 / 98
 flags.fps         = 28;             % Frame rate to reconstruct the video with
 % flags.insp_range  = [0, 1.5]; % Min and max inspiration percentages      - Deep breathing adult
-% flags.insp_range  = [0.15, 0.85]; % Min and max inspiration percentages  - Adult
+flags.insp_range  = [0.15, 0.85]; % Min and max inspiration percentages  - Adult
 % flags.insp_range  = [0.25, 0.75]; % Min and max inspiration percentages  - Kid
-flags.insp_range  = [0.375 0.625]; % Min and max inspiration percentages - Baby
+% flags.insp_range  = [0.375 0.625]; % Min and max inspiration percentages - Baby
 
 % Condition & permutation settings
+flags.do_conditions = 0; % Decide if you want to run multiple conditions (1), or just the programed condition below (0)
     % Conditions are a cell array, where each cell contains its own condition
     % Condition is {max_inspiration, equal_vent, left_only, right_only, esoph_intubate, condition_name}
-flags.conditions   = {{0.500, 0, 0, 0, 0, "Reg_Intubate"};...   Regular Baby Inspiration
-                    % {1.500, 1, 0, 0, 0, "Deep_Insp"},...      Deep Inspiration
-                      {0.500, 0, 0, 1, 0, "Left_Intubate"};...  Left Bronchus Intubation
-                      {0.500, 0, 1, 0, 0, "Right_Intubate"};... Right Bronchus Intubation
-                      {0.000, 0, 0, 0, 1, "Esoph_Intubate"}}; % Esophageal Intubation
+flags.conditions    = {{0.500, 0, 0, 0, 0, "Reg_Intubate"};...   Regular Baby Inspiration
+                     % {1.500, 1, 0, 0, 0, "Deep_Insp"},...      Deep Inspiration
+                       {0.500, 0, 0, 1, 0, "Left_Intubate"};...  Left Bronchus Intubation
+                       {0.500, 0, 1, 0, 0, "Right_Intubate"};... Right Bronchus Intubation
+                       {0.000, 0, 0, 0, 1, "Esoph_Intubate"}}; % Esophageal Intubation
     % Permutations are a cell array, where each cell contains its own permutation settings
     % Perumutation is {num_perm, lung_range, esoph_range}
-flags.permutations = {{1, 0.125, 0.000};... Regular Baby Inspiration
+flags.permutations = {{10, 0.125, 0.000};... Regular Baby Inspiration
                     % {2,  0.100, 0.000};... Deep Inspiration
                       {5,  0.125, 0.000};... Left Bronchus Intubation
                       {5,  0.125, 0.000};... Right Bronchus Intubation
                       {5,  0.000, 0.125}}; % Esophageal Intubation
 
 % Conductivity Settings
-flags.set_complex       = 0; % Choice of complex (1) or real (0) conductivities
-flags.const_body        = 0; % Decide if you want a solid/constant body (1) or not (0)
-flags.do_conditions     = 1; % Decide if you want to run multiple conditions (1), or just the programed condition below (0)
-    flags.max_inspiration   = 0.15; % Decide if the lungs should be at inspiration (1), expiration (0), or somewhere in-between. Also controls esoph in esoph_intubate.
-    flags.cardiac_cycle     = 1;   % Decide if the heart should be at diastole (1), systole (0), or somewhere in-between
-    flags.lung_range        = 0.125; % Decide what percentage of inspiration range you are okay with. Default is 0.25/25%
-    flags.esoph_range       = 0.125; % Decide what percentage of inspiration range for the lungs for esoph intubation
-    flags.equal_vent        = 0; % Decide if you want equal ventilation in each lung (1) or split (0)
-    flags.left_only         = 0; % Decide if you want only ventilation on the left side (1) or not (0)
-    flags.right_only        = 0; % Decide if you want only ventilation on the right side (1) or not (0)
-    flags.esoph_intubate    = 0; % Decide if the esophagus is intubated (1) or not (0)
-flags.permute_conds     = 1; % Decide if you want random conds (1) or not (0)
+flags.set_complex     = 0; % Choice of complex (1) or real (0) conductivities
+flags.const_body      = 0; % Decide if you want a solid/constant body (1) or not (0)
+flags.permute_conds   = 0; % Decide if you want random conds (1) or not (0)
+% Following settings only apply if flags.do_conditions is 0
+flags.max_inspiration = 0.15; % Decide if the lungs should be at inspiration (1), expiration (0), or somewhere in-between. Also controls esoph in esoph_intubate.
+flags.cardiac_cycle   = 1;   % Decide if the heart should be at diastole (1), systole (0), or somewhere in-between
+flags.lung_range      = 0.125; % Decide what percentage of inspiration range you are okay with. Default is 0.25/25%
+flags.esoph_range     = 0.125; % Decide what percentage of inspiration range for the lungs for esoph intubation
+flags.equal_vent      = 0; % Decide if you want equal ventilation in each lung (1) or split (0)
+flags.left_only       = 0; % Decide if you want only ventilation on the left side (1) or not (0)
+flags.right_only      = 0; % Decide if you want only ventilation on the right side (1) or not (0)
+flags.esoph_intubate  = 0; % Decide if the esophagus is intubated (1) or not (0)
 
 % Plot settings
-flags.plot_slices     = 0; % Plot individual slices when going slice by slice
 flags.plot_trachea    = 0; % Plotting of carina height & trachea orientation
 flags.plot_electrodes = 1; % Plotting of electrode consturction
 flags.plot_conds      = 0; % Plotting of conductivities
 flags.plot_GTs        = 1; % Plot ground truth images
-flags.plot_internal   = 0; % Plotting of internal nodes
 flags.plot_volts      = 1; % Plotting of nodal voltages
 flags.plot_heart      = 1; % Plot heart BCs
 flags.plot_breath     = 1; % Plot the breathing and cardiac curves
@@ -101,7 +101,7 @@ flags.E_choice        = 5; % Choice of Electrode configuration
 % Custom Electrode Settings
 flags.E_type          = "belt";   % Choice between "patch" and "belt"
 flags.E_shape         = "circle"; % Choice between "circle" and "rectangle"
-flags.E_dia           = 22;       % Diameter of electrode in mm (for circle) / 22
+flags.E_dia           = 10;       % Diameter of electrode in mm (for circle) / 22
 flags.E_width         = 20;       % Width  of electrode in mm (for rectangle) / 22
 flags.E_height        = 17;       % Height of electrode in mm (for rectangle / 29
 flags.gap_width       = 20;   % Gap between electrodes horizontally in mm (edge-edge) (for patch) %2.5 / 46.675

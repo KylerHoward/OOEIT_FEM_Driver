@@ -35,6 +35,7 @@ flags.save_heart_mesh = 0; % Decide if you want to generate and save a heart mes
 flags.do_beeps        = 0; % Decide if you want the code to beep after each simulation (1) or not (0)
 flags.verbose         = 0; % Decide if you want to print status updates along the way (1) or not (0)
 flags.const_zeta      = 0; % Decide if you want a constant contact impedance (1) or different contact impedance per electrode (0)
+flags.save_Uall       = 1; % Decide if you want to save Uall (1) or not (0) to save storage space
 
 % Video settings
 flags.make_video  = 1;              % Decide if you want to make a video (1), or a single frame (0)
@@ -74,17 +75,15 @@ flags.do_conditions     = 1; % Decide if you want to run multiple conditions (1)
 flags.permute_conds     = 1; % Decide if you want random conds (1) or not (0)
 
 % Plot settings
-flags.plot_slices     = 0; % Plot individual slices when going slice by slice
 flags.plot_trachea    = 0; % Plotting of carina height & trachea orientation
 flags.plot_electrodes = 0; % Plotting of electrode consturction
 flags.plot_conds      = 0; % Plotting of conductivities
 flags.plot_GTs        = 0; % Plot ground truth images
-flags.plot_internal   = 0; % Plotting of internal nodes
 flags.plot_volts      = 0; % Plotting of nodal voltages
 flags.plot_heart      = 0; % Plot heart BCs
 flags.plot_breath     = 0; % Plot the breathing and cardiac curves
 flags.fixed_range     = 1; % Set GT plots to be a standard range
-flags.plot_diff       = 1; % Plot the difference of the ground truths
+flags.plot_diff       = 0; % Plot the difference of the ground truths
 
 flags.CP_choice       = 1; % Choice of current pattern for patches
     % 1: Standard pattern
