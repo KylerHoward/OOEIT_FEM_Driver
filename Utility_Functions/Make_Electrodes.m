@@ -29,17 +29,6 @@ function [E_nodes, perim_mm, vert_gap] = Make_Electrodes(boundary_nodes, all_nod
         heights             = sbj_info.carina;
         [front, E_plane{1}] = Find_Center(boundary_nodes, heights, E, "front");
         [back,  ~]          = Find_Center(boundary_nodes, heights, E, "back");
-
-        % KH: 1/14/26 front/back were the center of the second row. 
-        % Adjusting so carina is the center of the third row from now on.
-        if E.shape == "circle"
-            front(3) = front(3) - E.E_dia - E.gap_height;
-            back(3)  = back(3)  - E.E_dia - E.gap_height;
-        elseif E.shape == "rectangle"
-            front(3) = front(3) - E.E_height - E.gap_height;
-            back(3)  = back(3)  - E.E_height - E.gap_height;
-        end
-
     elseif E.type == "belt"
         nheights = size(E.E_count,2);
         E_plane = cell(1,nheights);
@@ -116,8 +105,13 @@ function [E_nodes, perim_mm, vert_gap] = Make_Electrodes(boundary_nodes, all_nod
         % Only look at the nodes near the patch. Don't waste time looking at nodes near the armpits
         front_tube_nodes   = tube_nodes(tube_nodes(:,2) > mean(tube_nodes(:,2)),:);
         back_tube_nodes    = tube_nodes(tube_nodes(:,2) < mean(tube_nodes(:,2)),:);
-        middle_front_nodes = front_tube_nodes(front_tube_nodes(:,1) > mean(front_tube_nodes(:,1)) - 3*E.E_width - 2*E.gap_width & front_tube_nodes(:,1) < mean(front_tube_nodes(:,1)) + 3*E.E_width + 2*E.gap_width,:);
-        middle_back_nodes  = back_tube_nodes(back_tube_nodes(:,1) > mean(back_tube_nodes(:,1)) - 3*E.E_width - 2*E.gap_width & back_tube_nodes(:,1) < mean(back_tube_nodes(:,1)) + 3*E.E_width + 2*E.gap_width,:);
+        if mod(E.E_count(2), 2) == 0
+            gap = (E.E_count(2)/2 + 1)*E.E_width + (E.E_count(2)/2)*E.gap_width;
+        else
+            gap = ceil(E.E_count(2)/2)*E.E_width + ceil(E.E_count(2)/2)*E.gap_width;
+        end
+        middle_front_nodes = front_tube_nodes(front_tube_nodes(:,1) > mean(front_tube_nodes(:,1)) - gap & front_tube_nodes(:,1) < mean(front_tube_nodes(:,1)) + gap,:);
+        middle_back_nodes  = back_tube_nodes(back_tube_nodes(:,1) > mean(back_tube_nodes(:,1)) - gap & back_tube_nodes(:,1) < mean(back_tube_nodes(:,1)) + gap,:);
 
         % Find the corners of the electrodes
         front_nodes = create_patch(middle_front_nodes, front, E, "front", all_nodes, body_faces);
@@ -317,7 +311,7 @@ function E_nodes = create_electrode(local_nodes, coord, E, all_nodes, body_faces
     end
 end
 
-function E_nodes = create_rows(local_nodes, coord, E, all_nodes, body_faces)
+function E_nodes = create_rows(local_nodes, mid_col_center, E, all_nodes, body_faces)
     %{
     Create an row of electrodes and find the nodes/connectivity
     Electrode 1 is the largest x value, and electrode 4 is the smallest x value
@@ -332,75 +326,73 @@ function E_nodes = create_rows(local_nodes, coord, E, all_nodes, body_faces)
 
     E_nodes   = cell(E.E_count(2),1);
 
-    % Move in the +x direction to the center of the second electrode
+    % Find the "middle" column that we should be appying electrodes onto. This is either 
+    % the true middle for odd number of columns or the right of the two center columns.
+    middle_col = floor(mean(1:E.E_count(2)));
+    if mod(E.E_count(2), 2) == 0
+        if isnan(E.E_width)
+            mid_col_center(:,1) = mid_col_center(:,1) + E.E_rad + E.gap_width/2;
+        elseif isnan(E.E_rad)
+            mid_col_center(:,1) = mid_col_center(:,1) + E.E_width/2 + E.gap_width/2;
+        end
+    end
+
+    % Set up the distance between rows
     if isnan(E.E_width)
-        coord = coord + [E.E_rad + E.gap_width/2,    0,  0];
+        dist = E.E_rad + E.E_width;
     elseif isnan(E.E_rad)
-        coord = coord + [E.E_width/2 + E.gap_width/2, 0, 0];
+        dist = E.E_width/2 + E.E_width;
     end
 
-    % Find the second electrode
-    E_nodes{2} = create_electrode(local_nodes, coord, E, all_nodes, body_faces);
+    % Find the middle electrode
+    E_nodes{middle_col} = create_electrode(local_nodes, mid_col_center, E, all_nodes, body_faces);
 
-    % Set up the distance between electrodes
-    if isnan(E.E_width)
-        dist = E.E_rad + E.gap_width;
-        % dist = E.E_rad + 5/3*E.gap_width;
-    elseif isnan(E.E_rad)
-        % dist = E.E_width/2 + E.gap_width;
-        dist = E.E_width/2 + 5/3*E.gap_width;
-    end    
-
-    % Find the first electrode
-    max_vals   = max(E_nodes{2});
-    coord(1)   = max_vals(1) + dist;
-    E_nodes{1} = create_electrode(local_nodes, coord, E, all_nodes, body_faces);
-
-    % Determine if electrodes 1 and 2 are touching each other side-to-side
-    search_dist = 0;
-    while ~isempty(intersect(E_nodes{2}, E_nodes{1}, "rows"))
-        search_dist = search_dist + 1; % Look 1 mm further away
-        coord(1)    = coord(1) + search_dist;
-        E_nodes{1}  = create_electrode(local_nodes, coord, E, all_nodes, body_faces);
+    % Build the electrode on -x side of this
+    center_coord = mid_col_center;
+    for col_i = middle_col + 1 : E.E_count(2)
+        % Space the electrode out and find it
+        min_vals        = min(E_nodes{col_i - 1});                                               % find the min x of the previous electrode
+        center_coord(1) = min_vals(1) - dist;                                            % shift the point over
+        E_nodes{col_i}  = create_electrode(local_nodes, center_coord, E, all_nodes, body_faces); % make the electrode
+        
+        % Determine if adjacent electrodes are touching each other side-to-side
+        search_dist = 0;
+        while ~isempty(intersect(E_nodes{col_i}, E_nodes{col_i-1}, "rows"))
+            search_dist     = search_dist + 1; % Look 1 mm further away
+            center_coord(1) = min_vals(1) - dist - search_dist;
+            E_nodes{col_i}  = create_electrode(local_nodes, center_coord, E, all_nodes, body_faces);
+        end
     end
 
-    % Find the third electrode
-    min_vals   = min(E_nodes{2});
-    coord(1)   = min_vals(1) - dist;
-    E_nodes{3} = create_electrode(local_nodes, coord, E, all_nodes, body_faces);
-
-    % Determine if electrodes 3 and 2 are touching each other side-to-side
-    search_dist = 0;
-    while ~isempty(intersect(E_nodes{2}, E_nodes{3}, "rows"))
-        search_dist = search_dist + 1; % Look 1 mm further away
-        coord(1)    = coord(1) - search_dist;
-        E_nodes{3}  = create_electrode(local_nodes, coord, E, all_nodes, body_faces);
-    end
-
-    % Find the fourth electrode
-    min_vals   = min(E_nodes{3});
-    coord(1)   = min_vals(1) - dist;
-    E_nodes{4} = create_electrode(local_nodes, coord, E, all_nodes, body_faces);
-
-    % Determine if electrodes 3 and 4 are touching each other side-to-side
-    search_dist = 0;
-    while ~isempty(intersect(E_nodes{4}, E_nodes{3}, "rows"))
-        search_dist = search_dist + 1; % Look 1 mm further away
-        coord(1)    = coord(1) - search_dist;
-        E_nodes{4}  = create_electrode(local_nodes, coord, E, all_nodes, body_faces);
+    % Build the electrode on +x side of this
+    center_coord = mid_col_center;
+    for col_i = middle_col - 1 : -1 : 1
+        % Space the electrode out and find it
+        max_vals        = max(E_nodes{col_i + 1});                                               % find the max x of the previous electrode
+        center_coord(1) = max_vals(1) + dist;                                            % shift the point over
+        E_nodes{col_i}  = create_electrode(local_nodes, center_coord, E, all_nodes, body_faces); % make the electrode
+        
+        % Determine if adjacent electrodes are touching each other side-to-side
+        search_dist = 0;
+        while ~isempty(intersect(E_nodes{col_i}, E_nodes{col_i+1}, "rows"))
+            search_dist     = search_dist + 1; % Look 1 mm further away
+            center_coord(1) = max_vals(1) + dist + search_dist;
+            E_nodes{col_i}  = create_electrode(local_nodes, center_coord, E, all_nodes, body_faces);
+        end
     end
 end
 
-function E_nodes = create_patch(local_nodes, row_center3, E, FoB, all_nodes, body_faces)
+function E_nodes = create_patch(local_nodes, mid_row_center, E, FoB, all_nodes, body_faces)
     %{
     Create a patch of electrodes and find the nodes/connectivity
     Row 1 is the largest z value, and row 4 is the smallest z value
+    Rows are centered on carina
     9/27/24 - Kyler Howard
 
-    param: local_nodes - All nodes on to look at for making the electrode
-    param: row_center3 - Reference coordinate for the third row (center)
-    param: E           - Structure containing the size and type of electrode
-    param: FoB         - Flag for if we are looking at the front or back of the body
+    param: local_nodes    - All nodes on to look at for making the electrode
+    param: mid_row_center - Reference coordinate for the third row (center)
+    param: E              - Structure containing the size and type of electrode
+    param: FoB            - Flag for if we are looking at the front or back of the body
 
     return: corners - Coordinates of the electrodes
     %}
@@ -408,104 +400,94 @@ function E_nodes = create_patch(local_nodes, row_center3, E, FoB, all_nodes, bod
     E_nodes   = cell(E.E_count(1) * E.E_count(2), 1);
     row_nodes = cell(E.E_count(1), 1);
 
-    % Find the third row
-    row_nodes{3} = create_rows(local_nodes, row_center3, E, all_nodes, body_faces);
-    for i = 1:4
-        E_nodes{8+i} = row_nodes{3}{i};
+    % Find the "middle" row that we should be appying electrodes onto. This is either 
+    % the true middle for odd number of rows or the top of the two center rows.
+    middle_row = floor(mean(1:E.E_count(1)));
+    if mod(E.E_count(1), 2) == 0
+        if isnan(E.E_height)
+            mid_row_center(:,3) = mid_row_center(:,3) + E.E_rad + E.gap_height/2;
+        elseif isnan(E.E_rad)
+            mid_row_center(:,3) = mid_row_center(:,3) + E.E_height/2 + E.gap_height/2;
+        end
     end
 
     % Set up the distance between rows
     if isnan(E.E_height)
         dist = E.E_rad + E.gap_height;
-        % dist = E.E_rad + 5/3*E.gap_height;
     elseif isnan(E.E_rad)
-        % dist = E.E_height/2 + E.gap_height;
-        dist = E.E_height/2 + 5/3*E.gap_height;
-    end
-    
-
-    % Find the fourth row
-    min_vals         = min([min(E_nodes{9}); min(E_nodes{10}); min(E_nodes{11}); min(E_nodes{12})]);
-    [row_center4, ~] = Find_Center(local_nodes, min_vals(3) - dist, E, FoB);
-    row_nodes{4}     = create_rows(local_nodes, row_center4, E, all_nodes, body_faces);
-    for i = 1:4
-        E_nodes{12+i} = row_nodes{4}{i};
+        dist = E.E_height/2 + E.gap_height;
     end
 
-    % Determine if rows 3 and 4 are touching each other top-to-bottom
-    check1 = intersect(E_nodes{9}, E_nodes{13},"rows");
-    check2 = intersect(E_nodes{10},E_nodes{14},"rows");
-    check3 = intersect(E_nodes{11},E_nodes{15},"rows");
-    check4 = intersect(E_nodes{12},E_nodes{16},"rows");
-    search_dist = 0;
-    while ~isempty(check1) | ~isempty(check2) | ~isempty(check3) | ~isempty(check4)
-        search_dist = search_dist + 1; % Look 1 mm further away
-        [row_center4, ~] = Find_Center(local_nodes, min_vals(3) - dist - search_dist, E, FoB);
-        row_nodes{4}     = create_rows(local_nodes, row_center4, E, all_nodes, body_faces);
-        for i = 1:4
-            E_nodes{12+i} = row_nodes{4}{i};
+    % Find the middle row
+    row_nodes{middle_row} = create_rows(local_nodes, mid_row_center, E, all_nodes, body_faces);
+    for i = 1:E.E_count(2)
+        E_nodes{E.E_count(2)*(middle_row-1)+i} = row_nodes{middle_row}{i};
+    end
+
+    % Build the rows below this
+    for row_i = middle_row + 1 : E.E_count(1)
+        % Space the row out and find it
+        min_vals         = min(cell2mat(cellfun(@(x) min(x), row_nodes{row_i - 1}, 'UniformOutput', false))); % find the bottom of the previous row
+        [row_center, ~]  = Find_Center(local_nodes, min_vals(3) - dist, E, FoB);                              % find the closest center point after walking down the vert gap and half electrode height
+        row_nodes{row_i} = create_rows(local_nodes, row_center, E, all_nodes, body_faces);                    % make the row
+        
+        % Set aside the electrode and check if rows are touching top-to-bottom
+        touch_check = cell(1,E.E_count(2));
+        for i = 1:E.E_count(2)
+            % Save the individual electrode
+            E_nodes{E.E_count(2)*(row_i-1)+i} = row_nodes{row_i}{i};
+
+            % Check if they're touching
+            touch_check{i} = intersect(row_nodes{row_i}{i}, row_nodes{row_i-1}{i},"rows");
         end
 
-        check1 = intersect(E_nodes{9}, E_nodes{13},"rows");
-        check2 = intersect(E_nodes{10},E_nodes{14},"rows");
-        check3 = intersect(E_nodes{11},E_nodes{15},"rows");
-        check4 = intersect(E_nodes{12},E_nodes{16},"rows");
+        % If touching, move further down
+        search_dist = 0;
+        while any(cellfun(@(x) ~isempty(x), touch_check))
+            search_dist      = search_dist + 1; % Look 1 mm further away
+            [row_center, ~]  = Find_Center(local_nodes, min_vals(3) - dist - search_dist, E, FoB); % find the closest center point after walking down the vert gap and half electrode height
+            row_nodes{row_i} = create_rows(local_nodes, row_center, E, all_nodes, body_faces);     % make the row
+            for i = 1:E.E_count(2)
+                % Save the individual electrode
+                E_nodes{E.E_count(2)*(row_i-1)+i} = row_nodes{row_i}{i};
+
+                % Check if they're touching
+                touch_check{i} = intersect(row_nodes{row_i}{i}, row_nodes{row_i-1}{i},"rows");
+            end
+        end
     end
 
-    % Find the second row
-    max_vals = max([max(E_nodes{9}); max(E_nodes{10}); max(E_nodes{11}); max(E_nodes{12})]);
-    [row_center2, ~] = Find_Center(local_nodes, max_vals(3) + dist, E, FoB);
-    row_nodes{2} = create_rows(local_nodes, row_center2, E, all_nodes, body_faces);
-    for i = 1:4
-        E_nodes{4+i} = row_nodes{2}{i};
-    end
+    % Build the rows above this
+    for row_i = middle_row - 1 : -1 : 1
+        % Space the row out and find it
+        max_vals         = max(cell2mat(cellfun(@(x) max(x), row_nodes{row_i + 1}, 'UniformOutput', false))); % find the bottom of the previous row
+        [row_center, ~]  = Find_Center(local_nodes, max_vals(3) + dist, E, FoB);                              % find the closest center point after walking down the vert gap and half electrode height
+        row_nodes{row_i} = create_rows(local_nodes, row_center, E, all_nodes, body_faces);                    % make the row
+        
+        % Set aside the electrode and check if rows are touching top-to-bottom
+        touch_check = cell(1,E.E_count(2));
+        for i = 1:E.E_count(2)
+            % Save the individual electrode
+            E_nodes{E.E_count(2)*(row_i-1)+i} = row_nodes{row_i}{i};
 
-    % Determine if rows 3 and 2 are touching each other top-to-bottom
-    check1 = intersect(E_nodes{9}, E_nodes{5},"rows");
-    check2 = intersect(E_nodes{10},E_nodes{6},"rows");
-    check3 = intersect(E_nodes{11},E_nodes{7},"rows");
-    check4 = intersect(E_nodes{12},E_nodes{8},"rows");
-    search_dist = 0;
-    while ~isempty(check1) | ~isempty(check2) | ~isempty(check3) | ~isempty(check4)
-        search_dist = search_dist + 1; % Look 1 mm further away
-        [row_center2, ~] = Find_Center(local_nodes, max_vals(3) + dist + search_dist, E, FoB);
-        row_nodes{2}     = create_rows(local_nodes, row_center2, E, all_nodes, body_faces);
-        for i = 1:4
-            E_nodes{4+i} = row_nodes{2}{i};
+            % Check if they're touching
+            touch_check{i} = intersect(row_nodes{row_i}{i}, row_nodes{row_i+1}{i},"rows");
         end
 
-        check1 = intersect(E_nodes{9}, E_nodes{5},"rows");
-        check2 = intersect(E_nodes{10},E_nodes{6},"rows");
-        check3 = intersect(E_nodes{11},E_nodes{7},"rows");
-        check4 = intersect(E_nodes{12},E_nodes{8},"rows");
-    end
+        % If touching, move further down
+        search_dist = 0;
+        while any(cellfun(@(x) ~isempty(x), touch_check))
+            search_dist      = search_dist + 1; % Look 1 mm further away
+            [row_center, ~]  = Find_Center(local_nodes, max_vals(3) + dist + search_dist, E, FoB); % find the closest center point after walking down the vert gap and half electrode height
+            row_nodes{row_i} = create_rows(local_nodes, row_center, E, all_nodes, body_faces);     % make the row
+            for i = 1:E.E_count(2)
+                % Save the individual electrode
+                E_nodes{E.E_count(2)*(row_i-1)+i} = row_nodes{row_i}{i};
 
-    % Find the first row
-    max_vals = max([max(E_nodes{5}); max(E_nodes{6}); max(E_nodes{7}); max(E_nodes{8})]);
-    [row_center1, ~] = Find_Center(local_nodes, max_vals(3) + dist, E, FoB);
-    row_nodes{1} = create_rows(local_nodes, row_center1, E, all_nodes, body_faces);
-    for i = 1:4
-        E_nodes{i} = row_nodes{1}{i};
-    end
-
-    % Determine if rows 1 and 2 are touching each other top-to-bottom
-    check1 = intersect(E_nodes{1},E_nodes{5},"rows");
-    check2 = intersect(E_nodes{2},E_nodes{6},"rows");
-    check3 = intersect(E_nodes{3},E_nodes{7},"rows");
-    check4 = intersect(E_nodes{4},E_nodes{8},"rows");
-    search_dist = 0;
-    while ~isempty(check1) | ~isempty(check2) | ~isempty(check3) | ~isempty(check4)
-        search_dist = search_dist + 1; % Look 1 mm further away
-        [row_center1, ~] = Find_Center(local_nodes, max_vals(3) + dist + search_dist, E, FoB);
-        row_nodes{1}     = create_rows(local_nodes, row_center1, E, all_nodes, body_faces);
-        for i = 1:4
-            E_nodes{i} = row_nodes{1}{i};
+                % Check if they're touching
+                touch_check{i} = intersect(row_nodes{row_i}{i}, row_nodes{row_i+1}{i},"rows");
+            end
         end
-
-        check1 = intersect(E_nodes{1},E_nodes{5},"rows");
-        check2 = intersect(E_nodes{2},E_nodes{6},"rows");
-        check3 = intersect(E_nodes{3},E_nodes{7},"rows");
-        check4 = intersect(E_nodes{4},E_nodes{8},"rows");
     end
 end
 

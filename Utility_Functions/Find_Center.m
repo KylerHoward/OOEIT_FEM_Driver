@@ -29,13 +29,18 @@ function [center, plane] = Find_Center(nodes, height, E, FoB)
 
     % Find the nodes that are the center of the front/back of the body
     x_mid = (min(plane(:,1)) + max(plane(:,1))) / 2;
-    y_min = min(plane(:,2));
-    y_max = max(plane(:,2));
+
+    center_x_check = (plane(:,1) > x_mid  - 5) & (plane(:,1) < x_mid  + 5);
+    center_z_check = (plane(:,3) > height - 5) & (plane(:,3) < height + 5);
+    center_plane   = plane(center_x_check & center_z_check, :);
+
+    y_min = min(center_plane(:,2));
+    y_max = max(center_plane(:,2));
     if nargin < 4
         center = [];
     elseif lower(FoB) == "front"
-        center = plane(dsearchn(plane, [x_mid, y_max, height]),:);
+        center = center_plane(dsearchn(center_plane, [x_mid, y_max, height]),:);
     elseif lower(FoB) == "back"
-        center  = plane(dsearchn(plane, [x_mid, y_min, height]),:);
+        center  = center_plane(dsearchn(center_plane, [x_mid, y_min, height]),:);
     end
 end
