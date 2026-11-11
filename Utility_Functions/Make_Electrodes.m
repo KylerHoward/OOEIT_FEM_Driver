@@ -27,8 +27,8 @@ function [E_nodes, perim_mm, vert_gap] = Make_Electrodes(boundary_nodes, all_nod
     if E.type == "patch"
         nheights            = 1;
         heights             = sbj_info.carina;
-        [front, E_plane{1}] = find_center(boundary_nodes, heights, E, "front");
-        [back,  ~]          = find_center(boundary_nodes, heights, E, "back");
+        [front, E_plane{1}] = Find_Center(boundary_nodes, heights, E, "front");
+        [back,  ~]          = Find_Center(boundary_nodes, heights, E, "back");
 
         % KH: 1/14/26 front/back were the center of the second row. 
         % Adjusting so carina is the center of the third row from now on.
@@ -45,11 +45,11 @@ function [E_nodes, perim_mm, vert_gap] = Make_Electrodes(boundary_nodes, all_nod
         E_plane = cell(1,nheights);
         if nheights == 1
             heights         = mean([sbj_info.T5, sbj_info.T8]);
-            [~, E_plane{1}] = find_center(boundary_nodes,  heights, E);
+            [~, E_plane{1}] = Find_Center(boundary_nodes,  heights, E);
         elseif nheights == 2
             heights         = [sbj_info.T5, sbj_info.T8];
-            [~, E_plane{1}] = find_center(boundary_nodes, heights(1), E);
-            [~, E_plane{2}] = find_center(boundary_nodes, heights(2), E);
+            [~, E_plane{1}] = Find_Center(boundary_nodes, heights(1), E);
+            [~, E_plane{2}] = Find_Center(boundary_nodes, heights(2), E);
         else
             error("%d rows of electrodes are unsupported\n", nheights)
         end
@@ -241,48 +241,6 @@ end
 %% -------------------------- Custom Functions -------------------------- %
 % ----------------------------------------------------------------------- %
 
-function [center, plane] = find_center(nodes, height, E, FoB)
-    %{
-    Find the center of the body and the plane it is on
-    9/27/24 - Kyler Howard
-
-    param: nodes  - All nodes on the boundary of the surface
-    param: height - The wanted height for the plane
-    param: E      - Structure containing the size and type of electrode
-    param: FoB    - Flag for if we are looking at the front or back of the body
-
-    return: center - Coordinate of the center
-    return: plane  - Plane containing the center
-    %}
-
-    % Don't place electrodes higher than the body
-    if height > max(nodes(:,3))
-        height = max(nodes(:,3));
-    end
-
-    % Use whichever one isn't a NaN
-    if isnan(E.E_height)
-        plane_gap = E.E_rad;
-    elseif isnan(E.E_rad)
-        plane_gap = E.E_height / 2;
-    end
-
-    z_check = (nodes(:,3) > height - plane_gap) & (nodes(:,3) < height + plane_gap);
-    plane   = nodes(z_check,:);
-
-    % Find the nodes that are the center of the front/back of the body
-    x_mid = (min(plane(:,1)) + max(plane(:,1))) / 2;
-    y_min = min(plane(:,2));
-    y_max = max(plane(:,2));
-    if nargin < 4
-        center = [];
-    elseif lower(FoB) == "front"
-        center = plane(dsearchn(plane, [x_mid, y_max, height]),:);
-    elseif lower(FoB) == "back"
-        center  = plane(dsearchn(plane, [x_mid, y_min, height]),:);
-    end
-end
-
 function E_nodes = create_electrode(local_nodes, coord, E, all_nodes, body_faces)
     %{
     Create an individual electrode and find the nodes/connectivity
@@ -356,7 +314,6 @@ function E_nodes = create_electrode(local_nodes, coord, E, all_nodes, body_faces
         if search_dist > 25
             good_electrode = 1;
         end
-
     end
 end
 
@@ -392,8 +349,7 @@ function E_nodes = create_rows(local_nodes, coord, E, all_nodes, body_faces)
     elseif isnan(E.E_rad)
         % dist = E.E_width/2 + E.gap_width;
         dist = E.E_width/2 + 5/3*E.gap_width;
-    end
-    
+    end    
 
     % Find the first electrode
     max_vals   = max(E_nodes{2});
@@ -470,7 +426,7 @@ function E_nodes = create_patch(local_nodes, row_center3, E, FoB, all_nodes, bod
 
     % Find the fourth row
     min_vals         = min([min(E_nodes{9}); min(E_nodes{10}); min(E_nodes{11}); min(E_nodes{12})]);
-    [row_center4, ~] = find_center(local_nodes, min_vals(3) - dist, E, FoB);
+    [row_center4, ~] = Find_Center(local_nodes, min_vals(3) - dist, E, FoB);
     row_nodes{4}     = create_rows(local_nodes, row_center4, E, all_nodes, body_faces);
     for i = 1:4
         E_nodes{12+i} = row_nodes{4}{i};
@@ -484,7 +440,7 @@ function E_nodes = create_patch(local_nodes, row_center3, E, FoB, all_nodes, bod
     search_dist = 0;
     while ~isempty(check1) | ~isempty(check2) | ~isempty(check3) | ~isempty(check4)
         search_dist = search_dist + 1; % Look 1 mm further away
-        [row_center4, ~] = find_center(local_nodes, min_vals(3) - dist - search_dist, E, FoB);
+        [row_center4, ~] = Find_Center(local_nodes, min_vals(3) - dist - search_dist, E, FoB);
         row_nodes{4}     = create_rows(local_nodes, row_center4, E, all_nodes, body_faces);
         for i = 1:4
             E_nodes{12+i} = row_nodes{4}{i};
@@ -498,7 +454,7 @@ function E_nodes = create_patch(local_nodes, row_center3, E, FoB, all_nodes, bod
 
     % Find the second row
     max_vals = max([max(E_nodes{9}); max(E_nodes{10}); max(E_nodes{11}); max(E_nodes{12})]);
-    [row_center2, ~] = find_center(local_nodes, max_vals(3) + dist, E, FoB);
+    [row_center2, ~] = Find_Center(local_nodes, max_vals(3) + dist, E, FoB);
     row_nodes{2} = create_rows(local_nodes, row_center2, E, all_nodes, body_faces);
     for i = 1:4
         E_nodes{4+i} = row_nodes{2}{i};
@@ -512,7 +468,7 @@ function E_nodes = create_patch(local_nodes, row_center3, E, FoB, all_nodes, bod
     search_dist = 0;
     while ~isempty(check1) | ~isempty(check2) | ~isempty(check3) | ~isempty(check4)
         search_dist = search_dist + 1; % Look 1 mm further away
-        [row_center2, ~] = find_center(local_nodes, max_vals(3) + dist + search_dist, E, FoB);
+        [row_center2, ~] = Find_Center(local_nodes, max_vals(3) + dist + search_dist, E, FoB);
         row_nodes{2}     = create_rows(local_nodes, row_center2, E, all_nodes, body_faces);
         for i = 1:4
             E_nodes{4+i} = row_nodes{2}{i};
@@ -526,7 +482,7 @@ function E_nodes = create_patch(local_nodes, row_center3, E, FoB, all_nodes, bod
 
     % Find the first row
     max_vals = max([max(E_nodes{5}); max(E_nodes{6}); max(E_nodes{7}); max(E_nodes{8})]);
-    [row_center1, ~] = find_center(local_nodes, max_vals(3) + dist, E, FoB);
+    [row_center1, ~] = Find_Center(local_nodes, max_vals(3) + dist, E, FoB);
     row_nodes{1} = create_rows(local_nodes, row_center1, E, all_nodes, body_faces);
     for i = 1:4
         E_nodes{i} = row_nodes{1}{i};
@@ -540,7 +496,7 @@ function E_nodes = create_patch(local_nodes, row_center3, E, FoB, all_nodes, bod
     search_dist = 0;
     while ~isempty(check1) | ~isempty(check2) | ~isempty(check3) | ~isempty(check4)
         search_dist = search_dist + 1; % Look 1 mm further away
-        [row_center1, ~] = find_center(local_nodes, max_vals(3) + dist + search_dist, E, FoB);
+        [row_center1, ~] = Find_Center(local_nodes, max_vals(3) + dist + search_dist, E, FoB);
         row_nodes{1}     = create_rows(local_nodes, row_center1, E, all_nodes, body_faces);
         for i = 1:4
             E_nodes{i} = row_nodes{1}{i};
