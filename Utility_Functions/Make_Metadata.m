@@ -47,6 +47,7 @@ function metadata = Make_Metadata(type)
     metadata.descriptions.flags.do_beeps        = "Decide if you want the code to beep after each simulation (1) or not (0).";
     metadata.descriptions.flags.verbose         = "Decide if you want to print status updates along the way (1) or not (0).";
     metadata.descriptions.flags.const_zeta      = "Decide if you want a constant contact impedance (1) or different contact impedance per electrode (0).";
+    metadata.descriptions.flags.save_Uall       = "Decide if you want to save Uall (1) or not (0) to save storage space.";
 
     metadata.descriptions.flags.make_video      = "Decide if you want to make a video (1), or a single frame (0).";
     metadata.descriptions.flags.num_breaths     = "Number of breaths to simulate. Default is 1.";
@@ -71,12 +72,10 @@ function metadata = Make_Metadata(type)
     metadata.descriptions.flags.esoph_intubate  = "Decide if the esophagus is intubated (1) or not (0).";
     metadata.descriptions.flags.permute_conds   = "Decide if you want random conds (1) or not (0).";
 
-    metadata.descriptions.flags.plot_slices     = "Plot individual slices when going slice by slice.";
     metadata.descriptions.flags.plot_trachea    = "Plotting of carina height.";
     metadata.descriptions.flags.plot_electrodes = "Plotting of electrode consturction.";
     metadata.descriptions.flags.plot_conds      = "Plotting of conductivities.";
     metadata.descriptions.flags.plot_GTs        = "Plot ground truth images.";
-    metadata.descriptions.flags.plot_internal   = "Plotting of internal nodes.";
     metadata.descriptions.flags.plot_volts      = "Plotting of nodal voltages.";
     metadata.descriptions.flags.plot_heart      = "Plot heart BCs.";
     metadata.descriptions.flags.plot_breath     = "Plot the breathing and cardiac curves.";

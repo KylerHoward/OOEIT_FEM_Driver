@@ -68,7 +68,7 @@ function carina_height = Find_Carina(t_nodes, flags)
         end
         
         % Plot every 10 mm
-        if mod(counter*gap, 10) == 0 && flags.plot_slices == 1
+        if mod(counter*gap, 10) == 0 && flags.plot_trachea == 1
             figure()
                 hold on
                 gscatter(plane(:,1), plane(:,2), clusters, colors(1:length(unique(clusters))), syms)

@@ -124,21 +124,21 @@ function [nodes, n_bframes, flags] = FEM3D_Function(filepath, filename, sbj_name
     
     % Load the table
     if contains(sbj_name, "R1")
-        sbj_sheet = readtable("CT Data Boundaries.xlsx", "Sheet","Lungmap Set");
+        sbj_sheet = readtable("CT_Data_Boundaries.xlsx", "Sheet","Lungmap Set");
     elseif contains(sbj_name, "case1")
-        sbj_sheet = readtable("CT Data Boundaries.xlsx", "Sheet","New Mexico Baby Set");
+        sbj_sheet = readtable("CT_Data_Boundaries.xlsx", "Sheet","New Mexico Baby Set");
     elseif contains(sbj_name, "EIT1")
-        sbj_sheet = readtable("CT Data Boundaries.xlsx", "Sheet","Anschutz Set");
+        sbj_sheet = readtable("CT_Data_Boundaries.xlsx", "Sheet","Anschutz Set");
     elseif contains(sbj_name, "EIT2")
-        sbj_sheet = readtable("CT Data Boundaries.xlsx", "Sheet","R01");
+        sbj_sheet = readtable("CT_Data_Boundaries.xlsx", "Sheet","R01");
     elseif contains(sbj_name, "G2")
-        sbj_sheet = readtable("CT Data Boundaries.xlsx", "Sheet","R21");
+        sbj_sheet = readtable("CT_Data_Boundaries.xlsx", "Sheet","R21");
     elseif contains(sbj_name, "MCR0")
-        sbj_sheet = readtable("CT Data Boundaries.xlsx", "Sheet","MCR Set");
+        sbj_sheet = readtable("CT_Data_Boundaries.xlsx", "Sheet","MCR Set");
     elseif contains(sbj_name, "Mean")
-        sbj_sheet = readtable("CT Data Boundaries.xlsx", "Sheet","Means");
+        sbj_sheet = readtable("CT_Data_Boundaries.xlsx", "Sheet","Means");
     elseif contains(sbj_name, "Cylinder")
-        sbj_sheet = readtable("CT Data Boundaries.xlsx", "Sheet","Cylinders");
+        sbj_sheet = readtable("CT_Data_Boundaries.xlsx", "Sheet","Cylinders");
     else
         error("No excel file for subject %s\n", sbj_name)
     end
@@ -216,7 +216,7 @@ function [nodes, n_bframes, flags] = FEM3D_Function(filepath, filename, sbj_name
     end
 
     % Pull the nodes and faces of wanted organs, then split them out of the structure
-    [organ_nodes, organ_faces] = Get_Organ_Nodes(nodes, connectivity, labels, organ_connects, flags);
+    [organ_nodes, organ_faces] = Get_Organ_Nodes(nodes, connectivity, labels, organ_connects, flags, sbj_info);
     trachea_nodes              = organ_nodes.trachea;
     lung_nodes                 = organ_nodes.lung;
     boundary_nodes             = organ_nodes.boundary;
@@ -230,7 +230,7 @@ function [nodes, n_bframes, flags] = FEM3D_Function(filepath, filename, sbj_name
     end
 
     tic
-    [E_nodes, perim_mm, vert_gap] = Make_Electrodes3(boundary_nodes, nodes, body_faces, sbj_info, flags);
+    [E_nodes, perim_mm, vert_gap] = Make_Electrodes(boundary_nodes, nodes, body_faces, sbj_info, flags);
     if iscell(E_nodes) == 0
         E_nodes = {E_nodes};
     end
@@ -307,8 +307,8 @@ function [nodes, n_bframes, flags] = FEM3D_Function(filepath, filename, sbj_name
         try
             % Find the metadata substructure and go straigt to the units
             heart_var_names = fieldnames(loaded_heart_BCs);
-            meta_idx = contains(lower(heart_var_names), "metadata");
-            heart_metadata = loaded_heart_BCs.(heart_var_names{meta_idx}).units;
+            meta_idx        = contains(lower(heart_var_names), "metadata");
+            heart_metadata  = loaded_heart_BCs.(heart_var_names{meta_idx}).units;
             
             % Find the unit used
             meta_var_names = fieldnames(heart_metadata);
@@ -582,9 +582,12 @@ function [nodes, n_bframes, flags] = FEM3D_Function(filepath, filename, sbj_name
             end
             
             % Plot the ground truth images at each row
-            % GT_Thickness = 5; %mm
-            % sigma_GT = Create_GT_Images(GT_Thickness, nodes, E_nodes, sigma, flags);'
-            sigma_GT = Create_GT_Images_Filled(nodes, organ_faces, organ_nodes, sigma, E_connect, flags);
+            if size(unique(labels),1) == 1 % Only use the scatter method for meshes with no organ definitions
+                GT_Thickness = 5; %mm
+                sigma_GT = Create_GT_Images(GT_Thickness, nodes, E_nodes, sigma, flags);
+            else % Use the filled method if there are organ boundaries
+                sigma_GT = Create_GT_Images_Filled(nodes, organ_faces, organ_nodes, sigma, E_connect, flags);
+            end
 
 % ----------------------------------------------------------------------- %
 %%                         Solve Forward Problem                          %
@@ -645,9 +648,10 @@ function [nodes, n_bframes, flags] = FEM3D_Function(filepath, filename, sbj_name
             Umeas = cat(3, Umeas_cell{:});
             Uall  = cat(3, Uall_cell{:});
                     
-    % ----------------------------------------------------------------------- %
-    %%                                Plot Global Voltages                                %
-    % ----------------------------------------------------------------------- %
+% ----------------------------------------------------------------------- %
+%%                                Plot Global Voltages                    %
+% ----------------------------------------------------------------------- %
+            % Plot the voltages, then "erase" them if we don't want to save
             % Plot global nodal voltages
             if flags.solve_problem == 1 && flags.plot_volts > 0
                 Plot_Voltages(nodes, Uall, flags)   
@@ -658,12 +662,17 @@ function [nodes, n_bframes, flags] = FEM3D_Function(filepath, filename, sbj_name
                 end
             end
 
+            % Replace Uall with NaN if we're not saving it
+            if flags.save_Uall == 0
+                Uall = NaN;
+            end
+
 % ----------------------------------------------------------------------- %
 %%                               Save Data                                %
 % ----------------------------------------------------------------------- %
             
             if flags.solve_problem == 1
-
+                fprintf("   Saving Data...\n")
                 if noise(1) == 0 || noise(2) == 0
                     Umeas_NoNoise = Umeas;
                     Uall_NoNoise  = Uall;
