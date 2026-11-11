@@ -76,8 +76,8 @@ function sigma_GT = Create_GT_Images_Filled(nodes, organ_faces, organ_nodes, sig
         %%
         if flags.fixed_range
             if flags.plot_diff == 1
-                sig_min = -0.1;
-                sig_max = 0.04;
+                sig_min = -0.1 - 0.1*1i;
+                sig_max = 0.04 + 0.04*1i;
             else
                 sig_min = 0 + 0*1i;
                 sig_max = 0.8 + 0.8*1i;
