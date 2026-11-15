@@ -1,4 +1,4 @@
-    function sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, flags)
+function [sigma, lung_split] = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, lung_faces, flags)
     %{
     Assign complex conductivities to each node
     8/20/24 - Kyler Howard
@@ -6,9 +6,12 @@
     param: nodes        - All nodes in the entire mesh (nx3)
     param: connectivity - Connectivity matrix for the entire mesh (mx4)
     param: labels       - Labels of each element for the entire mesh (mx1)
+    param: lung_nodes   - All nodes making up the lung (nlx3)
+    param: lung_faces   - Connectivity matrix for the faces of the lung (mlx3)
     param: flags        - Various flags controlling plotting and other parameters
 
-    return: Sigma - Assigned complex conductivity of each node for the entire mesh at each frame (nNodes x nFrames)
+    return: sigma      - Assigned complex conductivity of each node for the entire mesh at each frame (nNodes x nFrames)
+    return: lung_split - A structure how how the lungs are split to save for later plotting
     %}
 %% ------------------------------- Setup -------------------------------- %
 
@@ -70,7 +73,7 @@
         suscs.lung        = 2*pi*freq*eps0*[ls_eq;    ls_range];                      % 0.4,  0.4
         suscs.lung_tissue = 2*pi*freq*eps0*[ls_empty; 1.15e4] * ones([1, nframes]);
 
-    else % ACT5 System    
+    else % ACT5 System
         freq = 93750; % Hz
 
         % Heart equations
@@ -121,6 +124,8 @@
         suscs.lung        = 2*pi*freq*eps0*[ls_eq;    ls_range];                      % 0.4,  0.4
         suscs.lung_tissue = 2*pi*freq*eps0*[ls_empty; 1.15e4] * ones([1, nframes]);
     end
+
+    %%
 
     % Real Conductivities (S/m)
     background_cond  = conds.background(1,:);    background_cond_range  = conds.background(2,:);
@@ -336,6 +341,23 @@
             end
         end
     end
+
+    % Save left/right splitting
+    % Set the indicies of the lung faces on each side
+    lung_node_ids  = unique(lung_faces(:));
+    newDist = pdist2(nodes(lung_node_ids,1:2), centroids);
+    [~, newIdx] = min(newDist, [], 2);
+    left_node_ids  = lung_node_ids(newIdx==1);
+    right_node_ids = lung_node_ids(newIdx==2);
+
+    % Save the splitting info
+    lung_split.left_nodes     = left_node_ids;
+    lung_split.right_nodes    = right_node_ids;
+    lung_split.left_centroid  = centroids(1,:);
+    lung_split.right_centroid = centroids(2,:);
+    lung_split.side                         = zeros(size(nodes,1),1);
+    lung_split.side(lung_split.left_nodes)  = 1;
+    lung_split.side(lung_split.right_nodes) = 2;
         
     if flags.plot_conds == 1
         figure()
