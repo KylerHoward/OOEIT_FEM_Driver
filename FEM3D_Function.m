@@ -430,7 +430,7 @@ function [nodes, n_bframes, flags] = FEM3D_Function(filepath, filename, sbj_name
         end
         init_start = tic;
         if flags.do_parfor == 1
-            solver = MF_EITFEM(fmesh);
+            solver = ParEITFEM(fmesh);
         else
             solver = EITFEM(fmesh);
         end
