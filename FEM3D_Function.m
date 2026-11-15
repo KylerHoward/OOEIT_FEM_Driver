@@ -102,6 +102,7 @@ function [nodes, n_bframes, flags] = FEM3D_Function(filepath, filename, sbj_name
             end
         end
     else % You only want to measure, not inject current
+        fprintf(2,"   Current is not being injected\n")
         if flags.E_choice <= 4
             L = 32;
         elseif flags.E_type == "patch"
@@ -578,18 +579,23 @@ function [nodes, n_bframes, flags] = FEM3D_Function(filepath, filename, sbj_name
 
             % Creating the conductivity vector at the nodes (IN SIEMENS PER METER)
             sigma_start = tic;
-            sigma = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, flags);
+            [sigma, lung_split] = Assign_Conductivities(nodes, connectivity, labels, lung_nodes, organ_faces.lung, flags);
             sigma_time  = toc(sigma_start);
             if flags.verbose == 1
                 fprintf("      It took %.2f seconds to assign conductivities\n", sigma_time)
             end
+
+            % organ_faces.left_lung  = lung_split.left_faces;
+            % organ_faces.right_lung = lung_split.right_faces;
+            % organ_nodes.left_lung  = lung_split.left_nodes;
+            % organ_nodes.right_lung = lung_split.right_nodes;
             
             % Plot the ground truth images at each row
             if size(unique(labels),1) == 1 % Only use the scatter method for meshes with no organ definitions
                 GT_Thickness = 5; %mm
                 sigma_GT = Create_GT_Images(GT_Thickness, nodes, E_nodes, sigma, flags);
             else % Use the filled method if there are organ boundaries
-                sigma_GT = Create_GT_Images_Filled(nodes, organ_faces, organ_nodes, sigma, E_connect, flags);
+                sigma_GT = Create_GT_Images_Filled(nodes, organ_faces, organ_nodes, lung_split, sigma, E_connect, flags);
             end
 
 % ----------------------------------------------------------------------- %
@@ -692,6 +698,13 @@ function [nodes, n_bframes, flags] = FEM3D_Function(filepath, filename, sbj_name
                 if contains(sbj_save_path, fullfile("OOEIT_FEM_Driver","Results")) ~= 1
                     cond_save_path = fullfile(sbj_save_path, flags.E_type, "conductivities", condition_name);
                     volt_save_path = fullfile(sbj_save_path, flags.E_type, "voltages",       condition_name);
+
+                    if ~isfolder(cond_save_path)
+                        mkdir(cond_save_path)
+                    end
+                    if ~isfolder(volt_save_path)
+                        mkdir(volt_save_path)
+                    end
                 else
                     cond_save_path = sbj_save_path;
                     volt_save_path = sbj_save_path;

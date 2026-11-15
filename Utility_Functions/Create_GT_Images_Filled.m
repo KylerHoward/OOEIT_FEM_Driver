@@ -1,7 +1,10 @@
-function sigma_GT = Create_GT_Images_Filled(nodes, organ_faces, organ_nodes, sigma, E_connect, flags)
+function sigma_GT = Create_GT_Images_Filled(nodes, organ_faces, organ_nodes, lung_split, sigma, E_connect, flags)
+    % Ensure surface face is first! This is necessary for logic
+    temp = organ_faces.surface;
+    organ_faces = rmfield(organ_faces,'surface');
+    organ_faces.surface = temp;
 
-    % T5 = 214;
-    % T8 = 149;
+
     frame = 1;
 
     % Find the z heights of each electrode and sort them by rows
@@ -26,7 +29,7 @@ function sigma_GT = Create_GT_Images_Filled(nodes, organ_faces, organ_nodes, sig
 
     % Find the perimeter/polyshape of each organ and the conductivity value per frame
     for row = 1:length(E_heights)
-        sigma_GT{row} = PrepOrgans(organ_faces, organ_nodes, nodes, sigma, E_heights(row));
+        sigma_GT{row} = PrepOrgans(organ_faces, organ_nodes, lung_split, nodes, sigma, E_heights(row));
     end
     
     % Create the plotted sigma as either absolutes or difference images
@@ -59,13 +62,15 @@ function sigma_GT = Create_GT_Images_Filled(nodes, organ_faces, organ_nodes, sig
             % Apply shift to second column of each boundary
             for i = 1:size(plot_sigma{row},1)
                 P = plot_sigma{row}{i,1};
-                if ~isempty(P)
-                    P.Vertices(:,2) = P.Vertices(:,2) - shift;
-                    plot_sigma{row}{i,1}  = P;
-                end
 
-                if i == size(plot_sigma{row}, 1) && row == 1
-                    bot_max_y = max(plot_sigma{row}{i,1}.Vertices(:,2));
+                if isa(P,'polyshape') && ~isempty(P.Vertices)
+                
+                    P.Vertices(:,2) = P.Vertices(:,2)-shift;
+                    plot_sigma{row}{i,1} = P;
+                
+                    if i == size(plot_sigma{row},1) && row == 1
+                        bot_max_y = max(P.Vertices(:,2));
+                    end
                 end
             end
     
@@ -244,6 +249,7 @@ function color = FindColor(cmap, sigma_GT, row, o, frame, sig_min, sig_max)
 end
 
 function P = RemoveInsides(organ_polys, P, o)
+    % Remove any inclusions that are in the polyshape
     for i = o-1:-1:1
         P0 = organ_polys{i, 1};
         if ~isempty(P0)
@@ -252,26 +258,58 @@ function P = RemoveInsides(organ_polys, P, o)
     end
 end
 
-function [organ_polys] = PrepOrgans(organ_faces, organ_nodes, nodes, sigma, z0)
+function [organ_polys] = PrepOrgans(organ_faces, organ_nodes, lung_split, nodes, sigma, z0)
     warning off
-    organ_list = fieldnames(organ_faces);
 
-    organ_polys = cell([length(organ_list),  size(sigma,2)+1]);
+    organ_list = fieldnames(organ_faces);
+    organ_polys = cell([length(organ_list)+1, size(sigma,2)+1]);
 
     % Go backwards to hit surface first
     for o = numel(organ_list):-1:1
+
         organ = organ_list{o};
+
         if strcmp(organ, "body")
             continue
         end
+
         F = organ_faces.(organ);
 
         if isempty(F)
             continue
         end
 
-        [organ_polys{o, 1}, bdry_nodes] = SliceOneOrgan(organ, nodes, F, z0);
-        P = organ_polys{o, 1};
+        % [organ_polys{o,1}, ~] = SliceOneOrgan(organ, nodes, F, z0, flags, lung_split);
+        % P = organ_polys{o,1};
+        [P, ~] = SliceOneOrgan(organ, nodes, F, z0, lung_split);
+
+        if strcmp(organ,'lung')
+            left_sigma  = sigma(lung_split.left_nodes,:);
+            right_sigma = sigma(lung_split.right_nodes,:);
+        
+            % Assign left to 2 and right to 3
+            organ_polys{o,1}   = P{1};
+            organ_polys{o+1,1} = P{2};
+        
+            for i = 1:size(sigma,2)
+                % Figure out the conductivity of the lung
+                not_body_left  = abs(left_sigma(:,i)  - body_sigma(:,i)) > 1e-10;
+                not_body_right = abs(right_sigma(:,i) - body_sigma(:,i)) > 1e-10;
+                region_sigma(1,i) = mode(left_sigma(not_body_left,  i),1);
+                region_sigma(2,i) = mode(right_sigma(not_body_right,i),1);
+
+                organ_polys{o,i+1}   = region_sigma(1,i);
+                organ_polys{o+1,i+1} = region_sigma(2,i);
+            end
+        
+            continue
+        else
+            if o > 2
+                organ_polys{o+1, 1} = P;
+            else
+                organ_polys{o,1} = P;
+            end
+        end
 
         if isempty(P.Vertices)
             continue
@@ -279,48 +317,68 @@ function [organ_polys] = PrepOrgans(organ_faces, organ_nodes, nodes, sigma, z0)
 
         if strcmp(organ,"surface")
             inner_nodes = organ_nodes.boundary;
-        elseif strcmp(organ, "esophagus")
+        elseif strcmp(organ,"esophagus")
             inner_nodes = organ_nodes.esoph_bdry;
-        elseif strcmp(organ, "bone")
+        elseif strcmp(organ,"bone")
             inner_nodes = organ_nodes.bone_bdry;
         else
             inner_nodes = organ_nodes.(organ);
         end
-        [~, idxInNodes] = ismember(inner_nodes, nodes, 'rows');
 
-        organ_sigma  = sigma(idxInNodes,:);
+        [~,idxInNodes] = ismember(inner_nodes, nodes, 'rows');
+
+        % Find the sigma value for each polyshape
+        organ_sigma = sigma(idxInNodes,:);
+
         if strcmp(organ,"surface")
-            body_sigma = mean(organ_sigma,1);
+            body_sigma   = mean(organ_sigma,1);
             region_sigma = mean(organ_sigma,1);
         else
             for i = 1:size(sigma,2)
-                region_sigma(i) = mean(organ_sigma(abs(organ_sigma(:,i) - body_sigma(:,i)) > 1e-10,i),1);
+                not_body = abs(organ_sigma(:,i) - body_sigma(:,i)) > 1e-10;
+                region_sigma(i) = mean(organ_sigma(not_body,i),1);
             end
         end
+
         for i = 1:size(sigma,2)
-            organ_polys{o, i+1} = region_sigma(i);
+            if o > 2
+                % o+1 to account for the lungs coming later
+                organ_polys{o+1,i+1} = region_sigma(i);
+            else
+                % We're past the lungs, so now we acutally want o
+                organ_polys{o,i+1} = region_sigma(i);
+            end
         end
     end
     warning off
+
 end
 
-function [P, bdry_nodes] = SliceOneOrgan(organ, nodes, F, z0)
+function [P, bdry_nodes] = SliceOneOrgan(organ, nodes, F, z0, lung_split)
 
     bdry_nodes = unique(F(:));
 
+    %% ---------------- Slice mesh ---------------- %%
     zvals = nodes(:,3);
-    triZ  = zvals(F);
+
+    triZ = zvals(F);
 
     crossing = (min(triZ,[],2) <= z0) & (max(triZ,[],2) >= z0);
-    Fcross   = F(crossing,:);
 
-    segments = [];
+    Fcross = F(crossing,:);
+    
+    segments      = [];
+    
+    leftSegments  = [];
+    rightSegments = [];
 
     for i = 1:size(Fcross,1)
         verts = Fcross(i,:);
-        p = nodes(verts,:);
+        p     = nodes(verts,:);
+        edges = [1 2;
+                 2 3;
+                 3 1];
 
-        edges = [1 2; 2 3; 3 1];
         pts = [];
 
         for e = 1:3
@@ -330,108 +388,130 @@ function [P, bdry_nodes] = SliceOneOrgan(organ, nodes, F, z0)
             za = a(3);
             zb = b(3);
 
-            % Check if one z is above z0 and the other is below
-            % Both above or both postive makes first term positive
-            if (za - z0)*(zb - z0) <= 0 && za ~= zb
-                t  = (z0 - za) / (zb - za);
-                pt = a + t*(b - a);
+            % Check if edge crosses slicing plane
+            if (za-z0)*(zb-z0) <= 0 && za ~= zb
+                t   = (z0-za)/(zb-za);
+                pt  = a + t*(b-a);
                 pts = [pts; pt];
             end
         end
 
         if size(pts,1) == 2
-            segments = [segments; pts(1,:) pts(2,:)];
+            seg = [pts(1,:), pts(2,:)];
+        
+            if strcmp(organ,'lung')
+                sideVals = lung_split.side(verts);
+                sideVals = sideVals(sideVals>0);
+                triSide = mode(sideVals);
+                if triSide == 1
+                    leftSegments = [leftSegments; seg];
+                elseif triSide == 2
+                    rightSegments = [rightSegments; seg];
+                end
+            else
+                segments = [segments; seg];
+            end
         end
     end
 
+    %% ---------------- Empty slice ---------------- %%
+    if isempty(segments) && isempty(leftSegments) && isempty(rightSegments)
+        P = polyshape();
+        return
+    end
+
+    % ----------------- Reconstruction ----------------%
+    if strcmp(organ,'lung')
+        % c_left   = mean(leftSegments);
+        % c_right  = mean(rightSegments);
+        % a_left   = atan2(leftSegments(:,2)  - c_left(2),  leftSegments(:,1)  - c_left(1));
+        % a__right = atan2(rightSegments(:,2) - c_right(2), rightSegments(:,1) - c_right(1));
+        % [~, order_left]  = sort(a_left, 'descend');
+        % [~, order_right] = sort(a__right, 'descend');
+        % leftSegments  = leftSegments(order_left,:);
+        % rightSegments = rightSegments(order_right,:);
+
+
+        Pleft  = SegmentsToPolyshape(leftSegments, 'left_lung');
+        Pright = SegmentsToPolyshape(rightSegments, 'right_lung');
+        
+        P = {Pleft,Pright};
+    
+        return
+    else
+        P = SegmentsToPolyshape(segments,organ);
+    end
+
+end
+
+function P = SegmentsToPolyshape(segments,organ)
     if isempty(segments)
         P = polyshape();
         return
     end
 
-    N  = size(segments,1);
-    P1 = segments(:,1:2);
-    P2 = segments(:,4:5);
+    % Extract endpoints
+    pts = [segments(:,1:2); segments(:,4:5)];
 
-    tol  = 1e-6;
-    used = false(N,1);
-    loops = {};
+    % Merge coincident vertices
+    % [verts,~,ic] = uniquetol(pts, 1e-6, 'ByRows',true);
+    tol = 1e-8;
+    ptsRound = round(pts/tol)*tol;
+    [verts,~,ic] = unique(ptsRound,'rows');
 
-    for i = 1:N
-        if used(i)
-            continue
-        end
+    nSeg = size(segments,1);
 
-        loop  = P1(i,:);
-        endpt = P2(i,:);
-        used(i) = true;
+    edgeStart = ic(1:nSeg);
+    edgeEnd   = ic(nSeg+1:end);
 
-        changed = true;
-        while changed
-            changed = false;
+    % Build graph
+    G   = graph(edgeStart,edgeEnd);
+    deg = degree(G);
 
-            for j = 1:N
-                if used(j), continue; end
+    % Find path endpoints
+    endNodes = find(deg==1);
 
-                p1 = P1(j,:);
-                p2 = P2(j,:);
+    % Open path (lungs)
+    if length(endNodes)==2
+        pathNodes = shortestpath(G, endNodes(1), endNodes(2));
 
-                if norm(endpt - p1) < tol
-                    loop  = [loop; p1];
-                    endpt = p2;
-                    used(j) = true;
-                    changed = true;
+        boundary = verts(pathNodes,:);
 
-                elseif norm(endpt - p2) < tol
-                    loop  = [loop; p2];
-                    endpt = p1;
-                    used(j) = true;
-                    changed = true;
-                end
-            end
-        end
+        % close the contour across the cut
+        boundary(end+1,:) = boundary(1,:);
 
-        loops{end+1} = loop;
+        P = polyshape(boundary(:,1), boundary(:,2));
+        return
     end
 
-    numLoops = numel(loops);
-    isHole   = false(numLoops,1);
-
-    if strcmp(organ, 'body')
-        loops = loops(1);
-        isHole = false;
-        numLoops = 1;
-    else
-        for i = 1:numLoops
-            Ci = mean(loops{i},1);
+    % Closed contour (heart, body, etc.)
+    if all(deg==2)
+        adj = neighbors(G,1);
     
-            for j = 1:numLoops
-                if i == j, continue; end
+        prev = 1;
+        curr = adj(1);
     
-                Lj = loops{j};
-                if inpolygon(Ci(1), Ci(2), Lj(:,1), Lj(:,2))
-                    isHole(i) = true;
-                end
-            end
+        pathNodes = 1;
+    
+        while curr ~= 1
+            pathNodes(end+1) = curr;
+    
+            nbrs = neighbors(G,curr);
+    
+            next = nbrs(nbrs ~= prev);
+    
+            prev = curr;
+            curr = next;
         end
+    
+        boundary          = verts(pathNodes,:);
+        boundary(end+1,:) = boundary(1,:);
+    
+        P = polyshape(boundary(:,1), boundary(:,2));
+        return
     end
 
+    % Fallback
+    fprintf(2,'%s: unexpected graph topology\n',organ)
     P = polyshape();
-
-    for i = 1:numLoops
-        if ~isHole(i)
-            outer = loops{i};
-            P = addboundary(P, outer(:,1), outer(:,2));
-
-            for j = 1:numLoops
-                if isHole(j)
-                    Cj = mean(loops{j},1);
-                    if inpolygon(Cj(1), Cj(2), outer(:,1), outer(:,2))
-                        hole = loops{j};
-                        P = addboundary(P, hole(:,1), hole(:,2));
-                    end
-                end
-            end
-        end
-    end
 end
