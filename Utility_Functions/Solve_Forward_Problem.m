@@ -52,11 +52,7 @@ function [Umeas, Uall] = Solve_Forward_Problem(sigma, mesh_info, frame_info, hea
         
             % Solve the voltage
             solve_start          = tic;
-            if flags.do_parfor == 1
-                [Umeas_frame, Imeas_frame, Uall_frame] = MF_Simulation(fmesh,  [], sigma, solver.zeta, heart_BC_indices(hframe,:), heart_BC_vals, solver, "current", noise);
-            else
-                [Umeas_frame, Imeas_frame, Uall_frame] = MF_Simulation2(fmesh, [], sigma, solver.zeta, heart_BC_indices(hframe,:), heart_BC_vals, solver, "current", noise);
-            end
+            [Umeas_frame, Imeas_frame, Uall_frame] = MF_Simulation(fmesh,  [], sigma, solver.zeta, heart_BC_indices(hframe,:), heart_BC_vals, solver, "current", noise);
             solve_time           = toc(solve_start);
             if flags.verbose == 1
                 fprintf("      It took %.2f seconds to solve for voltages\n", solve_time)
