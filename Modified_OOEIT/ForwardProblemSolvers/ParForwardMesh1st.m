@@ -121,8 +121,6 @@ classdef ParForwardMesh1st < handle
             
             % The output:
             A = sparse(Arow,Acol,Aval,self.ng+self.nEl-1,self.ng+self.nEl-1);
-
-            
         end
         
         function [S, M, B] = EITElectrodeTerms(self)
@@ -399,13 +397,9 @@ classdef ParForwardMesh1st < handle
             %}
 
             sigma = [1-sum(ip,2) ip]*s;
-            
 
             Jt = L*g;
-            % iJt = inv(Jt);
-            % G   = iJt*L;
             dJt = abs(det(Jt));
-            % G   = Jt\L; % KH: Swapped to faster inverse
             G = inv(Jt) * L;
             GdJt = G'*G*dJt/factorial(self.gDim+1);
             int = sum(sigma)*GdJt;
@@ -450,7 +444,7 @@ classdef ParForwardMesh1st < handle
         end
 
         function A=ElementArea1D(g)
-            % Compute the are of element defined by the coordinates in g
+            % Compute the area of element defined by the coordinates in g
             A = sqrt((g(1,1)-g(2,1))^2 + (g(1,2)-g(2,2))^2);
         end
 

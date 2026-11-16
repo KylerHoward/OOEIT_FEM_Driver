@@ -1,4 +1,4 @@
-classdef MF_EITFEM < handle
+classdef ParEITFEM < handle
 %{
 EITFEM class contains a FEM solver of the complete electrode model.
 Support of any kind of mesh is achieved by having the mesh in a separate
@@ -64,7 +64,7 @@ Editted: 10/10/24 - Kyler Howard
     
     methods
         
-        function obj = MF_EITFEM(fmesh)
+        function obj = ParEITFEM(fmesh)
             %{
             Class constructor. Input (fmesh) is the forward mesh object 
             containing all the mesh related computations. For example, it
